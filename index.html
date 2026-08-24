@@ -128,7 +128,7 @@
   .chapter-card{
     background:var(--card); border:1px solid var(--line); border-radius:12px;
     padding:14px 16px; margin-bottom:9px; box-shadow:var(--shadow); cursor:pointer;
-    display:flex; align-items:center; gap:12px; text-align:left;
+    display:flex; align-items:flex-start; gap:12px; text-align:left;
   }
   .chapter-card:active{ transform:scale(.99); }
   .chapter-num{
@@ -137,7 +137,14 @@
     display:flex; align-items:center; justify-content:center; flex-shrink:0; text-align:center;
   }
   .chapter-info{ flex:1; min-width:0; }
-  .chapter-info .name{ font-weight:700; font-size:15px; color:var(--ink); margin-bottom:6px; letter-spacing:-.1px; }
+  .chapter-info .name-row{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:6px; }
+  .chapter-info .name{ font-weight:700; font-size:15px; color:var(--ink); letter-spacing:-.1px; min-width:0; }
+  .expand-btn{
+    flex-shrink:0; width:22px; height:22px; border-radius:50%; border:1.4px solid var(--line-strong);
+    background:var(--card); color:var(--navy); font-size:14px; font-weight:900; line-height:1;
+    display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0;
+  }
+  .expand-btn:active{ transform:scale(.9); }
   .chapter-info .progress-row{ display:flex; align-items:center; gap:8px; }
   .progress-track{ flex:1; height:5px; border-radius:3px; background:var(--paper-deep); overflow:hidden; }
   .progress-fill{ height:100%; background:linear-gradient(90deg, var(--gold), var(--seal)); border-radius:3px; }
@@ -147,6 +154,15 @@
     font-size:9.5px; font-weight:700; color:var(--correct); background:var(--correct-tint);
     border-radius:999px; padding:3px 8px; flex-shrink:0;
   }
+  .subtopic-list{ margin-top:10px; display:flex; flex-direction:column; gap:6px; }
+  .subtopic-item{
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    background:var(--paper-deep); border:1px solid var(--line); border-radius:8px;
+    padding:9px 11px; text-align:left; cursor:pointer;
+  }
+  .subtopic-item:active{ transform:scale(.98); }
+  .subtopic-name{ font-size:12.5px; color:var(--ink); word-break:keep-all; flex:1; min-width:0; }
+  .subtopic-count{ font-size:11px; color:var(--ink-soft); white-space:nowrap; font-variant-numeric:tabular-nums; flex-shrink:0; }
 
   /* ---------- Quiz screen ---------- */
   .quiz-wrap{ padding:16px 18px calc(40px + env(safe-area-inset-bottom)); flex:1; }
@@ -469,7 +485,8 @@
     reviewCounts: {}, // { chapterKey: number } - 단원별 완주(회독) 횟수. progress와 별개로 영구 보존.
     sheetOpen: false, // 해설 시트 표시 여부(일시 상태, 저장하지 않음)
     remoteErrors: {},  // { chapterKey: true } - 구글시트 URL은 설정됐지만 로드도/캐시도 실패한 챕터(진단용, 저장하지 않음)
-    storageOk: null    // true/false/null(테스트 전) - 저장소(window.storage) 실제 동작 여부 자체진단 결과
+    storageOk: null,   // true/false/null(테스트 전) - 저장소(window.storage) 실제 동작 여부 자체진단 결과
+    expandedChapter: null // 홈 화면에서 세세항목 목록을 펼쳐놓은 챕터키(일시 상태, 저장하지 않음)
   };
 
   // 앱 실행 시 저장소가 실제로 쓰기/읽기 가능한지 스스로 테스트한다.
@@ -540,6 +557,21 @@
   }
   function wrongCount(key){ return wrongIndices(key).length; }
 
+  // 챕터 안의 문제들을 세세항목(category2) 기준으로 묶어, 항목별 문제 수·학습 완료 수를 계산한다.
+  // 시트에 등장하는 순서를 그대로 유지한다(가나다 재정렬 안 함).
+  function getSubTopics(key){
+    const list = QUIZ[key] || [];
+    const order = [];
+    const map = {};
+    list.forEach((q, i)=>{
+      const name = (q.category2 || '').trim() || '(세세항목 없음)';
+      if(!map[name]){ map[name] = { name, total:0, answered:0 }; order.push(name); }
+      map[name].total++;
+      if(state.progress[key] && state.progress[key][i]) map[name].answered++;
+    });
+    return order.map(n=>map[n]);
+  }
+
   function allChapterKeys(){
     return META.subjects.reduce((acc, subj)=>acc.concat(subj.chapters), []);
   }
@@ -584,17 +616,32 @@
         const wc = wrongCount(key);
         const hasError = !!state.remoteErrors[key];
         const num = key.split('_')[0];
+        const subs = getSubTopics(key);
+        const expanded = state.expandedChapter === key;
+        let subListHtml = '';
+        if(expanded){
+          subListHtml = `<div class="subtopic-list">` + subs.map((s2, i2)=>
+            `<button class="subtopic-item" data-key="${key}" data-idx="${i2}">
+              <span class="subtopic-name">${escapeHtml(s2.name)}</span>
+              <span class="subtopic-count">${s2.answered}/${s2.total}</span>
+            </button>`
+          ).join('') + `</div>`;
+        }
         chaptersHtml += `
           <div class="chapter-card" data-key="${key}">
             <div class="chapter-num">${num}</div>
             <div class="chapter-info">
-              <div class="name">${escapeHtml(META.names[key])}</div>
+              <div class="name-row">
+                <div class="name">${escapeHtml(META.names[key])}</div>
+                ${subs.length>1? `<button class="expand-btn" data-key="${key}">${expanded?'−':'+'}</button>` : ''}
+              </div>
               <div class="progress-row">
                 <div class="progress-track"><div class="progress-fill ${done?'done':''}" style="width:${pct}%"></div></div>
                 <div class="pct">${s.answered}/${s.total}</div>
               </div>
               ${wc>0? `<button class="wrong-btn" data-key="${key}" style="margin-top:7px;font-size:11px;font-weight:700;color:var(--seal);background:var(--seal-tint);border:1px solid #E9C2BC;border-radius:999px;padding:3px 10px;">✕ 틀린문제 ${wc}개 다시풀기</button>` : ''}
               ${hasError? `<div style="margin-top:7px;font-size:10.5px;color:var(--wrong);">⚠ 시트 연동 실패 — 내장 문제로 표시 중</div>` : ''}
+              ${subListHtml}
             </div>
             <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">
               <div class="chapter-badge" style="background:var(--paper-deep);color:var(--navy);">${rc}회독</div>
@@ -639,6 +686,23 @@
     document.querySelectorAll('.wrong-btn').forEach(el=>{
       el.onclick = (e)=>{ e.stopPropagation(); startWrongReview(el.dataset.key); };
     });
+    document.querySelectorAll('.expand-btn').forEach(el=>{
+      el.onclick = (e)=>{
+        e.stopPropagation();
+        const key = el.dataset.key;
+        state.expandedChapter = (state.expandedChapter === key) ? null : key;
+        render(true); // 펼침/접힘은 화면 전환이 아니므로 스크롤 위치 유지
+      };
+    });
+    document.querySelectorAll('.subtopic-item').forEach(el=>{
+      el.onclick = (e)=>{
+        e.stopPropagation();
+        const key = el.dataset.key;
+        const idx = Number(el.dataset.idx);
+        const subs = getSubTopics(key);
+        if(subs[idx]) startSubTopic(key, subs[idx].name);
+      };
+    });
   }
 
   function openChapter(key, resume){
@@ -666,6 +730,18 @@
     const pseudoKey = '__wrong__' + key;
     QUIZ[pseudoKey] = idxs.map(i => QUIZ[key][i]);
     META.names[pseudoKey] = '🔁 오답노트 · ' + META.names[key];
+    delete state.progress[pseudoKey]; // 매번 새로 시작
+    openChapter(pseudoKey, false);
+  }
+
+  // 챕터 안에서 특정 세세항목(category2)에 해당하는 문제만 모아 별도의 임시 세션으로 연다.
+  // startWrongReview와 동일하게 '__sub__' 접두사가 붙은 임시 챕터를 만들어 기존 로직을 재사용한다.
+  function startSubTopic(key, topicName){
+    const items = (QUIZ[key] || []).filter(q => ((q.category2||'').trim() || '(세세항목 없음)') === topicName);
+    if(!items.length) return;
+    const pseudoKey = '__sub__' + key + '__' + topicName;
+    QUIZ[pseudoKey] = items;
+    META.names[pseudoKey] = `📎 ${topicName} · ${META.names[key]}`;
     delete state.progress[pseudoKey]; // 매번 새로 시작
     openChapter(pseudoKey, false);
   }
