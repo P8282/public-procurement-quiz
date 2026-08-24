@@ -345,8 +345,10 @@
   // (※ "전체 문서"로 게시하면 탭이 여러 개일 때 의도한 탭이 아닌 다른 탭이 나올 수 있어,
   //    반드시 드롭다운에서 "전체 문서"가 아닌 해당 챕터 탭 이름을 선택해서 게시해야 합니다.)
   // 비워둔(빈 문자열) 챕터는 기존 내장 문제를 그대로 사용합니다. 일부만 채워도 됩니다.
-  // 각 시트의 헤더(1행)는 chapter 컬럼 없이 아래처럼만 있으면 됩니다:
-  // num,category1,category2,question,option1,option2,option3,option4,answer,explanation,source
+  //
+  // 시트 형식(고정, 열 순서로 읽으므로 헤더 문구 자체는 안 봄):
+  //   1행 제목 / 2행 한글 헤더(번호,세부항목,세부세목,문제 내용,보기①~④,정답 번호,해설 및 오답노트,출처,구분) / 3행 여백 → 4행부터 데이터
+  //   A:번호  B:세부항목  C:세부세목  D:문제 내용  E~H:보기①~④  I:정답 번호(1~4)  J:해설 및 오답노트  K:출처  L:구분(미사용)
   const SHEET_CSV_URLS = {
     "1-1_공공조달개요": "https://docs.google.com/spreadsheets/d/e/2PACX-1vTCBNkSpj-jvcfcTh41kpXBPuagDtWR61fE2j52WHpiqr2n2vnpotaxTdEtx4P3L3qSyUGNujv1S1oE/pub?gid=1770882837&single=true&output=csv",
     "1-2_원칙및방법": "https://docs.google.com/spreadsheets/d/e/2PACX-1vTCBNkSpj-jvcfcTh41kpXBPuagDtWR61fE2j52WHpiqr2n2vnpotaxTdEtx4P3L3qSyUGNujv1S1oE/pub?gid=158636086&single=true&output=csv",
@@ -370,9 +372,7 @@
   const PASSWORD_CSV_URL = "";
   const PASSWORD_STORAGE_KEY = "app-unlocked";
 
-  // 챕터별 CSV 필수 헤더(1행): num,category1,category2,question,option1,option2,option3,option4,answer,explanation,source
-  // - chapter 컬럼은 필요 없습니다(URL 자체가 이미 특정 챕터를 가리키므로).
-  // - answer: 정답 번호(1~4)
+  // CSV 파싱 유틸. 실제 컬럼 매핑은 위쪽 COL/DATA_START_ROW 정의를 따른다(csvRowsToItems 참고).
   function parseCSV(text){
     const rows = []; let row = []; let field = ''; let inQuotes = false;
     for(let i=0;i<text.length;i++){
@@ -393,30 +393,27 @@
     return rows.filter(r => r.length>1 || (r[0]||'').trim()!=='');
   }
 
+  // 시트 컬럼 순서(고정, A~L열): 번호, 세부항목, 세부세목, 문제 내용, 보기①, 보기②, 보기③, 보기④, 정답 번호, 해설 및 오답노트, 출처, 구분
+  // 1행=제목, 2행=한글 헤더, 3행=여백 → 실제 데이터는 4행부터 시작하므로 앞 3행은 건너뛴다.
+  // 헤더 문구가 시트마다 살짝 달라도(예: 공백 차이) 깨지지 않도록 이름이 아닌 '열 위치'로 읽는다.
+  const DATA_START_ROW = 3; // 0-based 인덱스. 3 = 4번째 행부터 데이터.
+  const COL = { num:0, c1:1, c2:2, q:3, o1:4, o2:5, o3:6, o4:7, ans:8, exp:9, src:10 };
+
   function csvRowsToItems(rows){
     if(!rows.length) return null;
-    const header = rows[0].map(h=>h.trim().toLowerCase());
-    const col = name => header.indexOf(name);
-    const idx = {
-      num: col('num'), c1: col('category1'), c2: col('category2'),
-      q: col('question'), o1: col('option1'), o2: col('option2'), o3: col('option3'), o4: col('option4'),
-      ans: col('answer'), exp: col('explanation'), src: col('source')
-    };
-    if(idx.q<0 || idx.o1<0 || idx.ans<0) return null; // 필수 컬럼 누락 시 이 챕터는 갱신하지 않음
-
     const items = [];
-    for(let r=1; r<rows.length; r++){
+    for(let r=DATA_START_ROW; r<rows.length; r++){
       const row = rows[r];
-      if(!row || !row[idx.q]) continue;
+      if(!row || !row[COL.q] || !row[COL.q].trim()) continue; // 문제 내용이 빈 행은 건너뜀(여백행 등)
       items.push({
-        num: Number(row[idx.num]) || items.length+1,
-        category1: (row[idx.c1]||'').trim(),
-        category2: (row[idx.c2]||'').trim(),
-        question: (row[idx.q]||'').trim(),
-        options: [row[idx.o1], row[idx.o2], row[idx.o3], row[idx.o4]].map(o=>(o||'').trim()),
-        answer: Number(row[idx.ans]) || 1,
-        explanation: (row[idx.exp]||'').trim(),
-        source: (row[idx.src]||'').trim() || null
+        num: Number(row[COL.num]) || items.length+1,
+        category1: (row[COL.c1]||'').trim(),
+        category2: (row[COL.c2]||'').trim(),
+        question: (row[COL.q]||'').trim(),
+        options: [row[COL.o1], row[COL.o2], row[COL.o3], row[COL.o4]].map(o=>(o||'').trim()),
+        answer: Number(row[COL.ans]) || 1,
+        explanation: (row[COL.exp]||'').trim(),
+        source: (row[COL.src]||'').trim() || null
       });
     }
     return items;
@@ -431,26 +428,36 @@
     await Promise.all(entries.map(async ([key, url])=>{
       try{
         const res = await fetch(url, {cache:'no-store'});
-        if(!res.ok) throw new Error('fetch failed');
+        if(!res.ok) throw new Error('HTTP ' + res.status);
         const text = await res.text();
         const items = csvRowsToItems(parseCSV(text));
         if(items && items.length){
           QUIZ[key] = items;
-          await window.storage.set('remote-quiz-cache:'+key, JSON.stringify(items), false);
+          delete state.remoteErrors[key];
+          try{ await window.storage.set('remote-quiz-cache:'+key, JSON.stringify(items), false); }
+          catch(e2){ console.warn('[구글시트] 캐시 저장 실패:', key, e2); }
           return;
+        } else {
+          console.warn('[구글시트] 헤더가 맞지 않거나 데이터가 없습니다(챕터 유지됨):', key, url);
         }
-      }catch(e){ /* 네트워크 실패 시 아래에서 캐시로 대체 */ }
+      }catch(e){ console.warn('[구글시트] 불러오기 실패, 캐시로 대체 시도:', key, e); }
 
       try{
         const cached = await window.storage.get('remote-quiz-cache:'+key);
-        if(cached && cached.value){ QUIZ[key] = JSON.parse(cached.value); }
-      }catch(e){ /* 캐시도 없으면 해당 챕터는 내장 데이터 그대로 사용 */ }
+        if(cached && cached.value){
+          QUIZ[key] = JSON.parse(cached.value);
+          delete state.remoteErrors[key];
+        } else {
+          state.remoteErrors[key] = true; // 실시간 로드도 캐시도 없음 → 내장 데이터 사용 중
+        }
+      }catch(e){ state.remoteErrors[key] = true; }
     }));
   }
   const META = JSON.parse(document.getElementById('quiz-meta').textContent);
   const app = document.getElementById('app');
 
-  const TOTAL_ALL = Object.values(QUIZ).reduce((a,b)=>a+b.length,0);
+  // 구글시트로 문제 수가 바뀌면 이 값도 다시 계산해야 하므로 let으로 둔다.
+  let TOTAL_ALL = Object.values(QUIZ).reduce((a,b)=>a+b.length,0);
 
   let state = {
     view: 'home', // home | quiz | complete
@@ -458,12 +465,16 @@
     index: 0,
     progress: {},   // { chapterKey: { qIndexAsStr: {selected, correct} } }
     reviewCounts: {}, // { chapterKey: number } - 단원별 완주(회독) 횟수. progress와 별개로 영구 보존.
-    sheetOpen: false  // 해설 시트 표시 여부(일시 상태, 저장하지 않음)
+    sheetOpen: false, // 해설 시트 표시 여부(일시 상태, 저장하지 않음)
+    remoteErrors: {}  // { chapterKey: true } - 구글시트 URL은 설정됐지만 로드도/캐시도 실패한 챕터(진단용, 저장하지 않음)
   };
 
   // ---------- persistence ----------
   async function loadProgress(){
     await loadRemoteQuiz();
+    // 구글시트로 챕터별 문제 수가 바뀌었을 수 있으므로 여기서 다시 집계한다.
+    TOTAL_ALL = allChapterKeys().reduce((sum,k)=> sum + (QUIZ[k] ? QUIZ[k].length : 0), 0);
+    document.title = `공공조달관리사 ${TOTAL_ALL}제 · 2주 완성 퀴즈`;
     try{
       const res = await window.storage.get('progress');
       if(res && res.value){
@@ -554,6 +565,7 @@
         const done = s.answered>=s.total && s.total>0;
         const rc = reviewCount(key);
         const wc = wrongCount(key);
+        const hasError = !!state.remoteErrors[key];
         const num = key.split('_')[0];
         chaptersHtml += `
           <div class="chapter-card" data-key="${key}">
@@ -565,6 +577,7 @@
                 <div class="pct">${s.answered}/${s.total}</div>
               </div>
               ${wc>0? `<button class="wrong-btn" data-key="${key}" style="margin-top:7px;font-size:11px;font-weight:700;color:var(--seal);background:var(--seal-tint);border:1px solid #E9C2BC;border-radius:999px;padding:3px 10px;">✕ 틀린문제 ${wc}개 다시풀기</button>` : ''}
+              ${hasError? `<div style="margin-top:7px;font-size:10.5px;color:var(--wrong);">⚠ 시트 연동 실패 — 내장 문제로 표시 중</div>` : ''}
             </div>
             <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">
               <div class="chapter-badge" style="background:var(--paper-deep);color:var(--navy);">${rc}회독</div>
@@ -581,13 +594,13 @@
       </div>
       <div class="hero">
         <div class="kicker">14일이면 확실하게 끝낸다</div>
-        <h1>공공조달관리사<br><em>870제</em> 2주 완성</h1>
-        <p class="sub">실전 문제 870개로 꿰뚫는 공공조달 실무.<br>출퇴근길에도, 화장실에서도 — 끝없이 도는 회독 머신.</p>
+        <h1>공공조달관리사<br><em>${os.total}제</em> 2주 완성</h1>
+        <p class="sub">실전 문제 ${os.total}개로 꿰뚫는 공공조달 실무.<br>출퇴근길에도, 화장실에서도 — 끝없이 도는 회독 머신.</p>
         <div class="stamp"><b>${os.total? Math.round(os.correct/Math.max(os.answered,1)*100):0}%</b><span>정답률</span></div>
         <div class="cover-facts">
           <div><b>${os.total}</b><span>총 문항</span></div>
           <div><b>${os.answered}</b><span>학습 완료</span></div>
-          <div><b>13</b><span>단원</span></div>
+          <div><b>${allChapterKeys().length}</b><span>단원</span></div>
         </div>
         <button class="btn btn-primary" id="resumeBtn">${os.answered>0? '이어서 풀기' : '지금 바로 풀어보기'}</button>
       </div>
@@ -862,6 +875,36 @@
 
   boot(false);
 })();
+</script>
+<script>
+  // window.storage는 Claude 아티팩트 미리보기 안에서만 기본 제공되는 API다.
+  // GitHub Pages 등 실제 웹사이트로 배포했을 때는 window.storage가 존재하지 않으므로,
+  // 동일한 인터페이스를 localStorage 기반으로 대체 구현해 학습 진행률·회독수·시트 캐시가 실제로 저장되게 한다.
+  if (!window.storage) {
+    window.storage = {
+      async get(key){
+        try{
+          const v = localStorage.getItem('gpm:'+key);
+          return v===null ? null : {key, value:v};
+        }catch(e){ return null; }
+      },
+      async set(key, value){
+        try{ localStorage.setItem('gpm:'+key, value); return {key, value}; }
+        catch(e){ return null; }
+      },
+      async delete(key){
+        try{ localStorage.removeItem('gpm:'+key); return {key, deleted:true}; }
+        catch(e){ return null; }
+      },
+      async list(prefix){
+        try{
+          const p = 'gpm:' + (prefix||'');
+          const keys = Object.keys(localStorage).filter(k=>k.startsWith(p)).map(k=>k.slice(4));
+          return {keys};
+        }catch(e){ return {keys:[]}; }
+      }
+    };
+  }
 </script>
 </body>
 </html>
