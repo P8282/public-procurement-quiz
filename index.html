@@ -184,6 +184,12 @@
   .progress-bar-top{ height:5px; border-radius:3px; background:var(--paper-deep); margin-bottom:20px; overflow:hidden; }
   .progress-bar-top > div{ height:100%; background:var(--seal); border-radius:3px; transition:width .25s ease; }
 
+  .mastery-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin:-8px 0 18px; }
+  .mastery-label{ font-size:11.5px; font-weight:700; color:var(--seal); white-space:nowrap; }
+  .mastery-dots{ display:flex; gap:3.5px; }
+  .mastery-dot{ width:8px; height:8px; border-radius:50%; background:var(--line-strong); flex-shrink:0; }
+  .mastery-dot.filled{ background:var(--seal); }
+
   .qcard{
     background:var(--card); border:1px solid var(--line); border-radius:14px;
     box-shadow:var(--shadow); padding:24px 20px 22px; margin-bottom:16px; position:relative;
@@ -496,7 +502,8 @@
     expandedChapter: null, // 홈 화면에서 목차(대분류>세세항목)를 카드 안에 펼쳐놓은 챕터키(일시 상태, 저장하지 않음)
     filterIndices: null, // 세세항목 등 부분 학습 세션에서 사용할 QUIZ[key] 안의 인덱스 목록(일시 상태, 저장하지 않음)
     filterKind: null,    // 'wrong' | 'subtopic' | null - 현재 부분 학습 세션의 종류(일시 상태, 저장하지 않음)
-    excluded: {}          // { chapterKey: { idx: true } } - 오답노트 대상에서 수동으로 뺀 문제 목록(영구 저장)
+    excluded: {},          // { chapterKey: { idx: true } } - 오답노트 대상에서 수동으로 뺀 문제 목록(영구 저장)
+    wrongMastery: { pool: {}, streak: {} } // pool: 한 번이라도 틀려서 오답노트 대상에 들어간 문제, streak: 그 문제의 현재 연속 정답 횟수(둘 다 영구 저장)
   };
 
   // 앱 실행 시 저장소가 실제로 쓰기/읽기 가능한지 스스로 테스트한다.
@@ -535,6 +542,25 @@
       const ex = await window.storage.get('excluded-wrong');
       if(ex && ex.value){ state.excluded = JSON.parse(ex.value) || {}; }
     }catch(e){ /* no saved exclusions yet */ }
+    try{
+      const wm = await window.storage.get('wrong-mastery');
+      if(wm && wm.value){
+        const parsed = JSON.parse(wm.value);
+        state.wrongMastery = { pool: parsed.pool || {}, streak: parsed.streak || {} };
+      }
+    }catch(e){ /* no saved mastery data yet */ }
+    // 하위호환: 숙달도 기능 도입 전에 기록된 오답은 wrongMastery 개념이 없었으므로,
+    // 이미 progress에 correct:false로 남아있는 문제를 최초 실행 시 자동으로 풀에 편입시킨다(데이터 유실 방지).
+    Object.keys(state.progress).forEach(key=>{
+      Object.keys(state.progress[key]).forEach(idxStr=>{
+        const i = Number(idxStr);
+        const rec = state.progress[key][i];
+        if(rec && rec.correct===false){
+          if(!state.wrongMastery.pool[key]) state.wrongMastery.pool[key] = {};
+          if(state.wrongMastery.pool[key][i] === undefined) state.wrongMastery.pool[key][i] = true;
+        }
+      });
+    });
     render();
   }
   async function saveProgress(){
@@ -552,6 +578,11 @@
       await window.storage.set('excluded-wrong', JSON.stringify(state.excluded));
     }catch(e){ /* best effort */ }
   }
+  async function saveWrongMastery(){
+    try{
+      await window.storage.set('wrong-mastery', JSON.stringify(state.wrongMastery));
+    }catch(e){ /* best effort */ }
+  }
   function reviewCount(key){
     return state.reviewCounts[key] || 0;
   }
@@ -567,20 +598,30 @@
     return {total, answered, correct};
   }
 
+  const MASTERY_TARGET = 10; // 오답노트에서 완전히 빠지려면 필요한 "연속 정답" 횟수
+
   function isExcludedFromWrong(key, idx){
     return !!(state.excluded[key] && state.excluded[key][idx]);
   }
 
+  // 특정 문제의 현재 연속 정답 스트릭(0~10). 오답노트 화면의 숙달도 점 표시에 쓰인다.
+  function masteryStreak(key, idx){
+    return (state.wrongMastery.streak[key] && state.wrongMastery.streak[key][idx]) || 0;
+  }
+
+  // "오답노트 대상 풀"에 들어있고, 아직 연속 정답 10회를 못 채웠고, 수동 제외도 안 된 문제만 남긴다.
+  // 풀에 들어가는 시점은 한 번이라도 틀렸을 때(selectAnswer에서 등록)이며,
+  // 이후 맞히면 스트릭 +1, 틀리면 스트릭이 0으로 리셋된다(연속으로 10번 맞혀야 함).
   function wrongIndices(key){
-    if(!state.progress[key]) return [];
-    return Object.keys(state.progress[key])
+    const pool = state.wrongMastery.pool[key] || {};
+    return Object.keys(pool)
       .map(Number)
-      .filter(i => state.progress[key][i] && state.progress[key][i].correct===false && !isExcludedFromWrong(key, i))
+      .filter(i => !isExcludedFromWrong(key, i) && masteryStreak(key, i) < MASTERY_TARGET)
       .sort((a,b)=>a-b);
   }
   function wrongCount(key){ return wrongIndices(key).length; }
 
-  // 오답노트 대상에서 특정 문제를 수동으로 제외한다. 정답/오답 여부와 무관하게,
+  // 오답노트 대상에서 특정 문제를 수동으로 제외한다. 숙달도(연속 정답 횟수)와 무관하게,
   // 사용자가 "이제 이 문제는 그만 보고 싶다"고 판단했을 때 누르는 버튼용.
   // 이후 이 문제를 다시 틀리더라도 제외 상태는 풀리지 않는다(직접 해제하기 전까지 유지).
   function excludeFromWrong(key, idx){
@@ -846,6 +887,8 @@
     const total = indices.length;
     const os = overallStats();
     const isFiltered = !!state.filterIndices;
+    const isWrongSession = state.filterKind === 'wrong';
+    const streak = masteryStreak(key, idx);
 
     const letters = ['①','②','③','④'];
     let optionsHtml = '';
@@ -866,13 +909,15 @@
     if(saved && state.sheetOpen){
       const ok = saved.correct;
       const isLast = pos===total-1;
-      const isWrongSession = state.filterKind === 'wrong';
+      const justMastered = isWrongSession && ok && streak>=MASTERY_TARGET;
       sheetHtml = `
         <div class="sheet-dim" id="sheetDim"></div>
         <div class="sheet" role="dialog" aria-modal="true">
           <div class="grip"></div>
           <div class="sheet-head ${ok?'ok':'no'}">${ok? '⭕ 정답입니다!' : '❌ 오답입니다'}</div>
-          <div class="sheet-body">${escapeHtml(q.explanation||'해설이 제공되지 않았습니다.')}${q.source? `<div class="sheet-src">§ 출처: ${escapeHtml(q.source)}</div>` : ''}
+          <div class="sheet-body">
+            ${justMastered? `<div style="background:var(--correct-tint);color:#204636;border:1px solid #BFDBCB;border-radius:9px;padding:12px 14px;margin-bottom:14px;font-weight:700;font-size:13.5px;">🎉 연속 정답 ${MASTERY_TARGET}회 달성! 이 문제는 오답노트에서 제외됩니다.</div>` : ''}
+            ${escapeHtml(q.explanation||'해설이 제공되지 않았습니다.')}${q.source? `<div class="sheet-src">§ 출처: ${escapeHtml(q.source)}</div>` : ''}
             ${isWrongSession? `<button id="excludeBtn" style="margin-top:14px;width:100%;background:var(--paper-deep);border:1px solid var(--line-strong);border-radius:9px;padding:10px;font-size:12.5px;color:var(--ink-soft);cursor:pointer;">✕ 이 문제는 오답노트에서 그만 보기</button>` : ''}
           </div>
           <div class="sheet-foot">
@@ -893,6 +938,11 @@
           <div class="qno">${pos+1} / ${total}</div>
         </div>
         <div class="progress-bar-top"><div style="width:${(pos)/total*100}%"></div></div>
+        ${isWrongSession? `
+        <div class="mastery-row">
+          <span class="mastery-label">🔥 숙달도 ${streak}/${MASTERY_TARGET}${streak>=MASTERY_TARGET? ' · 완료!' : ''}</span>
+          <span class="mastery-dots">${Array.from({length:MASTERY_TARGET},(_,di)=>`<span class="mastery-dot${di<streak?' filled':''}"></span>`).join('')}</span>
+        </div>` : ''}
         <div class="qcard">
           <div class="qtext">${escapeHtml(q.question)}</div>
           <div class="options">${optionsHtml}</div>
@@ -960,6 +1010,21 @@
     const correct = (i === q.answer-1);
     if(!state.progress[key]) state.progress[key] = {};
     state.progress[key][idx] = {selected:i, correct};
+
+    // 오답노트 숙달도 갱신: 틀리면 풀에 등록하고 스트릭 리셋, 이미 풀에 있는 문제를 맞히면 스트릭 +1.
+    // (어느 화면에서 풀든 동일하게 적용 — 전체 챕터 풀이 중에 맞혀도 숙달도에 반영된다)
+    if(!state.wrongMastery.pool[key]) state.wrongMastery.pool[key] = {};
+    if(!state.wrongMastery.streak[key]) state.wrongMastery.streak[key] = {};
+    if(correct){
+      if(state.wrongMastery.pool[key][idx]){
+        state.wrongMastery.streak[key][idx] = (state.wrongMastery.streak[key][idx] || 0) + 1;
+      }
+    } else {
+      state.wrongMastery.pool[key][idx] = true;
+      state.wrongMastery.streak[key][idx] = 0;
+    }
+    saveWrongMastery();
+
     state.sheetOpen = true; // 정답/오답 상관없이 해설 시트를 띄운다
     saveProgress();
     render(true);
