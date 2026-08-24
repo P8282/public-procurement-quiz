@@ -58,10 +58,10 @@
     letter-spacing:.2px;
   }
   .brand .mark{
-    width:22px; height:22px; border-radius:50%; border:2px solid var(--seal);
-    display:flex; align-items:center; justify-content:center;
-    font-size:10px; font-weight:900; color:var(--seal); font-family:'Noto Serif KR',serif;
+    width:26px; height:26px; border-radius:8px; background:#1B2A47;
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
   }
+  .brand .mark svg{ width:16px; height:16px; }
   .topbar .stats-chip{
     font-size:11.5px; color:var(--ink-soft); font-variant-numeric:tabular-nums;
     border:1px solid var(--line-strong); border-radius:999px; padding:4px 10px;
@@ -243,18 +243,18 @@
   }
   .sheet .sheet-head{
     display:flex; align-items:center; gap:8px; padding:8px 20px 12px;
-    font-weight:800; font-size:16px; flex-shrink:0;
+    font-weight:800; font-size:18px; flex-shrink:0;
     border-bottom:1px solid var(--line);
   }
   .sheet .sheet-head.ok{ color:var(--correct); }
   .sheet .sheet-head.no{ color:var(--wrong); }
   .sheet .sheet-body{
     padding:16px 20px 6px; overflow-y:auto; -webkit-overflow-scrolling:touch;
-    font-size:15px; line-height:1.82; color:var(--ink);
+    font-size:17px; line-height:1.9; color:var(--ink);
     white-space:pre-wrap; word-break:keep-all; letter-spacing:-.1px;
   }
   .sheet .sheet-src{
-    margin-top:12px; padding-top:10px; font-size:12.5px; color:var(--ink-soft);
+    margin-top:12px; padding-top:10px; font-size:13.5px; color:var(--ink-soft);
     border-top:1px dashed var(--line-strong);
   }
   .sheet .sheet-foot{
@@ -284,7 +284,7 @@
     .sheet{ max-width:680px; }
     .qtext{ font-size:19px; line-height:1.82; }
     .option{ font-size:16.5px; padding:17px 17px; }
-    .feedback{ font-size:15.5px; }
+    .sheet-body{ font-size:18.5px; }
     .chapter-info .name{ font-size:16px; }
   }
 
@@ -606,7 +606,7 @@
 
     app.innerHTML = `
       <div class="topbar">
-        <div class="brand"><span class="mark">達</span>공공조달관리사</div>
+        <div class="brand"><span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="#F5F1E7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v4h4"/><path d="M9 13l2 2 4-4"/></svg></span>공공조달관리사</div>
         <div class="stats-chip">전체 ${os.answered}/${os.total}</div>
       </div>
       ${state.storageOk===false? `
@@ -618,7 +618,6 @@
         <div class="kicker">14일이면 확실하게 끝낸다</div>
         <h1>공공조달관리사<br><em>${os.total}제</em> 2주 완성</h1>
         <p class="sub">실전 문제 ${os.total}개로 꿰뚫는 공공조달 실무.<br>출퇴근길에도, 화장실에서도 — 끝없이 도는 회독 머신.</p>
-        <div class="stamp"><b>${os.total? Math.round(os.correct/Math.max(os.answered,1)*100):0}%</b><span>정답률</span></div>
         <div class="cover-facts">
           <div><b>${os.total}</b><span>총 문항</span></div>
           <div><b>${os.answered}</b><span>학습 완료</span></div>
@@ -714,7 +713,7 @@
 
     app.innerHTML = `
       <div class="topbar">
-        <div class="brand" id="homeBtn"><span class="mark">達</span>공공조달관리사</div>
+        <div class="brand" id="homeBtn"><span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="#F5F1E7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v4h4"/><path d="M9 13l2 2 4-4"/></svg></span>공공조달관리사</div>
         <div class="stats-chip">${escapeHtml(META.names[key])}</div>
       </div>
       <div class="quiz-wrap">
@@ -794,7 +793,7 @@
     const pct = s.answered? Math.round(s.correct/s.answered*100) : 0;
     app.innerHTML = `
       <div class="topbar">
-        <div class="brand" id="homeBtn2"><span class="mark">達</span>공공조달관리사</div>
+        <div class="brand" id="homeBtn2"><span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="#F5F1E7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v4h4"/><path d="M9 13l2 2 4-4"/></svg></span>공공조달관리사</div>
         <div class="stats-chip">${escapeHtml(META.names[key])}</div>
       </div>
       <div class="complete-wrap">
