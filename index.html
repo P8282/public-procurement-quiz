@@ -391,8 +391,10 @@
   ::selection{ background:#E7C9C4; }
 
   /* ---------- 태블릿/큰 화면: 본문 폭과 글자 크기 소폭 확대 ---------- */
-  @media (min-width:768px){
-    #app{ max-width:960px; }
+  @media (min-width:820px){
+    /* 고정값 대신 화면폭의 92%(상한 1400px)로 — 아이패드10 가로(1180px)든 갤럭시탭 S10+ 가로(1400px)든
+       기기가 넓어지면 그만큼 콘텐츠도 같이 넓어져서 여백이 과도하게 남지 않는다. */
+    #app{ max-width:min(1400px, 92vw); }
     .qtext{ font-size:19px; line-height:1.82; }
     .sheet-body{ font-size:17.5px; }
     .chapter-info .name{ font-size:16px; }
@@ -477,16 +479,22 @@
     .quiz-wrap{ padding-top:20px; }
   }
 
-  /* kbd-hint는 기본적으로 숨기고, "화면이 넓고 + 실제 마우스/트랙패드가 있는" 진짜 PC에서만 노출한다.
-     아이패드는 화면폭은 1024px 이상이 될 수 있지만 터치 전용(hover 없음)이라 여기서 걸러진다.
+  /* kbd-hint는 기본적으로 숨기고, "화면이 넓고(맥북에어 13인치 이상) + 실제 마우스/트랙패드가 있는" 진짜 PC에서만 노출한다.
+     맥북에어 13인치(M2/M3) 기본 논리 해상도가 1470px이라 이 값을 기준으로 잡았다.
+     아이패드10(가로모드 1180px)는 이 폭보다 좁아 애초에 여기 안 걸리고, 혹시 더 큰 태블릿이 있어도
+     터치 전용(hover 없음)이라 결국 여기서 걸러진다.
      단, 아이패드에 블루투스 키보드+트랙패드를 연결하면 hover:hover가 참이 되어 자동으로 다시 뜬다. */
   .kbd-hint{ display:none; }
 
-  /* ---------- PC 최적화 (요구6) ---------- */
-  @media (min-width:1024px){
-    #app{ max-width:1024px; }
+  /* ---------- PC 최적화 (맥북에어 13인치 기준, 요구6) ---------- */
+  @media (min-width:1470px){
+    /* 태블릿과 달리 화면비례(vw)를 쓰지 않고 완전 고정값으로 둔다.
+       맥북에어 13인치(1470px)에서는 거의 꽉 채우면서(양쪽 여백 15px 수준),
+       15인치 노트북이나 외장 모니터처럼 화면이 더 넓어져도 콘텐츠 폭은 여기서 멈춘다
+       (본문 지문/선택지가 한없이 넓어지면 오히려 가독성이 떨어지므로). */
+    #app{ max-width:1440px; }
   }
-  @media (min-width:1024px) and (hover:hover) and (pointer:fine){
+  @media (min-width:1470px) and (hover:hover) and (pointer:fine){
     .kbd-hint{
       display:flex; align-items:center; justify-content:center; gap:6px; flex-wrap:wrap;
       margin-top:22px; padding-top:16px; border-top:1px dashed var(--line-strong);
@@ -711,7 +719,7 @@
   let TOTAL_ALL = Object.values(QUIZ).reduce((a,b)=>a+b.length,0);
 
   let state = {
-    view: 'home', // home | quiz | complete
+    view: 'home', // home | quiz | complete | admin
     chapter: null,
     index: 0,
     progress: {},   // { chapterKey: { qIndexAsStr: {selected, correct} } }
@@ -962,6 +970,112 @@
     }catch(e){ /* 오프라인이면 조용히 무시 */ }
   }
 
+  // ====== 관리자 전용 기능 (?admin=460215park 로 접속했을 때만) ======
+  // 셀프 발급(동기화 시작 버튼)과는 별개의 "추가" 기능이다 — 일반 사용자의 셀프 발급은 그대로 유지된다.
+  const ADMIN_KEY = '460215park';
+  function isAdminMode(){
+    try{ return new URLSearchParams(location.search).get('admin') === ADMIN_KEY; }
+    catch(e){ return false; }
+  }
+
+  // 이름을 붙여 새 코드를 발급한다(빈 기록 상태로 미리 만들어둠).
+  async function adminCreateCode(name){
+    const code = generateSyncCode();
+    await syncDb.collection('syncCodes').doc(code).set({
+      name: name || '',
+      progress: {}, reviewCounts: {}, excluded: {}, wrongMastery: { pool:{}, streak:{} },
+      updatedAt: Date.now(), createdByAdmin: true
+    });
+    return code;
+  }
+
+  // 전체 코드 목록을 가져온다(셀프 발급된 것 포함 — Firestore의 syncCodes 컬렉션 전체 조회).
+  async function adminListCodes(){
+    const snap = await syncDb.collection('syncCodes').get();
+    const list = [];
+    snap.forEach(doc=>{
+      const d = doc.data();
+      list.push({
+        code: doc.id,
+        name: d.name || '',
+        total: totalAnsweredOf(d),
+        updatedAt: d.updatedAt || 0
+      });
+    });
+    list.sort((a,b)=> (b.updatedAt||0) - (a.updatedAt||0)); // 최근 활동 순
+    return list;
+  }
+
+  async function adminRenameCode(code, newName){
+    await syncDb.collection('syncCodes').doc(code).set({ name: newName }, { merge: true });
+  }
+
+  // 코드를 삭제(폐기)한다. 접속 제한 기능은 아직 없으므로, 이미 이 코드로 연결된 기기가 있다면
+  // 그 기기가 다음에 답을 저장하는 순간 문서가 그대로 다시 생성될 수 있다(완전한 차단은 아님, 정리 용도).
+  async function adminDeleteCode(code){
+    await syncDb.collection('syncCodes').doc(code).delete();
+  }
+
+  function renderAdmin(){
+    app.innerHTML = `
+      <div class="topbar"><div class="brand"><span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="#F5F1E7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v4h4"/><path d="M9 13l2 2 4-4"/></svg></span>관리자</div></div>
+      <div style="padding:18px;">
+        <div style="display:flex; gap:8px; margin-bottom:18px;">
+          <input id="adminNameInput" placeholder="이름 입력 (예: 홍길동)" style="flex:1; padding:11px 14px; border:1.4px solid var(--line-strong); border-radius:9px; font-size:14px; background:var(--card); color:var(--ink);">
+          <button id="adminCreateBtn" class="nav-btn primary" style="width:auto; padding:11px 18px;">+ 코드 생성</button>
+        </div>
+        <div id="adminList" style="color:var(--ink-soft); font-size:13px;">불러오는 중...</div>
+      </div>
+    `;
+    document.getElementById('adminCreateBtn').onclick = async ()=>{
+      const nameInput = document.getElementById('adminNameInput');
+      const name = nameInput.value.trim();
+      if(!name){ alert('이름을 입력해주세요.'); return; }
+      const code = await adminCreateCode(name);
+      alert(`발급 완료!\n\n이름: ${name}\n코드: ${code}`);
+      nameInput.value = '';
+      renderAdminList();
+    };
+    renderAdminList();
+  }
+
+  async function renderAdminList(){
+    const listEl = document.getElementById('adminList');
+    if(!listEl) return;
+    if(!syncEnabled()){ listEl.innerHTML = '동기화 기능이 설정되지 않았습니다.'; return; }
+    try{
+      const codes = await adminListCodes();
+      if(!codes.length){ listEl.innerHTML = '아직 발급된 코드가 없습니다.'; return; }
+      listEl.innerHTML = codes.map(c => `
+        <div style="display:flex; align-items:center; gap:8px; padding:11px 0; border-bottom:1px solid var(--line);">
+          <div style="flex:1; min-width:0;">
+            <div style="font-weight:700; color:var(--navy); font-size:13.5px;">${escapeHtml(c.name || '(이름 없음)')}</div>
+            <div style="font-family:'Noto Serif KR',serif; font-size:12px; color:var(--ink-soft);">${escapeHtml(c.code)} · ${c.total}문제</div>
+          </div>
+          <button class="nav-btn admin-rename-btn" data-code="${escapeHtml(c.code)}" data-name="${escapeHtml(c.name)}" style="width:auto; padding:8px 12px; font-size:12px;">이름변경</button>
+          <button class="nav-btn admin-delete-btn" data-code="${escapeHtml(c.code)}" style="width:auto; padding:8px 12px; font-size:12px; color:var(--wrong); border-color:var(--wrong);">삭제</button>
+        </div>
+      `).join('');
+      document.querySelectorAll('.admin-rename-btn').forEach(btn=>{
+        btn.onclick = async ()=>{
+          const newName = prompt('새 이름을 입력하세요', btn.dataset.name || '');
+          if(newName === null) return;
+          await adminRenameCode(btn.dataset.code, newName.trim());
+          renderAdminList();
+        };
+      });
+      document.querySelectorAll('.admin-delete-btn').forEach(btn=>{
+        btn.onclick = async ()=>{
+          if(!confirm(`코드 "${btn.dataset.code}"를 삭제할까요?\n(이미 이 코드로 쓰고 있는 기기가 있다면, 접속 제한 기능이 없어 완전히 막히지는 않습니다)`)) return;
+          await adminDeleteCode(btn.dataset.code);
+          renderAdminList();
+        };
+      });
+    }catch(e){
+      listEl.innerHTML = '목록을 불러오지 못했습니다. (Firestore 규칙 또는 네트워크 확인 필요)';
+    }
+  }
+
   function chapterStats(key){
     const total = (QUIZ[key] || []).length;
     const answered = state.progress[key] ? Object.keys(state.progress[key]).length : 0;
@@ -1085,7 +1199,8 @@
   // keepScroll이 true면 현재 스크롤 위치를 유지한다(해설 시트 토글 등 화면 전환이 아닌 경우).
   function render(keepScroll){
     const y = window.scrollY;
-    if(state.view==='home') renderHome();
+    if(state.view==='admin') renderAdmin();
+    else if(state.view==='home') renderHome();
     else if(state.view==='quiz') renderQuiz();
     else if(state.view==='complete') renderComplete();
     if(keepScroll) window.scrollTo(0, y);
@@ -1647,6 +1762,7 @@
   }
 
   async function boot(alreadyUnlocked){
+    if(isAdminMode()){ state.view = 'admin'; render(); return; } // 관리자 모드는 다른 모든 흐름보다 우선
     if(!PASSWORD_CSV_URL){ loadProgress(); return; } // 비밀번호 미설정 시 바로 시작
     if(alreadyUnlocked){ loadProgress(); return; }
     try{
