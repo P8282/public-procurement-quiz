@@ -152,6 +152,25 @@
   }
   .btn-review:hover{ background:#F0D3CE; }
 
+  /* ---------- 동기화(로그인/로그아웃) 상태 바 - 홈 화면 상단 상시 노출 ---------- */
+  .sync-bar{
+    display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+    padding:9px 18px; border-bottom:1px solid var(--line); background:var(--paper-deep);
+    font-size:11.5px;
+  }
+  .sync-desc{ color:var(--ink-soft); flex:1; min-width:0; }
+  .sync-code-chip{
+    color:var(--navy); background:var(--card); border:1px solid var(--line-strong);
+    border-radius:999px; padding:5px 12px; font-variant-numeric:tabular-nums; letter-spacing:.02em;
+  }
+  .sync-code-chip b{ font-family:'Noto Serif KR',serif; }
+  .sync-mini-btn{
+    appearance:none; cursor:pointer; border-radius:999px; font-size:11px; font-weight:700;
+    padding:6px 12px; border:1.2px solid var(--navy); background:var(--navy); color:#fff;
+    flex-shrink:0;
+  }
+  .sync-mini-btn.ghost{ background:transparent; color:var(--ink-soft); border-color:var(--line-strong); }
+
   /* ---------- Chapter list ---------- */
   .section-wrap{ padding:6px 18px 100px; }
   .section-title{
@@ -205,9 +224,15 @@
   .toc-group{ margin-bottom:16px; }
   .toc-group:last-child{ margin-bottom:4px; }
   .toc-group-title{
-    font-weight:800; font-size:13.5px; color:var(--navy);
-    margin-bottom:8px; padding-bottom:6px; border-bottom:1px solid var(--line);
+    appearance:none; width:100%; background:transparent; border:none; cursor:pointer;
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    font-weight:800; font-size:13.5px; color:var(--navy); font-family:'Noto Sans KR',sans-serif;
+    margin-bottom:8px; padding-bottom:6px; border-bottom:1px solid var(--line); text-align:left;
   }
+  .toc-group-title:active{ opacity:.6; }
+  .toc-group-title.empty{ opacity:.55; }
+  .toc-group-title.empty .subtopic-count{ color:var(--seal); font-weight:700; }
+  .toc-group-name{ flex:1; min-width:0; }
 
   /* ---------- Quiz screen ---------- */
   .quiz-wrap{ padding:10px 18px calc(40px + env(safe-area-inset-bottom)); flex:1; }
@@ -532,6 +557,23 @@
 <script id="quiz-meta" type="application/json">{"names":{"1-1_공공조달개요":"I. 공공조달 개요","1-2_원칙및방법":"II. 공공조달 원칙 및 방법","1-3_전자조달시스템":"III. 전자조달시스템","1-4_전략적공공조달":"IV. 전략적 공공조달","1-5_공공조달법률이해":"V. 공공조달법률 이해","1-6_공정조달관리":"VI. 공정조달 관리","2-1_공공조달계획":"I. 공공조달계획","2-2_조달요구응대및제안":"II. 조달요구 응대 및 제안","2-3_입찰제안평가및계약체결":"III. 입찰·제안평가 및 계약체결","3-1_계약관리일반절차":"I. 계약관리 일반 절차","3-2_물품계약관리":"II. 물품 계약관리","3-3_용역다수공급자계약관리":"III. 용역·다수공급자 계약 관리","3-4_공사계약관리":"IV. 공사계약관리"},"subjects":[{"title":"1과목 · 공공조달과 법제도 이해","chapters":["1-1_공공조달개요","1-2_원칙및방법","1-3_전자조달시스템","1-4_전략적공공조달","1-5_공공조달법률이해","1-6_공정조달관리"]},{"title":"2과목 · 공공조달계획 수립 및 분석","chapters":["2-1_공공조달계획","2-2_조달요구응대및제안","2-3_입찰제안평가및계약체결"]},{"title":"3과목 · 공공계약관리","chapters":["3-1_계약관리일반절차","3-2_물품계약관리","3-3_용역다수공급자계약관리","3-4_공사계약관리"]}]}</script>
 <script id="toc-blueprint" type="application/json">{"1-1_공공조달개요":[{"name":"공공조달의 정의 및 목적","subs":["공공조달의 정의","공공조달의 목적","공공조달의 범위"]},{"name":"공공조달 참여자, 이해관계자","subs":["공공조달 수요자","공공조달 공급자","공공조달 이해관계자"]},{"name":"공공조달의 특성","subs":["상업적 구매행위 특성","공공조달의 조달행위 특성"]},{"name":"공공조달의 구성체계","subs":["조직적 구성체계","감독 및 기능적 책임"]}],"1-2_원칙및방법":[{"name":"공공조달 원칙","subs":["공공조달 기본 원칙","공공조달 실행 원칙"]},{"name":"공공조달 유형","subs":["중앙집중형 공공조달","분산형 공공조달"]},{"name":"경쟁적 공공조달 방법","subs":["일반경쟁","제한경쟁","지명경쟁"]},{"name":"비경쟁적 공공조달 방법","subs":["수의계약","소액구매"]}],"1-3_전자조달시스템":[{"name":"전자조달시스템 개요","subs":["전자조달시스템 개념","전자조달시스템 유형","전자조달시스템 운영환경","전자조달시스템 구성요소","전자조달시스템 기능","전자조달시스템 도입 성과"]},{"name":"국가종합전자조달시스템(나라장터) 연계 계약 관리 지원시스템 개요","subs":["종합쇼핑몰 이용절차","혁신장터 활용 계약","벤처나라 활용 계약","디지털서비스몰 활용 계약","이음장터 활용 계약"]},{"name":"목록정보시스템 개요","subs":["물품목록법령의 개요","목록정보시스템 이용 일반절차","목록정보시스템 활용 목록화 절차","목록정보시스템 활용 분류·품명·품목 관리 절차","목록정보시스템 활용 최신화 및 분류 정비","목록정보시스템 활용 분류체계 국제 표준화"]}],"1-4_전략적공공조달":[{"name":"중소기업지원 조달","subs":["중소기업과 공공구매제도 이해","중소기업자간 경쟁제도 이해","공사용자재 직접구매제도 이해"]},{"name":"녹색조달","subs":["공공조달의 환경적 지속가능성 개요","녹색제품 우선구매제도 이해","생애주기비용을 고려한 공공조달 제도 이해"]},{"name":"혁신·기술개발 촉진조달","subs":["중소기업 기술개발제품 우선구매제도 이해","우수조달물품 지정제도의 이해","혁신제품 지정제도의 이해"]},{"name":"사회적가치 지원 조달","subs":["장애인기업 우선구매제도 이해","중증장애인생산품 우선구매제도 이해","여성기업 우선구매제도 이해","사회적기업제품 우선구매제도 이해","공공조달과 사회적가치 및 이에스지(ESG)"]}],"1-5_공공조달법률이해":[{"name":"공공계약 관련 민법 규정의 이해","subs":["계약의 성립 관련 규정","계약의 효력 관련 규정","계약의 해제·해지에 관한 규정","도급·위임에 관한 규정","화해에 관한 규정"]},{"name":"공공계약(국가 및 지방) 법령의 이해","subs":["추정가격 및 예정가격 결정","계약의 방법에 관한 규정","입찰 및 낙찰 절차 규정","계약의 체결 및 이행 규정","이의신청과 분쟁조정"]},{"name":"조달사업법령의 이해","subs":["공공조달의 정책기반","계약체결의 요청 및 방법","대금지급 규정","조달사업의 공정성","수요기관 및 조달사업의 지원"]},{"name":"전자조달법령의 이해","subs":["전자적 공고의 방법 및 시기","전자적 형태의 입찰서 제출","전자공개수의계약","하도급 관리의 전자적 처리","전자조달시스템 이용·활용 제한"]},{"name":"공기업·준정부기관 계약사무규칙","subs":["국제입찰 대상 공공조달계약 범위","중소기업자간 경쟁제품 구매위탁 의무 예외","수의계약 규정","의견 청취 및 심의절차","이의신청 규정"]}],"1-6_공정조달관리":[{"name":"공공조달 법규 분쟁 및 해석","subs":["공공조달 분쟁조정","유권해석 및 감사사례","계약보증금 쟁점","부정당제재 처분 법리","허위서류 관련 쟁점"]},{"name":"법규 위반시 제재","subs":["계약의 해제 및 해지","부정당업자 제재","불공정조달행위 제재","부당이득금 환수"]}],"2-1_공공조달계획":[{"name":"공공조달 수요 분석 및 계획","subs":["공급 대상물 수요정보 식별","수요정보 평가와 요구사항 분석","공급계획 및 일정 수립","비상 공급계획 수립"]},{"name":"공공조달 적정성 분석","subs":["공급방법 적정성 분석","공급정보 적정성 분석","공급 대상물 조달시장 분석","공급역량분석"]},{"name":"공공조달 비용 적정성 분석","subs":["공급 의사결정을 위한 비용분석","적정 공급비용 산정"]},{"name":"기타 적정성 분석","subs":["공공조달 동향 모니터링을 통한 수요예측","다양한 공급방법의 장단점 분석","공급관리 및 위험분석"]}],"2-2_조달요구응대및제안":[{"name":"조달요구 대처 절차","subs":["경쟁입찰참가자격 등록","수요기관의 정보요청(규격, 과업 및 예산 등)에 대한 문서 작성 및 제출","조달관련 입법·행정예고 검색 및 의견제시"]},{"name":"사전규격공개 분석","subs":["과업내용 적정성 검토","사업예산 적정성 검토","당해 규격공개 관련 법규 준수 및 부합여부 검토","개선보완 필요사항에 대한 의견 제시 및 처리"]},{"name":"입찰공고문 분석","subs":["공고 내용 중 오류 및 법령 위반 사안으로 정정 필요성 검토","입찰공고 내용 검토 및 분석","입찰보증금 제출방법"]},{"name":"입찰·제안요청 설명","subs":["입찰설명회 참석","입찰 및 제안준비에 필요한 정보 식별 및 요청"]},{"name":"입찰서 제출 및 개찰","subs":["입찰서 제출 방법","무효입찰 사유","개찰 및 낙찰 절차"]}],"2-3_입찰제안평가및계약체결":[{"name":"입찰·제안평가 절차","subs":["일반·제한·지명 경쟁입찰 절차","수의계약 절차"]},{"name":"평가위원회 및 이해충돌","subs":["입찰·낙찰 방법별 평가위원회 구성에 대한 이해","이해상충 평가위원에 대한 회피","평가위원 사전접촉 금지 등 공정한 평가를 위한 기준 지침 준수"]},{"name":"계약의 협상","subs":["기술(규격) 적합자 및 우선협상대상자 이해","기술협상","가격협상"]},{"name":"낙찰자 결정방법","subs":["적격심사 절차 및 낙찰자 결정","협상계약 절차 및 낙찰자 결정","희망수량경쟁입찰 절차 및 낙찰자 결정","종합심사낙찰제(시설공사 등) 절차 및 낙찰","계약법령상 낙찰요건 부합 여부"]},{"name":"입찰결과 분석 및 이의제기","subs":["입찰·낙찰 과정 오류 및 문제점 분석","분석결과 문제점에 대한 이의제기"]}],"3-1_계약관리일반절차":[{"name":"계약관리 계획","subs":["계약관리 원칙","계약관리 계획","계약체결 후 발주처와 착수협의","착수시점, 보고(점검)일정, 납품대상, 투입인력 등 계약이행 소요자원 투입(생산)계획","하도급계약 승인 및 변경 계획"]},{"name":"계약변경 관리","subs":["변경계약 관리 일반절차","변경계약 절차 실행","계약해제·해지 절차 및 사후조치","손해배상 절차 및 사후조치","분쟁해결 절차"]},{"name":"계약이행 관리","subs":["계약 대상물 공급(납품, 과업이행 및 시공 등) 일반절차","공급 계약조건 이행 점검","계약이행 및 조건 미이행, 오류 및 지연 관리","계약성과관리","계약상 위험 관리"]},{"name":"계약종결 관리","subs":["납품검사·검수 절차","대금지급 절차","계약종결 절차","하자보증 및 사후관리 이행","입찰보증금, 계약보증금, 선급금보증금, 하자보수보증금, 매입채권 및 보험 관리","지체상금 부과"]}],"3-2_물품계약관리":[{"name":"물품계약 일반절차 관리","subs":["물품(제조·공급) 입찰참가자격 등록","물품구매 입찰 공고서 작성 및 검토","물품구매 낙찰자결정 방법","소액수의계약 절차","외자구매계약 절차"]},{"name":"물품계약 이행관리","subs":["공정, 품질 및 안전관리","설계변경 및 계약금액 조정"]}],"3-3_용역다수공급자계약관리":[{"name":"용역계약 절차 및 이행관리","subs":["용역 입찰공고문 검토","제안서 작성","낙찰자 결정방법","제안서 평가 및 제안발표","협상계약 및 경쟁적대화 계약","용역적격심사","e-발주시스템 활용"]},{"name":"다수공급자계약(MAS) 절차 및 이행관리","subs":["국가종합전자조달시스템(나라장터) 종합쇼핑몰 활용","다수공급자계약 일반절차 이해","다수공급자계약 적격성 평가 및 사전심사","다수공급자계약 2단계경쟁","다수공급자계약 계약이행실적 평가","카탈로그계약 및 디지털서비스계약 절차"]}],"3-4_공사계약관리":[{"name":"공사계약 일반개요","subs":["건설산업기본법 이해","건설기술진흥법 이해","건설공사 발주 세부기준 이해"]},{"name":"공사계약 일반절차 및 이행관리","subs":["공사 입찰 공고문 검토","공사 낙찰자 결정방법","입찰참가자격 사전심사(PQ)","공사 적격심사","공사 설계변경 및 계약금액 조정"]},{"name":"공사계약 특화 절차 및 이행관리","subs":["공사 종합심사낙찰제 절차","일괄, 대안 및 기술제안입찰 절차","공사 시공관리 절차","기술용역 계약 절차","하도급관리","하도급대금 전자적 처리를 위한 지급시스템(하도급지킴이)"]}]}</script>
 
+<!-- ====== 학습기록 동기화(Firebase Firestore) ======
+     실제 Firebase 프로젝트(quiz8282-79d39)의 설정값이 반영되어 있습니다.
+     Firestore Database의 "규칙" 탭에서 아래 규칙이 게시되어 있어야 정상 동작합니다:
+       match /syncCodes/{code} { allow read, write: if true; } -->
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script>
+  window.__firebaseConfig = {
+    apiKey: "AIzaSyD4kazCr7UAkM9xX7rAkvNHtJVhHHY1weY",
+    authDomain: "quiz8282-79d39.firebaseapp.com",
+    projectId: "quiz8282-79d39",
+    storageBucket: "quiz8282-79d39.firebasestorage.app",
+    messagingSenderId: "528916742960",
+    appId: "1:528916742960:web:408d5888bfc5512f9efef5"
+  };
+</script>
+
 <script>
 (function(){
   let QUIZ = JSON.parse(document.getElementById('quiz-data').textContent);
@@ -683,7 +725,9 @@
     excluded: {},          // { chapterKey: { idx: true } } - 오답노트 대상에서 수동으로 뺀 문제 목록(영구 저장)
     wrongMastery: { pool: {}, streak: {} }, // pool: 한 번이라도 틀려서 오답노트 대상에 들어간 문제, streak: 그 문제의 현재 연속 정답 횟수(둘 다 영구 저장)
     globalWrongReview: false, // 메인화면 "전체 오답 복습" 진입 여부(일시 상태, 저장하지 않음) - 챕터를 순차로 이어가는 데 사용
-    updateAvailable: false // 앱 코드(GitHub 배포본) 새 버전이 감지됐는지 여부(일시 상태, 저장하지 않음)
+    updateAvailable: false, // 앱 코드(GitHub 배포본) 새 버전이 감지됐는지 여부(일시 상태, 저장하지 않음)
+    syncCode: null,     // 클라우드 동기화 코드(예: "A7K9-2XQP"). 연결돼 있으면 값이 있고, 아니면 null (영구 저장)
+    syncing: false      // 지금 동기화 요청이 진행 중인지(중복 클릭 방지용, 일시 상태)
   };
 
   // 앱 실행 시 저장소가 실제로 쓰기/읽기 가능한지 스스로 테스트한다.
@@ -729,6 +773,10 @@
         state.wrongMastery = { pool: parsed.pool || {}, streak: parsed.streak || {} };
       }
     }catch(e){ /* no saved mastery data yet */ }
+    try{
+      const sc = await window.storage.get('sync-code');
+      if(sc && sc.value) state.syncCode = sc.value;
+    }catch(e){ /* 동기화 미연결 상태 */ }
     // 하위호환: 숙달도 기능 도입 전에 기록된 오답은 wrongMastery 개념이 없었으므로,
     // 이미 progress에 correct:false로 남아있는 문제를 최초 실행 시 자동으로 풀에 편입시킨다(데이터 유실 방지).
     Object.keys(state.progress).forEach(key=>{
@@ -742,6 +790,7 @@
       });
     });
     render();
+    syncPullOnOpen(); // 앱을 열 때마다(코드가 연결돼 있으면) 조용히 클라우드와 병합
   }
   async function saveProgress(){
     try{
@@ -769,6 +818,148 @@
   function markChapterCompleted(key){
     state.reviewCounts[key] = reviewCount(key) + 1;
     saveReviewCounts();
+    syncPush(); // 1회독(챕터 완료) 시점에 체크포인트 저장을 한 번 더 확실히 해둔다.
+  }
+
+  // ====== 학습기록 클라우드 동기화 (Firebase Firestore) ======
+  // firebaseConfig가 자리표값 그대로면(교체 안 했으면) 동기화는 조용히 비활성화된다.
+  // 활성화되면: 코드 하나로 여러 기기·여러 사람이 각자 자기 기록만 클라우드에 백업/복원할 수 있다.
+  let syncDb = null;
+  (function initSync(){
+    try{
+      const cfg = window.__firebaseConfig;
+      if(!cfg || !cfg.apiKey || cfg.apiKey.indexOf('여기에') === 0) return; // 자리표값이면 비활성화
+      if(typeof firebase === 'undefined') return;
+      const appInst = firebase.apps && firebase.apps.length ? firebase.app() : firebase.initializeApp(cfg);
+      syncDb = firebase.firestore(appInst);
+    }catch(e){ syncDb = null; /* 초기화 실패해도 앱 나머지 기능은 정상 동작 */ }
+  })();
+  function syncEnabled(){ return !!syncDb; }
+
+  // 새 동기화 코드를 하나 만든다. 예: "A7K9-2XQP" (헷갈리기 쉬운 0/O, 1/I 등은 제외)
+  function generateSyncCode(){
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const part = ()=> Array.from({length:4}, ()=> chars[Math.floor(Math.random()*chars.length)]).join('');
+    return part() + '-' + part();
+  }
+
+  // 현재 기기의 학습기록을 하나의 객체로 모은다(클라우드 저장용).
+  function collectLocalData(){
+    return {
+      progress: state.progress,
+      reviewCounts: state.reviewCounts,
+      excluded: state.excluded,
+      wrongMastery: state.wrongMastery,
+      updatedAt: Date.now()
+    };
+  }
+
+  // 클라우드 데이터를 현재 상태에 반영하고, 기기 저장(window.storage)에도 그대로 저장한다.
+  function applyCloudData(data){
+    state.progress = data.progress || {};
+    state.reviewCounts = data.reviewCounts || {};
+    state.excluded = data.excluded || {};
+    state.wrongMastery = data.wrongMastery || { pool:{}, streak:{} };
+    saveProgress(); saveReviewCounts(); saveExcluded(); saveWrongMastery();
+  }
+
+  // 두 기록을 문제 단위로 합친다(데이터 손실 방지). 같은 문제를 양쪽 다 풀었으면 로컬(이 기기) 것을 우선한다.
+  // - 앱을 열 때마다 자동으로 실행되는 "조용한" 동기화라, 사용자에게 매번 물어보지 않고 안전하게 합치는 방식을 쓴다.
+  function mergeProgressData(local, cloud){
+    const merged = {
+      progress: {}, reviewCounts: {}, excluded: {}, wrongMastery: { pool:{}, streak:{} }
+    };
+    const chapterKeys = new Set([...Object.keys(local.progress||{}), ...Object.keys(cloud.progress||{})]);
+    chapterKeys.forEach(key=>{
+      merged.progress[key] = Object.assign({}, cloud.progress && cloud.progress[key], local.progress && local.progress[key]);
+    });
+    const rcKeys = new Set([...Object.keys(local.reviewCounts||{}), ...Object.keys(cloud.reviewCounts||{})]);
+    rcKeys.forEach(key=>{
+      merged.reviewCounts[key] = Math.max((local.reviewCounts||{})[key]||0, (cloud.reviewCounts||{})[key]||0);
+    });
+    const exKeys = new Set([...Object.keys(local.excluded||{}), ...Object.keys(cloud.excluded||{})]);
+    exKeys.forEach(key=>{
+      merged.excluded[key] = Object.assign({}, cloud.excluded && cloud.excluded[key], local.excluded && local.excluded[key]);
+    });
+    const poolKeys = new Set([...Object.keys((local.wrongMastery||{}).pool||{}), ...Object.keys((cloud.wrongMastery||{}).pool||{})]);
+    poolKeys.forEach(key=>{
+      merged.wrongMastery.pool[key] = Object.assign({}, (cloud.wrongMastery||{}).pool && (cloud.wrongMastery||{}).pool[key], (local.wrongMastery||{}).pool && (local.wrongMastery||{}).pool[key]);
+    });
+    const streakKeys = new Set([...Object.keys((local.wrongMastery||{}).streak||{}), ...Object.keys((cloud.wrongMastery||{}).streak||{})]);
+    streakKeys.forEach(key=>{
+      merged.wrongMastery.streak[key] = Object.assign({}, (cloud.wrongMastery||{}).streak && (cloud.wrongMastery||{}).streak[key], (local.wrongMastery||{}).streak && (local.wrongMastery||{}).streak[key]);
+    });
+    return merged;
+  }
+
+  function totalAnsweredOf(data){
+    return Object.values(data.progress||{}).reduce((sum,ch)=> sum + Object.keys(ch).length, 0);
+  }
+
+  // 현재 기록을 클라우드에 올린다(문제 풀 때마다, 1회독 완료 시 호출됨). 코드가 연결 안 돼 있으면 아무것도 안 한다.
+  async function syncPush(){
+    if(!syncEnabled() || !state.syncCode) return;
+    try{
+      await syncDb.collection('syncCodes').doc(state.syncCode).set(collectLocalData(), { merge: true });
+    }catch(e){ /* 오프라인 등으로 실패해도 기기 저장은 이미 됐으므로 조용히 넘어간다 */ }
+  }
+
+  // 코드를 새로 만들어 이 기기를 연결한다("로그인"에 해당). 이 기기의 현재 기록을 그대로 클라우드에 올린다.
+  async function startSync(){
+    if(!syncEnabled()){ alert('동기화 기능이 아직 설정되지 않았습니다.'); return; }
+    const code = generateSyncCode();
+    state.syncCode = code;
+    await window.storage.set('sync-code', code);
+    await syncPush();
+    render();
+  }
+
+  // 이미 있는 코드를 입력해 이 기기를 연결한다. 클라우드에 기록이 있으면 병합 여부를 물어본다.
+  async function linkSyncCode(code){
+    if(!syncEnabled()){ alert('동기화 기능이 아직 설정되지 않았습니다.'); return; }
+    code = (code||'').trim().toUpperCase();
+    if(!code){ return; }
+    try{
+      const docSnap = await syncDb.collection('syncCodes').doc(code).get();
+      if(docSnap.exists){
+        const cloud = docSnap.data();
+        const cloudCount = totalAnsweredOf(cloud);
+        const localCount = totalAnsweredOf(collectLocalData());
+        const ok = confirm(`이 코드에는 이미 ${cloudCount}문제 학습기록이 있습니다.\n이 기기 기록(${localCount}문제)과 합쳐서 이어서 사용할까요?\n\n(취소하면 연결하지 않습니다)`);
+        if(!ok) return;
+        const merged = mergeProgressData(collectLocalData(), cloud);
+        applyCloudData(merged);
+      }
+      state.syncCode = code;
+      await window.storage.set('sync-code', code);
+      await syncPush();
+      alert('연결됐습니다!');
+      render();
+    }catch(e){
+      alert('연결에 실패했습니다. 코드가 정확한지, 인터넷 연결을 확인해주세요.');
+    }
+  }
+
+  // 동기화 연결을 끊는다("로그아웃"에 해당). 클라우드의 기록은 그대로 남아있고, 이 기기에서만 연결이 해제된다.
+  async function stopSync(){
+    if(!confirm('동기화를 해제할까요?\n이 기기의 학습기록은 그대로 남아있고, 코드를 다시 입력하면 언제든 재연결할 수 있습니다.')) return;
+    state.syncCode = null;
+    await window.storage.set('sync-code', '');
+    render();
+  }
+
+  // 앱을 열 때마다(코드가 이미 연결된 상태라면) 자동으로 클라우드와 조용히 병합한다.
+  async function syncPullOnOpen(){
+    if(!syncEnabled() || !state.syncCode) return;
+    try{
+      const docSnap = await syncDb.collection('syncCodes').doc(state.syncCode).get();
+      if(docSnap.exists){
+        const merged = mergeProgressData(collectLocalData(), docSnap.data());
+        applyCloudData(merged);
+        await syncPush(); // 합친 결과를 다시 클라우드에도 반영
+        if(state.view==='home') render(true);
+      }
+    }catch(e){ /* 오프라인이면 조용히 무시 */ }
   }
 
   function chapterStats(key){
@@ -830,10 +1021,8 @@
       if(state.progress[key] && state.progress[key][i]) qMap[mk].answered++;
     });
 
-    return blueprint.map((g, gi)=>({
-      num: String(gi+1),
-      name: g.name,
-      subs: g.subs.map((subName, si)=>{
+    return blueprint.map((g, gi)=>{
+      const subs = g.subs.map((subName, si)=>{
         const stat = qMap[g.name + '||' + subName] || { total: 0, answered: 0 };
         return {
           num: `${gi+1}-${si+1}`,
@@ -841,8 +1030,12 @@
           total: stat.total,
           answered: stat.answered
         };
-      })
-    }));
+      });
+      // 세부항목(대분류) 단위 합계 - 그 아래 세세항목들의 total/answered를 모두 더한 값
+      const groupTotal = subs.reduce((a,s)=>a+s.total, 0);
+      const groupAnswered = subs.reduce((a,s)=>a+s.answered, 0);
+      return { num: String(gi+1), name: g.name, total: groupTotal, answered: groupAnswered, subs };
+    });
   }
 
   function allChapterKeys(){
@@ -922,10 +1115,13 @@
         if(expanded){
           tocInlineHtml = toc.map(g => `
             <div class="toc-group">
-              <div class="toc-group-title">${g.num}. ${escapeHtml(g.name)}</div>
+              <button class="toc-group-title${g.total===0?' empty':''}" data-key="${key}" data-raw="${escapeHtml(g.name)}" data-level="group">
+                <span class="toc-group-name">${g.num}. ${escapeHtml(g.name)}</span>
+                <span class="subtopic-count">${g.total===0? '준비중' : g.answered+'/'+g.total}</span>
+              </button>
               <div class="subtopic-list">
                 ${g.subs.map(s => `
-                  <button class="subtopic-item${s.total===0?' empty':''}" data-key="${key}" data-raw="${escapeHtml(s.name)}">
+                  <button class="subtopic-item${s.total===0?' empty':''}" data-key="${key}" data-raw="${escapeHtml(s.name)}" data-level="sub">
                     <span class="subtopic-name">${s.num}. ${escapeHtml(s.name)}</span>
                     <span class="subtopic-count">${s.total===0? '준비중' : s.answered+'/'+s.total}</span>
                   </button>`).join('')}
@@ -974,6 +1170,17 @@
         ⚠️ <b>이 브라우저에서는 학습 기록이 저장되지 않습니다.</b><br>
         사파리 프라이빗(비공개) 브라우징 모드이거나, 설정에서 웹사이트 데이터 저장이 차단되어 있을 수 있어요. 일반 브라우징 모드로 열어주세요.
       </div>` : ''}
+      <div class="sync-bar">
+        ${state.syncCode? `
+          <span class="sync-code-chip">📱 내 코드: <b>${escapeHtml(state.syncCode)}</b></span>
+          <button id="syncCopyBtn" class="sync-mini-btn">복사</button>
+          <button id="syncLogoutBtn" class="sync-mini-btn ghost">로그아웃</button>
+        ` : `
+          <span class="sync-desc">여러 기기에서 학습기록을 이어보려면?</span>
+          <button id="syncStartBtn" class="sync-mini-btn">🔗 동기화 시작</button>
+          <button id="syncJoinBtn" class="sync-mini-btn ghost">코드 입력</button>
+        `}
+      </div>
       <div class="hero">
         <div class="kicker">14일이면 확실하게 끝낸다</div>
         <h1>공공조달관리사<br><em>${os.total}제</em> 2주 완성</h1>
@@ -1003,6 +1210,22 @@
     };
     const globalWrongBtn = document.getElementById('globalWrongBtn');
     if(globalWrongBtn) globalWrongBtn.onclick = ()=> startGlobalWrongReview();
+
+    const syncStartBtn = document.getElementById('syncStartBtn');
+    if(syncStartBtn) syncStartBtn.onclick = ()=> startSync();
+    const syncJoinBtn = document.getElementById('syncJoinBtn');
+    if(syncJoinBtn) syncJoinBtn.onclick = ()=>{
+      const code = prompt('다른 기기에서 받은 동기화 코드를 입력하세요\n(예: A7K9-2XQP)');
+      if(code) linkSyncCode(code);
+    };
+    const syncCopyBtn = document.getElementById('syncCopyBtn');
+    if(syncCopyBtn) syncCopyBtn.onclick = ()=>{
+      if(navigator.clipboard) navigator.clipboard.writeText(state.syncCode);
+      syncCopyBtn.textContent = '✓ 복사됨';
+      setTimeout(()=>{ syncCopyBtn.textContent = '복사'; }, 1500);
+    };
+    const syncLogoutBtn = document.getElementById('syncLogoutBtn');
+    if(syncLogoutBtn) syncLogoutBtn.onclick = ()=> stopSync();
     document.querySelectorAll('.chapter-card').forEach(el=>{
       el.onclick = ()=>{
         const key = el.dataset.key;
@@ -1024,12 +1247,13 @@
         render(true); // 펼침/접힘은 화면 전환이 아니므로 스크롤 위치 유지
       };
     });
-    document.querySelectorAll('.subtopic-item[data-raw]').forEach(el=>{
+    document.querySelectorAll('.subtopic-item[data-raw], .toc-group-title[data-raw]').forEach(el=>{
       el.onclick = (e)=>{
         e.stopPropagation();
         const key = el.dataset.key;
         const raw = el.dataset.raw;
-        startSubTopic(key, raw);
+        const level = el.dataset.level; // 'group'(세부항목) | 'sub'(세세항목)
+        startSubTopic(key, raw, level);
       };
     });
   }
@@ -1082,21 +1306,27 @@
     startWrongReview(key);
   }
 
-  // 챕터 안에서 특정 세세항목(category2)에 해당하는 문제만 골라 이어서 풀도록 연다.
+  // 챕터 안에서 특정 세부항목(category1) 또는 세세항목(category2)에 해당하는 문제만 골라 이어서 풀도록 연다.
+  // level: 'sub'(세세항목, 기존 방식) | 'group'(세부항목 - 그 아래 세세항목 전부 포함)
   // 번호("1. " 등) 접두사는 무시하고 순수 이름으로 매칭한다(출제기준 청사진과 표기 방식이 다를 수 있어서).
   // 별도의 가상 챕터를 만들지 않고 실제 key의 인덱스만 필터링하므로,
   // 여기서 푼 답은 그 챕터의 진짜 진행률(state.progress[key])에 그대로 기록·누적된다.
-  function startSubTopic(key, topicName){
+  function startSubTopic(key, topicName, level){
     const indices = [];
     (QUIZ[key] || []).forEach((q, i)=>{
-      const name = (q.category2 || '').trim().replace(/^\d+\.\s*/, '') || '(세세항목 없음)';
-      if(name === topicName) indices.push(i);
+      if(level === 'group'){
+        const c1 = (q.category1 || '').trim().replace(/^\d+\.\s*/, '') || '(세부항목 없음)';
+        if(c1 === topicName) indices.push(i);
+      } else {
+        const c2 = (q.category2 || '').trim().replace(/^\d+\.\s*/, '') || '(세세항목 없음)';
+        if(c2 === topicName) indices.push(i);
+      }
     });
     if(!indices.length){
-      alert('이 세세항목은 아직 등록된 문제가 없습니다.\n출제기준에는 있지만 구글시트에 문제가 추가되지 않은 상태예요.');
+      alert('이 항목은 아직 등록된 문제가 없습니다.\n출제기준에는 있지만 구글시트에 문제가 추가되지 않은 상태예요.');
       return;
     }
-    openChapter(key, true, indices, 'subtopic'); // resume=true: 이 세세항목 안에서 이미 푼 문제는 건너뛰고 이어서 시작
+    openChapter(key, true, indices, 'subtopic'); // resume=true: 이 항목 안에서 이미 푼 문제는 건너뛰고 이어서 시작
   }
 
   function renderQuiz(){
@@ -1276,6 +1506,7 @@
 
     state.sheetOpen = true; // 정답/오답 상관없이 해설 시트를 띄운다
     saveProgress();
+    syncPush(); // 동기화 연결돼 있으면 클라우드에도 즉시 반영(연결 안 돼 있으면 아무 동작 안 함)
     render(true);
   }
 
