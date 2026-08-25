@@ -278,6 +278,7 @@
   .feedback .fb-source{ margin-top:11px; font-size:12.5px; color:var(--ink-soft); border-top:1px dashed var(--line-strong); padding-top:9px; }
 
   .nav-row{ display:flex; gap:10px; margin-top:22px; }
+  .fixed-next-btn{ display:none; } /* 모바일은 기존 nav-row/해설시트 버튼 그대로 사용, PC(768px+)에서만 등장 */
   .nav-btn{
     flex:1; background:var(--card); border:1.4px solid var(--line-strong); border-radius:10px;
     padding:15px; font-size:15px; font-weight:700; color:var(--navy); cursor:pointer;
@@ -393,6 +394,16 @@
       display:flex; align-items:center; justify-content:center; text-align:center;
       min-height:220px; border:1.5px dashed var(--line-strong); border-radius:14px;
       color:var(--ink-soft); font-size:13.5px; line-height:1.8; padding:20px;
+    }
+
+    /* 요구: PC에서 "다음" 버튼이 좌측 nav-row와 해설 패널 안에 중복으로 뜨던 것을 정리 —
+       두 버튼은 숨기고, 화면 우측 하단에 고정된 버튼 하나로 통합한다 */
+    .nav-row #nextBtn{ display:none; }
+    #sheetNext{ display:none; }
+    .fixed-next-btn{
+      display:block; position:fixed; right:28px; bottom:28px; z-index:30;
+      width:auto; padding:14px 28px; border-radius:999px;
+      box-shadow:0 10px 28px -6px rgba(27,42,71,.4);
     }
 
     .quiz-wrap{ padding-top:20px; }
@@ -1113,6 +1124,7 @@
         </div>
         <div class="kbd-hint"><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd> 답 선택 &nbsp; <kbd>Enter</kbd> 다음 &nbsp; <kbd>PgUp</kbd>/<kbd>PgDn</kbd> 이동</div>
       </div>
+      <button class="nav-btn primary fixed-next-btn" id="fixedNextBtn" ${saved? '' : 'disabled'}>${pos===total-1? (isFiltered? '학습 완료 →' : '단원 완료 →') : '다음 →'}</button>
     `;
 
     document.getElementById('quizTopbar').onclick = ()=>{ state.view='home'; saveProgress(); render(); };
@@ -1139,6 +1151,8 @@
     if(showBtn) showBtn.onclick = ()=>{ state.sheetOpen = true; render(true); };
     const sheetNext = document.getElementById('sheetNext');
     if(sheetNext) sheetNext.onclick = goNext;
+    const fixedNextBtn = document.getElementById('fixedNextBtn');
+    if(fixedNextBtn) fixedNextBtn.onclick = ()=>{ if(saved) goNext(); };
     const sheetClose = document.getElementById('sheetClose');
     if(sheetClose) sheetClose.onclick = ()=>{ state.sheetOpen = false; render(true); };
     const sheetCloseX = document.getElementById('sheetCloseX');
