@@ -7,8 +7,8 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>공공조달관리사 870제 · 2주 완성 퀴즈</title>
-<link rel="icon" type="image/png" href="icons/icon260825.png">
-<link rel="apple-touch-icon" sizes="180x180" href="icons/icon260825.png">
+<link rel="icon" type="image/png" href="icon260825.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icon260825.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <meta name="theme-color" content="#1B2A47">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -278,7 +278,6 @@
   .feedback .fb-source{ margin-top:11px; font-size:12.5px; color:var(--ink-soft); border-top:1px dashed var(--line-strong); padding-top:9px; }
 
   .nav-row{ display:flex; gap:10px; margin-top:22px; }
-  .fixed-next-btn{ display:none; } /* 모바일은 기존 nav-row/해설시트 버튼 그대로 사용, PC(768px+)에서만 등장 */
   .nav-btn{
     flex:1; background:var(--card); border:1.4px solid var(--line-strong); border-radius:10px;
     padding:15px; font-size:15px; font-weight:700; color:var(--navy); cursor:pointer;
@@ -387,7 +386,7 @@
       box-shadow:var(--shadow); max-height:calc(100vh - 96px); animation:none; transform:none;
     }
     .sheet-inline-slot .grip{ display:none; }
-    .sheet-close-x{ display:none; } /* 사이드 패널은 늘 보이므로 ✕는 불필요 */
+    /* ✕ 버튼은 그대로 유지 — 우측 패널을 접는 유일한 버튼으로 사용(하단 버튼들과 안 겹치게) */
 
     /* 아직 답을 안 골랐을 때, 우측 패널에 보여줄 안내 문구 */
     .qside-placeholder{
@@ -396,26 +395,23 @@
       color:var(--ink-soft); font-size:13.5px; line-height:1.8; padding:20px;
     }
 
-    /* 요구: PC에서 "다음" 버튼이 좌측 nav-row와 해설 패널 안에 중복으로 뜨던 것을 정리 —
-       두 버튼은 숨기고, 화면 우측 하단에 고정된 버튼 하나로 통합한다 */
-    .nav-row #nextBtn{ display:none; }
-    #sheetNext{ display:none; }
-    .fixed-next-btn{
-      display:block; position:fixed; right:28px; bottom:28px; z-index:30;
-      width:auto; padding:14px 28px; border-radius:999px;
-      box-shadow:0 10px 28px -6px rgba(27,42,71,.4);
-    }
+    /* 해설 패널 하단의 "닫고 보기"/"다음 문제" 버튼은 데스크톱에서 중복이라 통째로 숨긴다.
+       "닫기"는 위쪽 ✕ 버튼 하나로, "다음"은 좌측 이전 버튼과 짝을 이루는 원래 자리에서 처리한다. */
+    .sheet-foot{ display:none; }
 
     .quiz-wrap{ padding-top:20px; }
   }
 
-  /* kbd-hint는 기본적으로 숨기고, PC(1024px+)에서만 노출한다(요구4) — 미디어쿼리보다 먼저 선언해야
-     1024px+에서 display:flex가 이 규칙을 확실히 덮어쓴다(소스 순서상 CSS 우선순위 문제 방지) */
+  /* kbd-hint는 기본적으로 숨기고, "화면이 넓고 + 실제 마우스/트랙패드가 있는" 진짜 PC에서만 노출한다.
+     아이패드는 화면폭은 1024px 이상이 될 수 있지만 터치 전용(hover 없음)이라 여기서 걸러진다.
+     단, 아이패드에 블루투스 키보드+트랙패드를 연결하면 hover:hover가 참이 되어 자동으로 다시 뜬다. */
   .kbd-hint{ display:none; }
 
   /* ---------- PC 최적화 (요구6) ---------- */
   @media (min-width:1024px){
     #app{ max-width:1024px; }
+  }
+  @media (min-width:1024px) and (hover:hover) and (pointer:fine){
     .kbd-hint{
       display:flex; align-items:center; justify-content:center; gap:6px; flex-wrap:wrap;
       margin-top:22px; padding-top:16px; border-top:1px dashed var(--line-strong);
@@ -427,7 +423,7 @@
       border-radius:6px; font-family:'Noto Sans KR',sans-serif; font-size:11px; font-weight:700;
       color:var(--navy); box-shadow:0 1px 0 var(--line-strong);
     }
-    /* 요구6: hover 피드백 */
+    /* 요구6: hover 피드백(터치 기기에서는 의미 없으므로 마우스 환경에서만 적용) */
     .chapter-card:hover{ border-color:var(--navy); box-shadow:0 4px 16px -6px rgba(27,42,71,.25); }
     .nav-btn:hover:not(:disabled){ border-color:var(--navy); }
     .nav-btn.primary:hover:not(:disabled){ background:var(--navy-2); }
@@ -1124,7 +1120,6 @@
         </div>
         <div class="kbd-hint"><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd> 답 선택 &nbsp; <kbd>Enter</kbd> 다음 &nbsp; <kbd>PgUp</kbd>/<kbd>PgDn</kbd> 이동</div>
       </div>
-      <button class="nav-btn primary fixed-next-btn" id="fixedNextBtn" ${saved? '' : 'disabled'}>${pos===total-1? (isFiltered? '학습 완료 →' : '단원 완료 →') : '다음 →'}</button>
     `;
 
     document.getElementById('quizTopbar').onclick = ()=>{ state.view='home'; saveProgress(); render(); };
@@ -1151,8 +1146,6 @@
     if(showBtn) showBtn.onclick = ()=>{ state.sheetOpen = true; render(true); };
     const sheetNext = document.getElementById('sheetNext');
     if(sheetNext) sheetNext.onclick = goNext;
-    const fixedNextBtn = document.getElementById('fixedNextBtn');
-    if(fixedNextBtn) fixedNextBtn.onclick = ()=>{ if(saved) goNext(); };
     const sheetClose = document.getElementById('sheetClose');
     if(sheetClose) sheetClose.onclick = ()=>{ state.sheetOpen = false; render(true); };
     const sheetCloseX = document.getElementById('sheetCloseX');
