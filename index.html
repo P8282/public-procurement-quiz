@@ -7,8 +7,8 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>공공조달관리사 870제 · 2주 완성 퀴즈</title>
-<link rel="icon" type="image/png" sizes="180x180" href="./icons/icon260825.png">
-<link rel="apple-touch-icon" sizes="180x180" href="./icons/icon260825.png">
+<link rel="icon" type="image/png" href="icons/icon260825.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/icon260825.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <meta name="theme-color" content="#1B2A47">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -223,6 +223,9 @@
   .mastery-dot.filled{ background:var(--seal); }
 
   .quiz-split{ display:flex; flex-direction:column; }
+  .qmain{ display:flex; flex-direction:column; }
+  .qside{ display:flex; flex-direction:column; }
+  .qside-placeholder{ display:none; } /* 모바일은 팝업 시트를 쓰므로 자리 표시자가 필요 없다 */
   .qcard{
     background:var(--card); border:1px solid var(--line); border-radius:14px;
     box-shadow:var(--shadow); padding:24px 20px 22px; margin-bottom:16px; position:relative;
@@ -236,7 +239,6 @@
     white-space:pre-wrap; letter-spacing:-.1px; word-break:keep-all;
   }
 
-  .answer-panel{ display:flex; flex-direction:column; }
   .options{ display:flex; flex-direction:column; gap:12px; margin-top:22px; }
   .option{
     display:flex; align-items:flex-start; gap:12px; text-align:left;
@@ -355,40 +357,50 @@
 
   /* ---------- 태블릿/큰 화면: 본문 폭과 글자 크기 소폭 확대 ---------- */
   @media (min-width:768px){
-    #app{ max-width:920px; }
+    #app{ max-width:960px; }
     .qtext{ font-size:19px; line-height:1.82; }
-    .sheet-body{ font-size:18.5px; }
+    .sheet-body{ font-size:17.5px; }
     .chapter-info .name{ font-size:16px; }
 
-    /* 요구5: PC/태블릿에서는 진행률 바를 더 굵게 */
+    /* 진행률 바를 더 굵게 */
     .progress-bar-top{ height:6px; }
 
-    /* 요구1: 태블릿 Split View — 좌(질문) 40% : 우(선택지/해설) 60% */
+    /* 태블릿/PC 듀얼 패널 — 좌(문제+선택지) 60% : 우(해설 전용) 40% */
     .quiz-split{
-      display:grid; grid-template-columns:4fr 6fr; gap:28px; align-items:start;
+      display:grid; grid-template-columns:6fr 4fr; gap:24px; align-items:start;
     }
-    .qcard{
-      position:sticky; top:76px; /* quiz-header-sticky(topbar+진행바) 높이만큼 여백 */
-      display:flex; align-items:center; min-height:calc(100vh - 180px);
-      margin-bottom:0;
-    }
-    /* 요구1: 선택지 2×2 그리드 + 터치 영역 확대 */
-    .options{
-      display:grid; grid-template-columns:1fr 1fr; gap:16px 14px; margin-top:0;
-    }
-    .option{ font-size:16.5px; padding:20px 18px; }
+    .qmain{ display:flex; flex-direction:column; }
 
-    /* 요구2: 해설을 하단 모달 대신 우측 패널 안에 인라인으로 배치 */
-    .sheet-dim{ display:none !important; }
+    /* 선택지는 태블릿/PC에서도 항상 1열(세로 나열) 유지 — 절대 2×2로 쪼개지 않는다 */
+    .options{ display:flex; flex-direction:column; gap:12px; margin-top:22px; }
+    .option{ font-size:16px; padding:16px 17px; }
+
+    /* 해설 전용 우측 사이드 패널: 화면을 가리는 모달 대신 항상 열려있는 고정 패널 형태 */
+    .qside{
+      position:sticky; top:76px; /* quiz-header-sticky(topbar+진행바) 높이만큼 여백 */
+      max-height:calc(100vh - 96px);
+    }
+    .sheet-dim{ display:none !important; } /* 뒷배경 딤처리 없음 */
     .sheet-inline-slot .sheet{
-      position:static; max-width:none; width:100%; margin:18px 0 0; border-radius:14px;
-      box-shadow:var(--shadow); max-height:none; animation:none; transform:none;
+      position:static; max-width:none; width:100%; margin:0; border-radius:14px;
+      box-shadow:var(--shadow); max-height:calc(100vh - 96px); animation:none; transform:none;
     }
     .sheet-inline-slot .grip{ display:none; }
-    .sheet-close-x{ display:none; } /* 인라인 배치에서는 아래 버튼으로 닫으므로 ✕는 숨김 */
+    .sheet-close-x{ display:none; } /* 사이드 패널은 늘 보이므로 ✕는 불필요 */
+
+    /* 아직 답을 안 골랐을 때, 우측 패널에 보여줄 안내 문구 */
+    .qside-placeholder{
+      display:flex; align-items:center; justify-content:center; text-align:center;
+      min-height:220px; border:1.5px dashed var(--line-strong); border-radius:14px;
+      color:var(--ink-soft); font-size:13.5px; line-height:1.8; padding:20px;
+    }
 
     .quiz-wrap{ padding-top:20px; }
   }
+
+  /* kbd-hint는 기본적으로 숨기고, PC(1024px+)에서만 노출한다(요구4) — 미디어쿼리보다 먼저 선언해야
+     1024px+에서 display:flex가 이 규칙을 확실히 덮어쓴다(소스 순서상 CSS 우선순위 문제 방지) */
+  .kbd-hint{ display:none; }
 
   /* ---------- PC 최적화 (요구6) ---------- */
   @media (min-width:1024px){
@@ -411,8 +423,6 @@
     .btn-review:hover{ background:#F0D3CE; }
     .expand-btn:hover{ border-color:var(--navy); color:var(--navy); }
   }
-  /* kbd-hint는 기본적으로 숨기고, PC(1024px+)에서만 노출한다(요구6) */
-  .kbd-hint{ display:none; }
 
   /* ---------- 다크모드: 기기 설정을 따라감 (야간 학습 시 눈부심 완화) ---------- */
   @media (prefers-color-scheme: dark){
@@ -1081,17 +1091,20 @@
           <span class="mastery-dots">${Array.from({length:MASTERY_TARGET},(_,di)=>`<span class="mastery-dot${di<streak?' filled':''}"></span>`).join('')}</span>
         </div>` : ''}
         <div class="quiz-split">
-          <div class="qcard">
-            <div class="qtext">${escapeHtml(q.question)}</div>
-          </div>
-          <div class="answer-panel">
+          <div class="qmain">
+            <div class="qcard">
+              <div class="qtext">${escapeHtml(q.question)}</div>
+            </div>
             <div class="options">${optionsHtml}</div>
             ${saved? `<button class="nav-btn" id="showSheetBtn" style="width:100%;margin-top:18px;font-size:14px;padding:12px;">📖 해설 다시 보기</button>` : ''}
-            <div class="sheet-inline-slot">${sheetHtml}</div>
             <div class="nav-row">
               <button class="nav-btn" id="prevBtn" ${pos===0?'disabled':''}>← 이전</button>
               <button class="nav-btn primary" id="nextBtn" ${saved? '' : 'disabled'}>${pos===total-1? (isFiltered? '학습 완료 →' : '단원 완료 →') : '다음 →'}</button>
             </div>
+          </div>
+          <div class="qside">
+            <div class="sheet-inline-slot">${sheetHtml}</div>
+            ${(!saved || !state.sheetOpen)? `<div class="qside-placeholder">정답을 선택하면<br>여기에 해설이 표시됩니다.</div>` : ''}
           </div>
         </div>
         <div class="inline-stats">
