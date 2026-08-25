@@ -373,17 +373,14 @@
       column-gap:24px; align-items:start;
     }
     .qmain{ display:flex; flex-direction:column; grid-column:1; grid-row:1 / span 2; }
-    .qside{ grid-column:2; grid-row:1; }
+    .qside{ grid-column:2; grid-row:2; }
 
-    /* 이전/다음 버튼: 우측 30% 컬럼 폭·위치에 맞춰 계산해 화면 하단에 완전히 고정(position:fixed)한다.
-       스크롤 여부와 무관하게 항상 화면 맨 아래에 붙어있다.
-       계산 기준: #app max-width 960px(이 구간), quiz-wrap 좌우 패딩 18px, quiz-split 컬럼 간격 24px, 컬럼비 7:3. */
+    /* 이전/다음 버튼: 우측 컬럼 맨 위(해설 패널 바로 위)에 고정 배치.
+       그리드 안에서 sticky로 처리하니 폭 계산이 필요 없어 훨씬 단순해진다. */
     .quiz-split > .nav-row{
-      position:fixed; z-index:25;
-      bottom:calc(16px + env(safe-area-inset-bottom));
-      right:calc(max(0px, (100vw - 960px)/2) + 18px);
-      width:calc((min(100vw,960px) - 36px - 24px) * 0.3);
-      margin-top:0;
+      grid-column:2; grid-row:1;
+      position:sticky; top:76px; z-index:2;
+      margin-top:0; margin-bottom:12px;
       background:var(--paper); padding:10px; border-radius:14px;
       box-shadow:0 4px 20px -6px rgba(27,42,71,.25);
     }
@@ -395,11 +392,11 @@
     .options{ display:flex; flex-direction:column; gap:12px; margin-top:22px; }
     .option{ font-size:16px; padding:16px 17px; }
 
-    /* 해설 전용 우측 사이드 패널: 화면을 가리는 모달 대신 항상 열려있는 고정 패널 형태.
-       하단에 고정된 이전/다음 버튼과 겹치지 않도록 여유 공간(약 80px)을 추가로 뺀다. */
+    /* 해설 전용 우측 사이드 패널: 이전/다음 버튼(우측 컬럼 맨 위) 바로 아래에서 시작한다.
+       버튼 높이(약 74px)+간격(12px)만큼 sticky 시작점을 내린다. */
     .qside{
-      position:sticky; top:76px; /* quiz-header-sticky(topbar+진행바) 높이만큼 여백 */
-      max-height:calc(100vh - 96px - 80px);
+      position:sticky; top:calc(76px + 74px + 12px);
+      max-height:calc(100vh - 96px - 74px - 12px);
     }
     .sheet-dim{ display:none !important; } /* 뒷배경 딤처리 없음 */
     .sheet-inline-slot .sheet{
@@ -442,12 +439,6 @@
   /* ---------- PC 최적화 (요구6) ---------- */
   @media (min-width:1024px){
     #app{ max-width:1024px; }
-    /* #app 폭이 960→1024로 바뀌는 구간이라 이전/다음 고정 버튼 위치도 새 폭 기준으로 재계산한다.
-       (아이패드 10세대 가로모드처럼 폭이 1024px 이상이면서 터치 전용인 기기가 여기 해당) */
-    .quiz-split > .nav-row{
-      right:calc(max(0px, (100vw - 1024px)/2) + 18px);
-      width:calc((min(100vw,1024px) - 36px - 24px) * 0.3);
-    }
   }
   @media (min-width:1024px) and (hover:hover) and (pointer:fine){
     .kbd-hint{
