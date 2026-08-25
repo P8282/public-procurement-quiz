@@ -101,6 +101,15 @@
     margin:0 0 12px; color:var(--navy);
   }
   .hero h1 em{ font-style:normal; color:var(--seal); }
+
+  .exam-schedule{
+    display:inline-flex; align-items:center; gap:9px; flex-wrap:wrap; justify-content:center;
+    background:var(--correct-tint); border:1.4px solid #BFDBCB; border-radius:999px;
+    padding:8px 16px; margin:0 0 18px; font-size:12.5px; font-weight:700; color:var(--correct);
+  }
+  .exam-schedule b{ font-weight:900; }
+  .exam-schedule .divider{ width:1px; height:11px; background:#BFDBCB; flex-shrink:0; }
+
   .hero p.sub{ color:var(--ink-soft); font-size:14px; line-height:1.6; margin:0 auto 22px; max-width:340px; }
 
   .stamp{
@@ -956,6 +965,11 @@
       <div class="hero">
         <div class="kicker">14일이면 확실하게 끝낸다</div>
         <h1>공공조달관리사<br><em>${os.total}제</em> 2주 완성</h1>
+        <div class="exam-schedule">
+          <span>📝 원서접수 <b>9.14~9.17</b></span>
+          <span class="divider"></span>
+          <span>✏️ 필기시험 <b>10.3</b></span>
+        </div>
         <p class="sub">실전 문제 ${os.total}개로 꿰뚫는 공공조달 실무.<br>출퇴근길에도, 화장실에서도 — 끝없이 도는 회독 머신.</p>
         <div class="cover-facts">
           <div><b>${os.total}</b><span>총 문항</span></div>
