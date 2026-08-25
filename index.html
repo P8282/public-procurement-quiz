@@ -411,6 +411,7 @@
     .sheet-inline-slot .sheet{
       position:static; max-width:none; width:100%; margin:0; border-radius:14px;
       box-shadow:var(--shadow); max-height:calc(100vh - 96px); animation:none; transform:none;
+      cursor:pointer; /* 패널 클릭 시 다음 문제로 넘어감을 시각적으로 알림 */
     }
     .sheet-inline-slot .grip{ display:none; }
     /* 태블릿/PC는 해설 패널이 늘 열려있는 고정 영역이라 "닫기" 자체가 불필요 — ✕ 버튼 제거 */
@@ -1124,7 +1125,7 @@
       const justMastered = isWrongSession && ok && streak>=MASTERY_TARGET;
       sheetHtml = `
         <div class="sheet-dim" id="sheetDim"></div>
-        <div class="sheet" role="dialog" aria-modal="true">
+        <div class="sheet" id="sheetPanel" role="dialog" aria-modal="true">
           <div class="grip"></div>
           <div class="sheet-head ${ok?'ok':'no'}">
             <span>${ok? '⭕ 정답입니다!' : '❌ 오답입니다'}</span>
@@ -1215,6 +1216,14 @@
     if(sheetCloseX) sheetCloseX.onclick = ()=>{ state.sheetOpen = false; render(true); };
     const sheetDim = document.getElementById('sheetDim');
     if(sheetDim) sheetDim.onclick = ()=>{ state.sheetOpen = false; render(true); };
+    // 태블릿/PC(768px+)에서는 해설 패널이 늘 옆에 열려있는 형태라, 패널을 터치/클릭하면
+    // 바로 다음 문제로 넘어가도록 한다(버튼 위 클릭은 제외 - 버튼 자체 동작이 우선).
+    const sheetPanel = document.getElementById('sheetPanel');
+    if(sheetPanel) sheetPanel.onclick = (e)=>{
+      if(window.innerWidth < 768) return; // 모바일은 모달이라 기존 동작 그대로
+      if(e.target.closest('button')) return; // 닫기(✕)·제외 버튼 등은 그대로 자기 동작 수행
+      goNext();
+    };
     const excludeBtn = document.getElementById('excludeBtn');
     if(excludeBtn) excludeBtn.onclick = ()=>{
       excludeFromWrong(key, idx);
