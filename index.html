@@ -327,6 +327,7 @@
   }
   .sheet .sheet-head.ok{ color:var(--correct); }
   .sheet .sheet-head.no{ color:var(--wrong); }
+  .sheet-tip{ display:none; } /* 모바일은 패널 클릭 시 다음으로 넘어가는 기능이 없어 안내 자체가 불필요 */
   /* 요구4: 모바일 해설 시트 우측 상단 ✕ 닫기 버튼 */
   .sheet-close-x{
     appearance:none; border:none; background:var(--paper-deep); color:var(--ink-soft);
@@ -419,9 +420,19 @@
 
     /* 아직 답을 안 골랐을 때, 우측 패널에 보여줄 안내 문구 */
     .qside-placeholder{
-      display:flex; align-items:center; justify-content:center; text-align:center;
+      display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;
       min-height:220px; border:1.5px dashed var(--line-strong); border-radius:14px;
       color:var(--ink-soft); font-size:13.5px; line-height:1.8; padding:20px;
+    }
+    .qside-placeholder .tip-line{
+      display:inline-block; margin-top:10px; font-size:11.5px; font-weight:700;
+      color:var(--seal); background:var(--seal-tint); border-radius:999px; padding:5px 12px;
+    }
+
+    /* 해설 패널을 열었을 때도 상단에 재차 안내(정답/오답 표시 바로 아래) */
+    .sheet-tip{
+      display:block; padding:8px 20px 0; font-size:11.5px; color:var(--ink-soft);
+      flex-shrink:0;
     }
 
     /* 해설 패널 하단의 "닫고 보기"/"다음 문제" 버튼은 데스크톱에서 중복이라 통째로 숨긴다.
@@ -1131,6 +1142,7 @@
             <span>${ok? '⭕ 정답입니다!' : '❌ 오답입니다'}</span>
             <button id="sheetCloseX" class="sheet-close-x" aria-label="닫기">✕</button>
           </div>
+          <div class="sheet-tip">💡 이 패널을 누르면 다음 문제로 넘어가요</div>
           <div class="sheet-body">
             ${justMastered? `<div style="background:var(--correct-tint);color:#204636;border:1px solid #BFDBCB;border-radius:9px;padding:12px 14px;margin-bottom:14px;font-weight:700;font-size:13.5px;">🎉 연속 정답 ${MASTERY_TARGET}회 달성! 이 문제는 오답노트에서 제외됩니다.</div>` : ''}
             ${escapeHtml(q.explanation||'해설이 제공되지 않았습니다.')}${q.source? `<div class="sheet-src">§ 출처: ${escapeHtml(q.source)}</div>` : ''}
@@ -1171,7 +1183,7 @@
           </div>
           <div class="qside">
             <div class="sheet-inline-slot">${sheetHtml}</div>
-            ${(!saved || !state.sheetOpen)? `<div class="qside-placeholder">정답을 선택하면<br>여기에 해설이 표시됩니다.</div>` : ''}
+            ${(!saved || !state.sheetOpen)? `<div class="qside-placeholder">정답을 선택하면<br>여기에 해설이 표시됩니다.<br><span class="tip-line">💡 해설을 누르면 다음 문제로 넘어가요</span></div>` : ''}
           </div>
           <div class="nav-row">
             <button class="nav-btn" id="prevBtn" ${pos===0?'disabled':''}>← 이전</button>
