@@ -583,6 +583,37 @@
 </script>
 
 <script>
+  // window.storage는 Claude 아티팩트 미리보기 안에서만 기본 제공되는 API다.
+  // GitHub Pages 등 실제 웹사이트로 배포했을 때는 window.storage가 존재하지 않으므로,
+  // 동일한 인터페이스를 localStorage 기반으로 대체 구현해 학습 진행률·회독수·시트 캐시가 실제로 저장되게 한다.
+  if (!window.storage) {
+    window.storage = {
+      async get(key){
+        try{
+          const v = localStorage.getItem('gpm:'+key);
+          return v===null ? null : {key, value:v};
+        }catch(e){ return null; }
+      },
+      async set(key, value){
+        try{ localStorage.setItem('gpm:'+key, value); return {key, value}; }
+        catch(e){ return null; }
+      },
+      async delete(key){
+        try{ localStorage.removeItem('gpm:'+key); return {key, deleted:true}; }
+        catch(e){ return null; }
+      },
+      async list(prefix){
+        try{
+          const p = 'gpm:' + (prefix||'');
+          const keys = Object.keys(localStorage).filter(k=>k.startsWith(p)).map(k=>k.slice(4));
+          return {keys};
+        }catch(e){ return {keys:[]}; }
+      }
+    };
+  }
+</script>
+
+<script>
 (function(){
   let QUIZ = JSON.parse(document.getElementById('quiz-data').textContent);
 
@@ -1718,9 +1749,9 @@
   function renderSyncGate(errorMsg){
     app.innerHTML = `
       <div class="hero">
-        <div class="kicker">초대 코드가 필요합니다</div>
-        <h1>코드를<br>입력해주세요</h1>
-        <p class="sub">코드가 없으시다면<br>쥔장에게 카톡 주세요~ 📩</p>
+        <div class="kicker">14일이면 확실하게 끝낸다</div>
+        <h1>공공조달관리사<br><em>870제</em> 2주 완성</h1>
+        <p class="sub">초대 코드가 있어야 이용할 수 있어요.<br>코드가 없으시다면 쥔장에게 카톡 주세요~ 📩</p>
         <div style="max-width:280px;margin:0 auto;">
           <input id="gateCodeInput" type="text" autocapitalize="characters" placeholder="예: A7K9-2XQP"
             style="width:100%;padding:13px 14px;border:1.4px solid var(--line-strong);border-radius:11px;font-size:15px;margin-bottom:10px;box-sizing:border-box;text-align:center;letter-spacing:.05em;">
@@ -1836,35 +1867,6 @@
 })();
 </script>
 
-<script>
-  // window.storage는 Claude 아티팩트 미리보기 안에서만 기본 제공되는 API다.
-  // GitHub Pages 등 실제 웹사이트로 배포했을 때는 window.storage가 존재하지 않으므로,
-  // 동일한 인터페이스를 localStorage 기반으로 대체 구현해 학습 진행률·회독수·시트 캐시가 실제로 저장되게 한다.
-  if (!window.storage) {
-    window.storage = {
-      async get(key){
-        try{
-          const v = localStorage.getItem('gpm:'+key);
-          return v===null ? null : {key, value:v};
-        }catch(e){ return null; }
-      },
-      async set(key, value){
-        try{ localStorage.setItem('gpm:'+key, value); return {key, value}; }
-        catch(e){ return null; }
-      },
-      async delete(key){
-        try{ localStorage.removeItem('gpm:'+key); return {key, deleted:true}; }
-        catch(e){ return null; }
-      },
-      async list(prefix){
-        try{
-          const p = 'gpm:' + (prefix||'');
-          const keys = Object.keys(localStorage).filter(k=>k.startsWith(p)).map(k=>k.slice(4));
-          return {keys};
-        }catch(e){ return {keys:[]}; }
-      }
-    };
-  }
-</script>
+
 </body>
 </html>
