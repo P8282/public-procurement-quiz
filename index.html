@@ -768,7 +768,8 @@
     updateAvailable: false, // 앱 코드(GitHub 배포본) 새 버전이 감지됐는지 여부(일시 상태, 저장하지 않음)
     syncCode: null,     // 클라우드 동기화 코드(예: "A7K9-2XQP"). 연결돼 있으면 값이 있고, 아니면 null (영구 저장)
     syncing: false,     // 지금 동기화 요청이 진행 중인지(중복 클릭 방지용, 일시 상태)
-    myReports: {}       // 내가 신고한 문제 오류 목록 {신고ID: {chapterKey, questionIndex, questionText, content, createdAt}} (클라우드에서 받아옴)
+    myReports: {},      // 내가 신고한 문제 오류 목록 {신고ID: {chapterKey, questionIndex, questionText, content, createdAt}} (클라우드에서 받아옴)
+    bestAnswered: {}     // { chapterKey: 역대 최고 학습완료 수 } - "처음부터 다시 풀기"로 progress가 지워져도 이 값은 안 지워짐(영구 저장)
   };
 
   // 앱 실행 시 저장소가 실제로 쓰기/읽기 가능한지 스스로 테스트한다.
@@ -803,6 +804,10 @@
       const rc = await window.storage.get('review-counts');
       if(rc && rc.value){ state.reviewCounts = JSON.parse(rc.value) || {}; }
     }catch(e){ /* no saved review counts yet */ }
+    try{
+      const ba = await window.storage.get('best-answered');
+      if(ba && ba.value){ state.bestAnswered = JSON.parse(ba.value) || {}; }
+    }catch(e){ /* no saved best-answered yet */ }
     try{
       const ex = await window.storage.get('excluded-wrong');
       if(ex && ex.value){ state.excluded = JSON.parse(ex.value) || {}; }
@@ -841,6 +846,11 @@
   async function saveReviewCounts(){
     try{
       await window.storage.set('review-counts', JSON.stringify(state.reviewCounts));
+    }catch(e){ /* best effort */ }
+  }
+  async function saveBestAnswered(){
+    try{
+      await window.storage.set('best-answered', JSON.stringify(state.bestAnswered));
     }catch(e){ /* best effort */ }
   }
   async function saveExcluded(){
@@ -892,6 +902,7 @@
       excluded: state.excluded,
       wrongMastery: state.wrongMastery,
       myReports: state.myReports,
+      bestAnswered: state.bestAnswered,
       updatedAt: Date.now()
     };
   }
@@ -903,14 +914,15 @@
     state.excluded = data.excluded || {};
     state.wrongMastery = data.wrongMastery || { pool:{}, streak:{} };
     state.myReports = data.myReports || {};
-    saveProgress(); saveReviewCounts(); saveExcluded(); saveWrongMastery();
+    state.bestAnswered = data.bestAnswered || {};
+    saveProgress(); saveReviewCounts(); saveExcluded(); saveWrongMastery(); saveBestAnswered();
   }
 
   // 두 기록을 문제 단위로 합친다(데이터 손실 방지). 같은 문제를 양쪽 다 풀었으면 로컬(이 기기) 것을 우선한다.
   // - 앱을 열 때마다 자동으로 실행되는 "조용한" 동기화라, 사용자에게 매번 물어보지 않고 안전하게 합치는 방식을 쓴다.
   function mergeProgressData(local, cloud){
     const merged = {
-      progress: {}, reviewCounts: {}, excluded: {}, wrongMastery: { pool:{}, streak:{} }, myReports: {}
+      progress: {}, reviewCounts: {}, excluded: {}, wrongMastery: { pool:{}, streak:{} }, myReports: {}, bestAnswered: {}
     };
     const chapterKeys = new Set([...Object.keys(local.progress||{}), ...Object.keys(cloud.progress||{})]);
     chapterKeys.forEach(key=>{
@@ -919,6 +931,10 @@
     const rcKeys = new Set([...Object.keys(local.reviewCounts||{}), ...Object.keys(cloud.reviewCounts||{})]);
     rcKeys.forEach(key=>{
       merged.reviewCounts[key] = Math.max((local.reviewCounts||{})[key]||0, (cloud.reviewCounts||{})[key]||0);
+    });
+    const baKeys = new Set([...Object.keys(local.bestAnswered||{}), ...Object.keys(cloud.bestAnswered||{})]);
+    baKeys.forEach(key=>{
+      merged.bestAnswered[key] = Math.max((local.bestAnswered||{})[key]||0, (cloud.bestAnswered||{})[key]||0);
     });
     const exKeys = new Set([...Object.keys(local.excluded||{}), ...Object.keys(cloud.excluded||{})]);
     exKeys.forEach(key=>{
@@ -1102,7 +1118,14 @@
 
   function chapterStats(key){
     const total = (QUIZ[key] || []).length;
-    const answered = state.progress[key] ? Object.keys(state.progress[key]).length : 0;
+    const currentAnswered = state.progress[key] ? Object.keys(state.progress[key]).length : 0;
+    // "처음부터 다시 풀기"로 progress가 지워져도 학습완료 수가 사라져 보이지 않도록,
+    // 지금까지 이 챕터에서 도달했던 역대 최고 학습완료 수 중 더 큰 값을 사용한다.
+    if(currentAnswered > (state.bestAnswered[key] || 0)){
+      state.bestAnswered[key] = currentAnswered;
+      saveBestAnswered();
+    }
+    const answered = Math.max(currentAnswered, state.bestAnswered[key] || 0);
     const correct = state.progress[key] ? Object.values(state.progress[key]).filter(a=>a.correct).length : 0;
     return {total, answered, correct};
   }
