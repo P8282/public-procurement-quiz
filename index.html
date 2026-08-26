@@ -1749,7 +1749,10 @@
     } else if(e.key==='Escape' && state.sheetOpen){
       state.sheetOpen = false; render(true);
     } else if((e.key==='Enter' || e.key==='ArrowRight' || e.key===' ') && saved){
-      if(e.key===' ') e.preventDefault(); // 스페이스 기본 동작(페이지 스크롤) 방지
+      // 포커스가 버튼(다음/다음 문제 등)에 남아있으면 브라우저가 Enter/Space를 "버튼 클릭"으로도
+      // 자동 처리해서, 아래 로직과 중복으로 두 번 실행(예: 회독수 2씩 증가)되는 문제가 있었다.
+      // preventDefault로 그 기본 동작을 막아 여기 로직만 정확히 한 번 실행되게 한다.
+      e.preventDefault();
       state.sheetOpen = false;
       if(pos===total-1){ if(!state.filterIndices) markChapterCompleted(key); state.view='complete'; render(); }
       else goto(pos+1);
