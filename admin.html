@@ -271,10 +271,19 @@
             <div class="meta">${escapeHtml(c.code)} · ${c.total}문제</div>
             <div class="meta" style="margin-top:1px;">${c.updatedAt? '마지막 동기화: ' + new Date(c.updatedAt).toLocaleString('ko-KR') : '동기화 기록 없음'}</div>
           </div>
+          <button class="mini-btn copy-btn" data-code="${escapeHtml(c.code)}">복사</button>
           <button class="mini-btn rename-btn" data-code="${escapeHtml(c.code)}" data-name="${escapeHtml(c.name)}">이름변경</button>
           <button class="mini-btn danger delete-btn" data-code="${escapeHtml(c.code)}">삭제</button>
         </div>
       `).join('');
+      document.querySelectorAll('.copy-btn').forEach(btn=>{
+        btn.onclick = ()=>{
+          navigator.clipboard.writeText(btn.dataset.code);
+          const original = btn.textContent;
+          btn.textContent = '✓ 복사됨';
+          setTimeout(()=>{ btn.textContent = original; }, 1500);
+        };
+      });
       document.querySelectorAll('.rename-btn').forEach(btn=>{
         btn.onclick = async ()=>{
           const newName = prompt('새 이름을 입력하세요', btn.dataset.name || '');
@@ -284,15 +293,51 @@
         };
       });
       document.querySelectorAll('.delete-btn').forEach(btn=>{
-        btn.onclick = async ()=>{
-          if(!confirm(`코드 "${btn.dataset.code}"를 삭제할까요?\n(이미 이 코드로 쓰고 있는 기기가 있다면, 완전히 막히지는 않습니다)`)) return;
-          await deleteCode(btn.dataset.code);
-          renderList();
-        };
+        btn.onclick = ()=> openDeleteCodeModal(btn.dataset.code, btn.dataset.name);
       });
     }catch(e){
       statusEl.innerHTML = '목록을 불러오지 못했습니다. (Firestore 규칙 또는 네트워크 확인 필요)';
     }
+  }
+
+  // 동기화 코드 삭제 확인 모달 - 이름/코드를 보여주고, 코드를 정확히 다시 입력해야 삭제 버튼이 눌린다(실수 방지).
+  function openDeleteCodeModal(code, name){
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(20,18,12,.55);z-index:80;display:flex;align-items:center;justify-content:center;padding:20px;';
+    overlay.innerHTML = `
+      <div style="background:var(--card);border-radius:16px;padding:20px;max-width:340px;width:100%;">
+        <div style="font-weight:800;font-size:15px;color:var(--wrong);margin-bottom:10px;">⚠️ 코드 삭제</div>
+        <div style="font-size:13px;color:var(--ink-soft);line-height:1.7;margin-bottom:14px;">
+          이름: <b style="color:var(--ink);">${escapeHtml(name || '(이름 없음)')}</b><br>
+          코드: <b style="color:var(--ink);font-family:'Noto Serif KR',serif;">${escapeHtml(code)}</b>
+          <br><br>삭제하려면 아래에 <b>코드를 정확히</b> 입력하세요.
+        </div>
+        <input id="deleteConfirmInput" placeholder="${escapeHtml(code)}"
+          style="width:100%;padding:11px 13px;border:1.4px solid var(--line-strong);border-radius:9px;font-size:14px;margin-bottom:14px;box-sizing:border-box;background:var(--paper);color:var(--ink);letter-spacing:.03em;">
+        <div style="display:flex;gap:8px;">
+          <button id="deleteCancelBtn" class="mini-btn" style="flex:1;padding:11px;">취소</button>
+          <button id="deleteConfirmBtn" class="mini-btn danger" style="flex:1;padding:11px;opacity:.4;" disabled>삭제</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    const close = ()=> overlay.remove();
+    overlay.addEventListener('click', e=>{ if(e.target === overlay) close(); });
+    document.getElementById('deleteCancelBtn').onclick = close;
+    const input = document.getElementById('deleteConfirmInput');
+    const confirmBtn = document.getElementById('deleteConfirmBtn');
+    input.addEventListener('input', ()=>{
+      const match = input.value.trim().toUpperCase() === code.toUpperCase();
+      confirmBtn.disabled = !match;
+      confirmBtn.style.opacity = match ? '1' : '.4';
+    });
+    confirmBtn.onclick = async ()=>{
+      if(confirmBtn.disabled) return;
+      await deleteCode(code);
+      close();
+      renderList();
+    };
+    input.focus();
   }
 
   // 이 브라우저 탭에서 이미 키를 확인했으면(세션 동안) 다시 안 물어봄
