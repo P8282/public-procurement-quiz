@@ -365,6 +365,8 @@
     padding:16px 20px 6px; overflow-y:auto; -webkit-overflow-scrolling:touch;
     font-size:17px; line-height:1.9; color:var(--ink);
     white-space:pre-wrap; word-break:keep-all; letter-spacing:-.1px;
+    flex:1; min-height:0; /* flex 자식은 기본적으로 내용보다 안 작아지려 해서, 이게 없으면 overflow-y:auto가
+                              카드 안에서 스크롤되는 대신 카드 자체가 늘어나 페이지 전체가 길어진다 */
   }
   .sheet .sheet-src{
     margin-top:12px; padding-top:10px; font-size:13.5px; color:var(--ink-soft);
@@ -399,6 +401,11 @@
     .qtext{ font-size:19px; line-height:1.82; }
     .sheet-body{ font-size:17.5px; }
     .chapter-info .name{ font-size:16px; }
+
+    /* 해설 카드 위아래 여백 축소 (태블릿/PC 전용 - 모바일 팝업 시트는 그대로 유지) */
+    .sheet .sheet-head{ padding:10px 20px; }
+    .sheet-inline-slot .sheet-tip{ padding:4px 20px 0; }
+    .sheet-inline-slot .sheet .sheet-body{ padding-top:12px; padding-bottom:14px; }
 
     /* 진행률 바를 더 굵게 */
     .progress-bar-top{ height:6px; }
@@ -439,7 +446,7 @@
     .sheet-dim{ display:none !important; } /* 뒷배경 딤처리 없음 */
     .sheet-inline-slot .sheet{
       position:static; max-width:none; width:100%; margin:0; border-radius:14px;
-      box-shadow:var(--shadow); max-height:calc(100vh - 96px); animation:none; transform:none;
+      box-shadow:var(--shadow); max-height:calc(100vh - 96px - 74px - 12px); animation:none; transform:none;
       cursor:pointer; /* 패널 클릭 시 다음 문제로 넘어감을 시각적으로 알림 */
     }
     .sheet-inline-slot .grip{ display:none; }
