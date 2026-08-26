@@ -1859,6 +1859,18 @@
 
   // ---------- keyboard shortcuts (mirrors original VBA quiz mode) ----------
   document.addEventListener('keydown', (e)=>{
+    if(state.view==='temp'){
+      const total = TEMP_QUIZ.length;
+      if(!total) return;
+      const i = Math.min(state.tempIndex, total-1);
+      if(e.key==='ArrowRight' || e.key==='Enter' || e.key===' '){
+        e.preventDefault();
+        if(i < total-1){ state.tempIndex = i+1; render(); }
+      } else if(e.key==='ArrowLeft'){
+        if(i > 0){ state.tempIndex = i-1; render(); }
+      }
+      return;
+    }
     if(state.view!=='quiz') return;
     const key = state.chapter, idx = state.index;
     const indices = state.filterIndices || QUIZ[key].map((_,i)=>i);
