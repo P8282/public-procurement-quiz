@@ -142,6 +142,10 @@
     await db.collection('reports').doc(reportId).set({ status: newStatus }, { merge: true });
   }
 
+  async function deleteReport(reportId){
+    await db.collection('reports').doc(reportId).delete();
+  }
+
   // ---------- 렌더링 ----------
   function renderKeyGate(errorMsg){
     root.innerHTML = `
@@ -225,9 +229,12 @@
           <div class="content">${escapeHtml(r.content)}</div>
           <div class="footer">
             <span class="code">${escapeHtml(r.syncCode||'')} · ${new Date(r.createdAt||0).toLocaleString('ko-KR')}</span>
-            <button class="mini-btn toggle-status-btn" data-id="${escapeHtml(r.id)}" data-status="${r.status}">
-              ${r.status==='resolved' ? '↺ 처리취소' : '✓ 처리완료'}
-            </button>
+            <div style="display:flex;gap:6px;">
+              <button class="mini-btn toggle-status-btn" data-id="${escapeHtml(r.id)}" data-status="${r.status}">
+                ${r.status==='resolved' ? '↺ 처리취소' : '✓ 처리완료'}
+              </button>
+              <button class="mini-btn danger delete-report-btn" data-id="${escapeHtml(r.id)}" ${r.status==='resolved' ? '' : 'disabled style="opacity:.35;cursor:not-allowed;"'}>삭제</button>
+            </div>
           </div>
         </div>
       `).join('');
@@ -235,6 +242,14 @@
         btn.onclick = async ()=>{
           const newStatus = btn.dataset.status === 'resolved' ? 'open' : 'resolved';
           await toggleReportStatus(btn.dataset.id, newStatus);
+          renderReportList();
+        };
+      });
+      document.querySelectorAll('.delete-report-btn').forEach(btn=>{
+        if(btn.disabled) return; // 처리완료 전에는 삭제 자체를 막아둠(실수 방지)
+        btn.onclick = async ()=>{
+          if(!confirm('이 신고 내역을 완전히 삭제할까요?\n(신고자 개인 목록에는 계속 남아있을 수 있습니다)')) return;
+          await deleteReport(btn.dataset.id);
           renderReportList();
         };
       });
