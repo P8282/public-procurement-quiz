@@ -254,6 +254,7 @@
           <div class="info">
             <div class="name">${escapeHtml(c.name || '(이름 없음)')}</div>
             <div class="meta">${escapeHtml(c.code)} · ${c.total}문제</div>
+            <div class="meta" style="margin-top:1px;">${c.updatedAt? '마지막 동기화: ' + new Date(c.updatedAt).toLocaleString('ko-KR') : '동기화 기록 없음'}</div>
           </div>
           <button class="mini-btn rename-btn" data-code="${escapeHtml(c.code)}" data-name="${escapeHtml(c.name)}">이름변경</button>
           <button class="mini-btn danger delete-btn" data-code="${escapeHtml(c.code)}">삭제</button>
