@@ -1332,24 +1332,41 @@
     const i = Math.min(state.tempIndex, total-1);
     const q = TEMP_QUIZ[i];
     app.innerHTML = `
-      <div class="topbar"><div class="brand">🧪 Temp (임시 테스트)</div><div class="stats-chip">${i+1} / ${total}</div></div>
+      <div class="quiz-header-sticky">
+        <div class="topbar topbar-quiz">
+          <div class="brand">🧪 Temp (임시 테스트)</div>
+          <div class="stats-chip">${i+1} / ${total}</div>
+        </div>
+        <div class="progress-bar-top"><div style="width:${(i)/total*100}%"></div></div>
+      </div>
       <div class="quiz-wrap">
         <div class="quiz-head">
           <div class="crumb"><b>${escapeHtml(q.category1||'')}</b><br>${escapeHtml(q.category2||'')}</div>
         </div>
-        <div class="qcard">
-          <div class="qtext">${escapeHtml(q.question)}</div>
-          <div class="options">
-            ${q.options.map((o,oi)=>`
-              <div class="option${oi+1===q.answer?' correct':''}">
-                <span class="num">${oi+1}</span>${escapeHtml(o)}
-              </div>`).join('')}
+        <div class="quiz-split">
+          <div class="qmain">
+            <div class="qcard">
+              <div class="qtext">${escapeHtml(q.question)}</div>
+            </div>
+            <div class="options">
+              ${q.options.map((o,oi)=>`
+                <div class="option${oi+1===q.answer?' correct':''}">
+                  <span class="num">${oi+1}</span>${escapeHtml(o)}
+                </div>`).join('')}
+            </div>
           </div>
-          <div class="sheet-src" style="margin-top:18px;">${escapeHtml(q.explanation||'')}</div>
-        </div>
-        <div class="nav-row">
-          <button class="nav-btn" id="tempPrevBtn" ${i===0?'disabled':''}>← 이전</button>
-          <button class="nav-btn primary" id="tempNextBtn" ${i===total-1?'disabled':''}>다음 →</button>
+          <div class="qside">
+            <div class="sheet-inline-slot">
+              <div class="sheet" style="position:static;max-width:none;width:100%;margin:0;animation:none;box-shadow:var(--shadow);">
+                <div class="sheet-head ok"><span>정답: ${q.answer}번</span></div>
+                <div class="sheet-body">${escapeHtml(q.explanation||'해설 없음')}</div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-row">
+            <button class="nav-btn" id="tempPrevBtn" ${i===0?'disabled':''}>← 이전</button>
+            <button class="nav-btn primary" id="tempNextBtn" ${i===total-1?'disabled':''}>다음 →</button>
+          </div>
         </div>
       </div>
     `;
