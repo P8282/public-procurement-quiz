@@ -273,7 +273,7 @@
           </div>
           <button class="mini-btn copy-btn" data-code="${escapeHtml(c.code)}">복사</button>
           <button class="mini-btn rename-btn" data-code="${escapeHtml(c.code)}" data-name="${escapeHtml(c.name)}">이름변경</button>
-          <button class="mini-btn danger delete-btn" data-code="${escapeHtml(c.code)}">삭제</button>
+          <button class="mini-btn danger delete-btn" data-code="${escapeHtml(c.code)}" data-name="${escapeHtml(c.name)}">삭제</button>
         </div>
       `).join('');
       document.querySelectorAll('.copy-btn').forEach(btn=>{
