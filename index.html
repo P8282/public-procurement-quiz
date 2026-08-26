@@ -804,6 +804,10 @@
     syncing: false,     // 지금 동기화 요청이 진행 중인지(중복 클릭 방지용, 일시 상태)
     myReports: {},      // 내가 신고한 문제 오류 목록 {신고ID: {chapterKey, questionIndex, questionText, content, createdAt}} (클라우드에서 받아옴)
     bestAnswered: {},    // { chapterKey: 역대 최고 학습완료 수 } - "처음부터 다시 풀기"로 progress가 지워져도 이 값은 안 지워짐(영구 저장)
+    roundArmed: {},      // { chapterKey: true|false } - 이 챕터를 "완주하면 회독수가 올라갈 자격"이 있는지.
+                          // 완주하는 순간 false로 소진되고, "처음부터 다시 풀기"를 눌러야 다시 true로 충전된다.
+                          // 이게 없으면, 이미 완주한 챕터에 문제가 나중에 추가됐을 때 그 몇 문제만 마저 풀어도
+                          // 매번 회독수가 올라가버리는 문제가 생긴다. (영구 저장)
     tempIndex: 0         // 임시 테스트 화면(?temp=1)에서 지금 몇 번째 문제를 보고 있는지 (일시 상태, 저장 안 함)
   };
 
@@ -843,6 +847,10 @@
       const ba = await window.storage.get('best-answered');
       if(ba && ba.value){ state.bestAnswered = JSON.parse(ba.value) || {}; }
     }catch(e){ /* no saved best-answered yet */ }
+    try{
+      const ra = await window.storage.get('round-armed');
+      if(ra && ra.value){ state.roundArmed = JSON.parse(ra.value) || {}; }
+    }catch(e){ /* no saved round-armed yet */ }
     try{
       const ex = await window.storage.get('excluded-wrong');
       if(ex && ex.value){ state.excluded = JSON.parse(ex.value) || {}; }
@@ -901,9 +909,26 @@
   function reviewCount(key){
     return state.reviewCounts[key] || 0;
   }
+  async function saveRoundArmed(){
+    try{
+      await window.storage.set('round-armed', JSON.stringify(state.roundArmed));
+    }catch(e){ /* best effort */ }
+  }
+  // 이 챕터를 완주하면 회독수가 올라갈 자격이 있는지. 한 번도 명시적으로 기록된 적 없으면,
+  // "이 기능 도입 전에 이미 완주했었는지"로 기본값을 판단한다(하위호환 - 이미 완주한 챕터는 기본적으로 자격 소진 상태로 봄).
+  function isRoundArmed(key){
+    if(state.roundArmed[key] !== undefined) return state.roundArmed[key];
+    return reviewCount(key) === 0;
+  }
   function markChapterCompleted(key){
-    state.reviewCounts[key] = reviewCount(key) + 1;
-    saveReviewCounts();
+    // 자격이 있을 때만(=이 챕터를 아직 한 번도 안 끝냈거나, "다시 풀기"로 막 재충전했을 때만) 회독수를 올린다.
+    // 이미 완주해놓은 챕터에 문제가 나중에 추가돼서 그 몇 문제만 마저 푸는 경우는 자격이 소진된 상태라 증가하지 않는다.
+    if(isRoundArmed(key)){
+      state.reviewCounts[key] = reviewCount(key) + 1;
+      saveReviewCounts();
+    }
+    state.roundArmed[key] = false; // 완주했으니 자격 소진 - 다음 완주부터는 "다시 풀기" 전까지 회독 안 늘어남
+    saveRoundArmed();
     syncPush(); // 1회독(챕터 완료) 시점에 체크포인트 저장을 한 번 더 확실히 해둔다.
   }
 
@@ -960,6 +985,7 @@
       wrongMastery: state.wrongMastery,
       myReports: state.myReports,
       bestAnswered: state.bestAnswered,
+      roundArmed: state.roundArmed,
       updatedAt: Date.now()
     };
   }
@@ -972,14 +998,15 @@
     state.wrongMastery = data.wrongMastery || { pool:{}, streak:{} };
     state.myReports = data.myReports || {};
     state.bestAnswered = data.bestAnswered || {};
-    saveProgress(); saveReviewCounts(); saveExcluded(); saveWrongMastery(); saveBestAnswered();
+    state.roundArmed = data.roundArmed || {};
+    saveProgress(); saveReviewCounts(); saveExcluded(); saveWrongMastery(); saveBestAnswered(); saveRoundArmed();
   }
 
   // 두 기록을 문제 단위로 합친다(데이터 손실 방지). 같은 문제를 양쪽 다 풀었으면 로컬(이 기기) 것을 우선한다.
   // - 앱을 열 때마다 자동으로 실행되는 "조용한" 동기화라, 사용자에게 매번 물어보지 않고 안전하게 합치는 방식을 쓴다.
   function mergeProgressData(local, cloud){
     const merged = {
-      progress: {}, reviewCounts: {}, excluded: {}, wrongMastery: { pool:{}, streak:{} }, myReports: {}, bestAnswered: {}
+      progress: {}, reviewCounts: {}, excluded: {}, wrongMastery: { pool:{}, streak:{} }, myReports: {}, bestAnswered: {}, roundArmed: {}
     };
     const chapterKeys = new Set([...Object.keys(local.progress||{}), ...Object.keys(cloud.progress||{})]);
     chapterKeys.forEach(key=>{
@@ -992,6 +1019,15 @@
     const baKeys = new Set([...Object.keys(local.bestAnswered||{}), ...Object.keys(cloud.bestAnswered||{})]);
     baKeys.forEach(key=>{
       merged.bestAnswered[key] = Math.max((local.bestAnswered||{})[key]||0, (cloud.bestAnswered||{})[key]||0);
+    });
+    // 회독 자격: 어느 한쪽이라도 "소진(false)"이면 소진된 것으로 본다(이미 실제로 완주가 일어났다는 뜻이라 안전 우선).
+    // 그게 아니고 어느 한쪽이 명시적으로 true(막 재충전됨)면 true. 둘 다 기록이 없으면 그대로 비워둬서
+    // isRoundArmed()의 기본 판단(회독수 0일 때만 자격 있음)에 맡긴다.
+    const raKeys = new Set([...Object.keys(local.roundArmed||{}), ...Object.keys(cloud.roundArmed||{})]);
+    raKeys.forEach(key=>{
+      const lv = (local.roundArmed||{})[key], cv = (cloud.roundArmed||{})[key];
+      if(lv === false || cv === false) merged.roundArmed[key] = false;
+      else if(lv === true || cv === true) merged.roundArmed[key] = true;
     });
     const exKeys = new Set([...Object.keys(local.excluded||{}), ...Object.keys(cloud.excluded||{})]);
     exKeys.forEach(key=>{
@@ -1835,6 +1871,8 @@
         filtered.forEach(i=>{ if(state.progress[key]) delete state.progress[key][i]; });
       } else {
         delete state.progress[key];
+        state.roundArmed[key] = true; // 챕터를 진짜 처음부터 다시 시작하는 것이므로 회독 자격을 재충전한다.
+        saveRoundArmed();
       }
       saveProgress();
       openChapter(key, false, filtered, filterKind);
