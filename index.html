@@ -636,6 +636,95 @@
   // 시트 형식(고정, 열 순서로 읽으므로 헤더 문구 자체는 안 봄):
   //   1행 헤더(번호,세부항목,세세항목,문제 내용,보기①~④,정답 번호,해설 및 오답노트,출처,구분) → 2행부터 바로 데이터
   //   A:번호  B:세부항목  C:세세항목  D:문제 내용  E~H:보기①~④  I:정답 번호(1~4)  J:해설 및 오답노트  K:출처  L:구분(미사용)
+  // ====== Cloudflare Worker 기반 배치 로딩 (자료 보호용, 선택적) ======
+  // CF_API_BASE가 자리표값 그대로면 이 기능은 조용히 비활성화되고, 기존 구글시트 방식이 그대로 사용된다.
+  // 실제 Worker를 배포한 뒤 아래 주소를 교체하면, "앱 켜자마자 935문제 전부 받기" 대신
+  // "챕터를 열 때 5문제씩만 받고, 진도 나갈 때마다 다음 5개를 미리 받아두는" 방식으로 전환된다.
+  //
+  // Worker가 구현해야 하는 API 계약(가정):
+  //   GET {CF_API_BASE}/meta?code={동기화코드}
+  //     -> { "1-1_공공조달개요": { count: 119, categories: [["세부1","세세1"], ["세부1","세세2"], ...] }, ... }
+  //        (문제 내용 없이 "개수"와 "인덱스별 세부/세세항목"만 - 목차 표시용, 노출 최소화)
+  //   GET {CF_API_BASE}/questions?chapter={키}&offset={N}&count={M}&code={동기화코드}
+  //     -> [ {question, category1, category2, options, answer, explanation, source, rev}, ... ] (M개, 인증 필요)
+  const CF_API_BASE = "https://quiz-api.puhahal.workers.dev";
+  const CF_BATCH_SIZE = 5;
+  function cfEnabled(){
+    return !!CF_API_BASE && CF_API_BASE.indexOf('여기에') !== 0;
+  }
+  let CF_META = {};              // { chapterKey: { count, categories: [[c1,c2], ...] } }
+  const CF_LOADED = {};          // { chapterKey: Set(불러온 인덱스) } - 중복 요청 방지용(일시 상태)
+  const CF_PENDING = {};         // { chapterKey: { batchStartIndex: Promise } } - 동시에 같은 배치를 두 번 요청하지 않기 위함
+
+  async function cfFetchWithRetry(url, tries){
+    tries = tries || 2;
+    for(let attempt=0; attempt<=tries; attempt++){
+      try{
+        const res = await fetch(url, {cache:'no-store'});
+        if(!res.ok) throw new Error('HTTP ' + res.status);
+        return await res.json();
+      }catch(e){
+        if(attempt === tries) throw e;
+        await new Promise(r=> setTimeout(r, 300 * (attempt+1))); // 살짝 텀을 두고 재시도
+      }
+    }
+  }
+
+  // 목차 표시용 가벼운 메타데이터(문제 내용 없이 개수+분류만)를 불러온다. 앱 시작 시 한 번 호출.
+  async function cfLoadMeta(){
+    if(!cfEnabled() || !state.syncCode) return;
+    try{
+      CF_META = await cfFetchWithRetry(`${CF_API_BASE}/meta?code=${encodeURIComponent(state.syncCode)}`);
+      // 메타 기준으로 QUIZ[key]를 정확한 길이의 빈 배열(구멍 있는 상태)로 미리 잡아둔다.
+      Object.keys(CF_META).forEach(key=>{
+        QUIZ[key] = new Array(CF_META[key].count);
+        CF_LOADED[key] = new Set();
+        CF_PENDING[key] = {};
+      });
+    }catch(e){ console.warn('[Cloudflare] 메타 로드 실패:', e); }
+  }
+
+  // 특정 챕터의 offset부터 CF_BATCH_SIZE개를 받아와 QUIZ[key]의 그 구간을 채운다.
+  async function cfFetchBatch(key, offset){
+    if(!cfEnabled()) return;
+    const batchStart = Math.floor(offset / CF_BATCH_SIZE) * CF_BATCH_SIZE; // 배치 경계로 정렬
+    if(CF_PENDING[key][batchStart]) return CF_PENDING[key][batchStart]; // 이미 요청 중이면 그 요청을 같이 기다림
+    const promise = (async ()=>{
+      try{
+        const url = `${CF_API_BASE}/questions?chapter=${encodeURIComponent(key)}&offset=${batchStart}&count=${CF_BATCH_SIZE}&code=${encodeURIComponent(state.syncCode)}`;
+        const items = await cfFetchWithRetry(url);
+        items.forEach((item, i)=>{
+          QUIZ[key][batchStart + i] = item;
+          CF_LOADED[key].add(batchStart + i);
+        });
+        invalidateChangedAnswers(key); // 방금 받은 문제들 중 개정일자가 바뀐 게 있으면 조용히 초기화
+      }catch(e){
+        console.warn('[Cloudflare] 배치 로드 실패:', key, batchStart, e);
+      }finally{
+        delete CF_PENDING[key][batchStart];
+      }
+    })();
+    CF_PENDING[key][batchStart] = promise;
+    return promise;
+  }
+
+  // 특정 인덱스가 아직 안 왔으면 받아올 때까지 기다린다. 이미 있으면 즉시 반환.
+  // 받아온 김에, 다음 배치도 미리(백그라운드로, 기다리지 않고) 당겨놓는다.
+  async function cfEnsureLoaded(key, index){
+    if(!cfEnabled()) return;
+    if(!CF_LOADED[key] || !CF_LOADED[key].has(index)){
+      await cfFetchBatch(key, index);
+    }
+    // 프리페치: 다음 배치를 미리 백그라운드로 받아둔다(실패해도 나중에 필요할 때 다시 시도되므로 무시).
+    const meta = CF_META[key];
+    if(meta){
+      const nextBatchStart = (Math.floor(index / CF_BATCH_SIZE) + 1) * CF_BATCH_SIZE;
+      if(nextBatchStart < meta.count && (!CF_LOADED[key] || !CF_LOADED[key].has(nextBatchStart))){
+        cfFetchBatch(key, nextBatchStart); // await 안 함 - 백그라운드
+      }
+    }
+  }
+
   const SHEET_CSV_URLS = {
     "1-1_공공조달개요": "https://docs.google.com/spreadsheets/d/16U3qDyhbrGmIYDL38iB4Dcm-HPw0Q5aPy3KH1eFu6tU/gviz/tq?tqx=out:csv&sheet=1-1_%EA%B3%B5%EA%B3%B5%EC%A1%B0%EB%8B%AC%EA%B0%9C%EC%9A%94",
     "1-2_원칙및방법": "https://docs.google.com/spreadsheets/d/16U3qDyhbrGmIYDL38iB4Dcm-HPw0Q5aPy3KH1eFu6tU/gviz/tq?tqx=out:csv&sheet=1-2_%EC%9B%90%EC%B9%99%EB%B0%8F%EB%B0%A9%EB%B2%95",
@@ -694,7 +783,7 @@
   // 실제 CSV 구조: 0행(헤더 1줄, A열엔 시트 제목이 병합되어 같이 붙어나오지만 위치만 보므로 무해함) → 1행부터 바로 데이터.
   // 헤더 문구가 시트마다 살짝 달라도(예: 공백 차이) 깨지지 않도록 이름이 아닌 '열 위치'로 읽는다.
   const DATA_START_ROW = 1; // 0-based 인덱스. 1 = 2번째 행(헤더 다음)부터 데이터.
-  const COL = { num:0, c1:1, c2:2, q:3, o1:4, o2:5, o3:6, o4:7, ans:8, exp:9, src:10 };
+  const COL = { num:0, c1:1, c2:2, q:3, o1:4, o2:5, o3:6, o4:7, ans:8, exp:9, src:10, rev:11 };
 
   function csvRowsToItems(rows){
     if(!rows.length) return null;
@@ -710,7 +799,8 @@
         options: [row[COL.o1], row[COL.o2], row[COL.o3], row[COL.o4]].map(o=>(o||'').trim()),
         answer: Number(row[COL.ans]) || 1,
         explanation: (row[COL.exp]||'').trim(),
-        source: (row[COL.src]||'').trim() || null
+        source: (row[COL.src]||'').trim() || null,
+        rev: (row[COL.rev]||'').trim() || null // L열(구분): 문제를 유의미하게 수정했을 때만 채우는 개정일자(예: "260827"). 비어있으면 null.
       });
     }
     return items;
@@ -718,6 +808,33 @@
 
   // 챕터마다 개별 CSV를 불러온다. 챕터별로 성공/실패가 독립적이며,
   // 특정 챕터 요청이 실패하면 그 챕터에 한해 이전 캐시(오프라인) → 그것도 없으면 내장 데이터로 대체된다.
+
+  // 구글시트 L열(구분)에 개정일자(예: "260827")가 채워진 문제 중, 사용자가 답했을 때와 지금 개정일자가
+  // 다른 문제는 "안 푼 것"으로 조용히 되돌린다. 별도 안내 없이 진행률/오답노트 기록만 지운다.
+  // (개정일자가 비어있는 문제는 대상이 아니다 - 평소 오탈자 수정 등은 초기화를 안 원할 수 있어서,
+  //  작성자가 "이건 다시 풀어봐야 함"이라고 명시적으로 표시했을 때만 작동)
+  function invalidateChangedAnswers(key){
+    const list = QUIZ[key];
+    if(!list || !state.progress[key]) return;
+    let changed = false;
+    Object.keys(state.progress[key]).forEach(idxStr=>{
+      const idx = Number(idxStr);
+      const q = list[idx];
+      const rec = state.progress[key][idx];
+      if(!q || !rec) return;
+      const currentRev = q.rev || null;
+      const answeredRev = rec.rev || null;
+      if(currentRev && currentRev !== answeredRev){
+        delete state.progress[key][idx];
+        // 오답노트 대상에 들어가 있었다면 그것도 같이 정리(더 이상 유효한 기록이 아니므로)
+        if(state.wrongMastery.pool[key]) delete state.wrongMastery.pool[key][idx];
+        if(state.wrongMastery.streak[key]) delete state.wrongMastery.streak[key][idx];
+        changed = true;
+      }
+    });
+    if(changed){ saveProgress(); saveWrongMastery(); }
+  }
+
   async function loadRemoteQuiz(){
     const entries = Object.entries(SHEET_CSV_URLS).filter(([,url])=>url);
     if(!entries.length) return; // 설정된 링크가 하나도 없으면 내장 데이터만 사용
@@ -731,6 +848,7 @@
         if(items && items.length){
           QUIZ[key] = items;
           delete state.remoteErrors[key];
+          invalidateChangedAnswers(key);
           try{ await window.storage.set('remote-quiz-cache:'+key, JSON.stringify(items), false); }
           catch(e2){ console.warn('[구글시트] 캐시 저장 실패:', key, e2); }
           return;
@@ -744,6 +862,7 @@
         if(cached && cached.value){
           QUIZ[key] = JSON.parse(cached.value);
           delete state.remoteErrors[key];
+          invalidateChangedAnswers(key);
         } else {
           state.remoteErrors[key] = true; // 실시간 로드도 캐시도 없음 → 내장 데이터 사용 중
         }
@@ -808,7 +927,8 @@
                           // 완주하는 순간 false로 소진되고, "처음부터 다시 풀기"를 눌러야 다시 true로 충전된다.
                           // 이게 없으면, 이미 완주한 챕터에 문제가 나중에 추가됐을 때 그 몇 문제만 마저 풀어도
                           // 매번 회독수가 올라가버리는 문제가 생긴다. (영구 저장)
-    tempIndex: 0         // 임시 테스트 화면(?temp=1)에서 지금 몇 번째 문제를 보고 있는지 (일시 상태, 저장 안 함)
+    tempIndex: 0,        // 임시 테스트 화면(?temp=1)에서 지금 몇 번째 문제를 보고 있는지 (일시 상태, 저장 안 함)
+    dataSource: null     // 'cloudflare' | 'sheets' | 'sheets-fallback' - 지금 문제를 어디서 받아왔는지(홈 화면 표시용, 일시 상태)
   };
 
   // 앱 실행 시 저장소가 실제로 쓰기/읽기 가능한지 스스로 테스트한다.
@@ -826,7 +946,21 @@
 
   // ---------- persistence ----------
   async function loadProgress(){
-    await loadRemoteQuiz();
+    let cfOk = false;
+    if(cfEnabled()){
+      await cfLoadMeta(); // Cloudflare 모드: 문제 내용은 미리 안 받고, 개수/분류 메타만 먼저 받아둔다.
+      const totalFromCf = Object.values(CF_META).reduce((sum,m)=> sum + (m.count||0), 0);
+      cfOk = totalFromCf > 0; // 메타 요청이 실패했거나(네트워크 오류 등), Worker는 응답했지만 KV에 데이터가 없으면 여기서 0이 됨
+    }
+    if(!cfOk){
+      // Cloudflare를 안 쓰거나(기본), 쓰려고 했는데 뭔가 문제가 있었으면(네트워크·설정 미비 등)
+      // 학습이 아예 막히지 않도록 안전하게 구글시트 방식으로 자동 전환한다.
+      if(cfEnabled()) console.warn('[Cloudflare] 문제를 하나도 못 받아와서 구글시트 방식으로 안전하게 전환합니다.');
+      await loadRemoteQuiz();
+      state.dataSource = cfEnabled() ? 'sheets-fallback' : 'sheets'; // 홈 화면 상단 표시용
+    } else {
+      state.dataSource = 'cloudflare';
+    }
     await testStorage();
     // 구글시트로 챕터별 문제 수가 바뀌었을 수 있으므로 여기서 다시 집계한다.
     TOTAL_ALL = allChapterKeys().reduce((sum,k)=> sum + (QUIZ[k] ? QUIZ[k].length : 0), 0);
@@ -1267,19 +1401,32 @@
   // 반환 형식: [{ num:'1', name:'공공조달의 정의 및 목적', subs:[{ num:'1-1', name:'공공조달의 정의', total, answered }, ...] }, ...]
   function getChapterToc(key){
     const blueprint = TOC_BLUEPRINT[key] || [];
-    const list = QUIZ[key] || [];
 
     // 문제들을 (세부항목, 세세항목) 이름 기준으로 미리 묶어둔다. 원본에 붙은 "1. " 같은 번호는
     // 출제기준 쪽과 표기가 다를 수 있어 매칭에서 제외하고, 순수 이름으로만 비교한다.
     const qMap = {}; // "세부항목||세세항목" -> {total, answered}
-    list.forEach((q, i)=>{
-      const c1 = (q.category1 || '').trim().replace(/^\d+\.\s*/, '') || '(세부항목 없음)';
-      const c2 = (q.category2 || '').trim().replace(/^\d+\.\s*/, '') || '(세세항목 없음)';
-      const mk = c1 + '||' + c2;
-      if(!qMap[mk]) qMap[mk] = { total: 0, answered: 0 };
-      qMap[mk].total++;
-      if(state.progress[key] && state.progress[key][i]) qMap[mk].answered++;
-    });
+    if(cfEnabled() && CF_META[key]){
+      // Cloudflare 모드: 문제 내용을 안 받아도 되는 가벼운 분류 메타데이터로 집계한다.
+      // (QUIZ[key]를 직접 훑으면 아직 안 받아온 구멍이 있는 배열이라 forEach가 그 구멍들을 건너뛰어 버린다)
+      CF_META[key].categories.forEach((cats, i)=>{
+        const c1 = (cats[0] || '').trim().replace(/^\d+\.\s*/, '') || '(세부항목 없음)';
+        const c2 = (cats[1] || '').trim().replace(/^\d+\.\s*/, '') || '(세세항목 없음)';
+        const mk = c1 + '||' + c2;
+        if(!qMap[mk]) qMap[mk] = { total: 0, answered: 0 };
+        qMap[mk].total++;
+        if(state.progress[key] && state.progress[key][i]) qMap[mk].answered++;
+      });
+    } else {
+      const list = QUIZ[key] || [];
+      list.forEach((q, i)=>{
+        const c1 = (q.category1 || '').trim().replace(/^\d+\.\s*/, '') || '(세부항목 없음)';
+        const c2 = (q.category2 || '').trim().replace(/^\d+\.\s*/, '') || '(세세항목 없음)';
+        const mk = c1 + '||' + c2;
+        if(!qMap[mk]) qMap[mk] = { total: 0, answered: 0 };
+        qMap[mk].total++;
+        if(state.progress[key] && state.progress[key][i]) qMap[mk].answered++;
+      });
+    }
 
     return blueprint.map((g, gi)=>{
       const subs = g.subs.map((subName, si)=>{
@@ -1300,6 +1447,12 @@
 
   function allChapterKeys(){
     return META.subjects.reduce((acc, subj)=>acc.concat(subj.chapters), []);
+  }
+
+  // QUIZ[key]의 0..length-1 전체 인덱스를 만든다. QUIZ[key].map((_,i)=>i)와 달리,
+  // 아직 안 받아온 구멍(hole)이 있는 배열(Cloudflare 배치 로딩 중)에서도 구멍을 건너뛰지 않고 전부 포함한다.
+  function allIndicesOf(key){
+    return Array.from({length: (QUIZ[key]||[]).length}, (_,i)=>i);
   }
 
   // 챕터키의 "과목 안에서의" 순번(1부터 시작). 과목이 바뀌면 다시 1부터 매긴다.
@@ -1488,9 +1641,15 @@
         ⚠️ <b>이 브라우저에서는 학습 기록이 저장되지 않습니다.</b><br>
         사파리 프라이빗(비공개) 브라우징 모드이거나, 설정에서 웹사이트 데이터 저장이 차단되어 있을 수 있어요. 일반 브라우징 모드로 열어주세요.
       </div>` : ''}
+      ${state.dataSource === 'sheets-fallback'? `
+      <div style="background:var(--seal-tint);color:var(--seal);border-bottom:1px solid #E9C2BC;padding:10px 18px;font-size:12.5px;line-height:1.6;">
+        ⚠️ <b>보호된 서버(Cloudflare)에 연결하지 못해 구글시트로 대체됐습니다.</b><br>
+        학습은 정상적으로 가능합니다. 계속 뜨면 관리자에게 알려주세요.
+      </div>` : ''}
       ${syncEnabled() && state.syncCode? `
       <div class="sync-bar">
         <span class="sync-code-chip">✅ 연결됨 · <b>${escapeHtml(state.syncCode)}</b></span>
+        ${state.dataSource? `<span class="sync-code-chip" style="font-size:11px;">${state.dataSource==='cloudflare' ? '🔒 보호된 서버' : '📊 구글시트'}</span>` : ''}
         <button id="syncCopyBtn" class="sync-mini-btn">복사</button>
         <button id="syncLogoutBtn" class="sync-mini-btn ghost">로그아웃</button>
       </div>` : ''}
@@ -1574,7 +1733,7 @@
     state.chapter = key;
     state.filterIndices = filterIndices || null;
     state.filterKind = state.filterIndices ? (filterKind || null) : null;
-    const indices = state.filterIndices || QUIZ[key].map((_,i)=>i);
+    const indices = state.filterIndices || allIndicesOf(key);
     if(resume){
       let pos = 0;
       for(let p=0; p<indices.length; p++){
@@ -1622,15 +1781,23 @@
   // 여기서 푼 답은 그 챕터의 진짜 진행률(state.progress[key])에 그대로 기록·누적된다.
   function startSubTopic(key, topicName, level){
     const indices = [];
-    (QUIZ[key] || []).forEach((q, i)=>{
-      if(level === 'group'){
-        const c1 = (q.category1 || '').trim().replace(/^\d+\.\s*/, '') || '(세부항목 없음)';
-        if(c1 === topicName) indices.push(i);
-      } else {
-        const c2 = (q.category2 || '').trim().replace(/^\d+\.\s*/, '') || '(세세항목 없음)';
-        if(c2 === topicName) indices.push(i);
-      }
-    });
+    if(cfEnabled() && CF_META[key]){
+      CF_META[key].categories.forEach((cats, i)=>{
+        const c1 = (cats[0] || '').trim().replace(/^\d+\.\s*/, '') || '(세부항목 없음)';
+        const c2 = (cats[1] || '').trim().replace(/^\d+\.\s*/, '') || '(세세항목 없음)';
+        if(level === 'group' ? c1===topicName : c2===topicName) indices.push(i);
+      });
+    } else {
+      (QUIZ[key] || []).forEach((q, i)=>{
+        if(level === 'group'){
+          const c1 = (q.category1 || '').trim().replace(/^\d+\.\s*/, '') || '(세부항목 없음)';
+          if(c1 === topicName) indices.push(i);
+        } else {
+          const c2 = (q.category2 || '').trim().replace(/^\d+\.\s*/, '') || '(세세항목 없음)';
+          if(c2 === topicName) indices.push(i);
+        }
+      });
+    }
     if(!indices.length){
       alert('이 항목은 아직 등록된 문제가 없습니다.\n출제기준에는 있지만 구글시트에 문제가 추가되지 않은 상태예요.');
       return;
@@ -1642,10 +1809,26 @@
     const key = state.chapter;
     // filterIndices가 있으면 세세항목 등 '부분 학습' 세션이다. state.index는 항상 QUIZ[key] 안의 진짜 인덱스이고,
     // pos는 현재 세션(전체 또는 필터된 목록) 안에서의 표시 위치(1/N, 진행바 등)이다.
-    const indices = state.filterIndices || QUIZ[key].map((_,i)=>i);
+    const indices = state.filterIndices || allIndicesOf(key);
     const idx = state.index; // 진짜 배열 인덱스 (진행률 저장 키로 사용)
     const pos = indices.indexOf(idx); // 이 세션에서의 표시 순번
     const q = QUIZ[key][idx];
+
+    // Cloudflare 배치 로딩 모드에서, 이 문제가 아직 안 왔으면(구멍) 잠깐 로딩 화면을 보여주고
+    // 받아오는 대로 자동으로 다시 그린다. 일반 구글시트 모드에서는 항상 이미 다 있어서 여기 안 걸린다.
+    if(!q){
+      app.innerHTML = `
+        <div class="topbar"><div class="brand">문제를 불러오는 중...</div></div>
+        <div style="padding:60px 20px; text-align:center; color:var(--ink-soft); font-size:14px;">
+          ⏳ 잠시만 기다려주세요<br>
+          <button id="loadingHomeBtn" class="nav-btn" style="width:auto;margin-top:20px;padding:10px 20px;">홈으로 돌아가기</button>
+        </div>
+      `;
+      document.getElementById('loadingHomeBtn').onclick = ()=>{ state.view='home'; render(); };
+      cfEnsureLoaded(key, idx).then(()=>{ if(state.view==='quiz' && state.chapter===key && state.index===idx) render(); });
+      return;
+    }
+
     const saved = state.progress[key] && state.progress[key][idx];
     const total = indices.length;
     const os = overallStats();
@@ -1790,7 +1973,7 @@
   // newPos는 '이 세션 안에서의 표시 순번'이다(필터 세션이면 필터 목록 안 순번, 아니면 챕터 내 순번).
   function goto(newPos){
     const key = state.chapter;
-    const indices = state.filterIndices || QUIZ[key].map((_,i)=>i);
+    const indices = state.filterIndices || allIndicesOf(key);
     if(newPos<0 || newPos>=indices.length) return;
     state.index = indices[newPos];
     state.sheetOpen = false; // 문제를 옮기면 해설 시트는 닫는다
@@ -1802,7 +1985,7 @@
     const q = QUIZ[key][idx];
     const correct = (i === q.answer-1);
     if(!state.progress[key]) state.progress[key] = {};
-    state.progress[key][idx] = {selected:i, correct};
+    state.progress[key][idx] = {selected:i, correct, rev: q.rev || null};
 
     // 오답노트 숙달도 갱신: 틀리면 풀에 등록하고 스트릭 리셋, 이미 풀에 있는 문제를 맞히면 스트릭 +1.
     // (어느 화면에서 풀든 동일하게 적용 — 전체 챕터 풀이 중에 맞혀도 숙달도에 반영된다)
@@ -1911,7 +2094,7 @@
     }
     if(state.view!=='quiz') return;
     const key = state.chapter, idx = state.index;
-    const indices = state.filterIndices || QUIZ[key].map((_,i)=>i);
+    const indices = state.filterIndices || allIndicesOf(key);
     const pos = indices.indexOf(idx);
     const total = indices.length;
     const saved = state.progress[key] && state.progress[key][idx];
