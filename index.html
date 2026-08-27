@@ -1872,11 +1872,30 @@
     document.getElementById('quizTopbar').onclick = ()=>{ state.view='home'; saveProgress(); render(); };
 
     document.getElementById('prevBtn').onclick = ()=> goto(pos-1);
-    document.getElementById('nextBtn').onclick = ()=> {
-      if(!saved) return;
-      if(pos===total-1){ if(!isFiltered) markChapterCompleted(key); state.view='complete'; render(); }
-      else goto(pos+1);
+
+    // "다음"으로 이동할 때 이미 푼 문제는 건너뛰고, 처음 만나는 "안 푼 문제"로 간다.
+    // 남은 문제가 전부 이미 풀려있으면(더 건너뛸 데가 없으면) 챕터 완료 화면으로 넘어간다.
+    // 세세항목을 먼저 풀어서 순서가 뒤섞여 있거나(중간중간 이미 푼 문제), 문제 개정으로 기록이
+    // 초기화된 경우에도 "이어서 풀기"가 매번 안 푼 것만 보여주도록 하기 위함.
+    const goToNextUnanswered = ()=>{
+      state.sheetOpen = false;
+      let p = pos + 1;
+      while(p < total){
+        const realIdx = indices[p];
+        const answered = state.progress[key] && state.progress[key][realIdx];
+        if(!answered) break;
+        p++;
+      }
+      if(p >= total){
+        if(!isFiltered) markChapterCompleted(key);
+        state.view = 'complete';
+        render();
+      } else {
+        goto(p);
+      }
     };
+
+    document.getElementById('nextBtn').onclick = ()=> { if(saved) goToNextUnanswered(); };
     if(!saved){
       document.querySelectorAll('.option.selectable').forEach(el=>{
         el.onclick = ()=> selectAnswer(Number(el.dataset.i));
@@ -1884,11 +1903,7 @@
     }
 
     // ----- 해설 시트 관련 -----
-    const goNext = ()=>{
-      state.sheetOpen = false;
-      if(pos===total-1){ if(!isFiltered) markChapterCompleted(key); state.view='complete'; render(); }
-      else goto(pos+1);
-    };
+    const goNext = goToNextUnanswered;
     const showBtn = document.getElementById('showSheetBtn');
     if(showBtn) showBtn.onclick = ()=>{ state.sheetOpen = true; render(true); };
     const sheetNext = document.getElementById('sheetNext');
@@ -2056,8 +2071,20 @@
       // preventDefault로 그 기본 동작을 막아 여기 로직만 정확히 한 번 실행되게 한다.
       e.preventDefault();
       state.sheetOpen = false;
-      if(pos===total-1){ if(!state.filterIndices) markChapterCompleted(key); state.view='complete'; render(); }
-      else goto(pos+1);
+      // 이미 푼 문제는 건너뛰고 처음 만나는 안 푼 문제로 이동 (nextBtn 등과 동일한 규칙).
+      let p = pos + 1;
+      while(p < total){
+        const realIdx = indices[p];
+        const answered = state.progress[key] && state.progress[key][realIdx];
+        if(!answered) break;
+        p++;
+      }
+      if(p >= total){
+        if(!state.filterIndices) markChapterCompleted(key);
+        state.view='complete'; render();
+      } else {
+        goto(p);
+      }
     } else if(e.key==='ArrowLeft'){
       goto(pos-1);
     }
