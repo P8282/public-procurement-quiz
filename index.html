@@ -1154,6 +1154,15 @@
   // 동기화 연결을 끊는다("로그아웃"에 해당). 클라우드의 기록은 그대로 남아있고, 이 기기에서만 연결이 해제된다.
   async function stopSync(){
     if(!confirm('동기화를 해제할까요?\n이 기기의 학습기록은 그대로 남아있고, 코드를 다시 입력하면 언제든 재연결할 수 있습니다.')) return;
+    // 이 기기 항목을 devices 맵에서 삭제해서, 기기 수 제한(5대)에 자리를 비워준다.
+    if(syncEnabled() && state.syncCode){
+      try{
+        const devId = await getDeviceId();
+        await syncDb.collection('syncCodes').doc(state.syncCode).update({
+          [`devices.${devId}`]: firebase.firestore.FieldValue.delete()
+        });
+      }catch(e){ /* 실패해도 로그아웃 자체는 진행 - 다음에 다시 시도될 수 있음 */ }
+    }
     state.syncCode = null;
     await window.storage.set('sync-code', '');
     render();
@@ -2146,7 +2155,7 @@
         <div style="max-width:280px;margin:0 auto;">
           <input id="gateCodeInput" type="text" autocapitalize="characters" placeholder="예: A7K9-2XQP"
             style="width:100%;padding:13px 14px;border:1.4px solid var(--line-strong);border-radius:11px;font-size:15px;margin-bottom:10px;box-sizing:border-box;text-align:center;letter-spacing:.05em;">
-          ${errorMsg? `<div style="color:var(--wrong);font-size:12.5px;margin-bottom:10px;">${escapeHtml(errorMsg)}</div>` : ''}
+          ${errorMsg? `<div style="color:var(--wrong);font-size:12.5px;margin-bottom:10px;line-height:1.6;">${escapeHtml(errorMsg).replace(/\n/g,'<br>')}</div>` : ''}
           <button class="btn btn-primary" id="gateSubmit" style="width:100%;">시작하기</button>
         </div>
       </div>
@@ -2162,8 +2171,25 @@
           renderSyncGate('존재하지 않는 코드입니다. 코드를 다시 확인해주세요.');
           return;
         }
+        const cloudData = docSnap.data();
+        // 기기 수 제한(최대 5대): 이 기기가 이미 연결된 적 있는 기기면 몇 대든 통과, 완전히 새 기기인데
+        // 이미 5대가 연결돼 있으면 막는다. (관리자는 이 코드 게이트 자체를 안 거치므로 자동으로 제외됨)
+        const devices = cloudData.devices || {};
+        const deviceIds = Object.keys(devices);
+        const thisDeviceId = await getDeviceId();
+        const isKnownDevice = deviceIds.includes(thisDeviceId);
+        if(!isKnownDevice && deviceIds.length >= 5){
+          const typeCounts = {};
+          deviceIds.forEach(id=>{ const t = devices[id].type || '기타'; typeCounts[t] = (typeCounts[t]||0)+1; });
+          const summary = Object.entries(typeCounts).map(([t,c])=>`${t} ${c}대`).join(' · ');
+          renderSyncGate(
+            `이 코드는 이미 최대 5대까지 기기가 연결되어 있습니다 (${summary}).\n` +
+            `기존 기기에서 "로그아웃"을 먼저 해주세요. 계속 문제가 있으면 관리자에게 문의해주세요.`
+          );
+          return;
+        }
         // 이 기기에 혹시 남아있던 기록(예: 예전에 자유롭게 쓰던 시절 기록)이 있다면 손실 없이 합친다.
-        const merged = mergeProgressData(collectLocalData(), docSnap.data());
+        const merged = mergeProgressData(collectLocalData(), cloudData);
         applyCloudData(merged);
         state.syncCode = val;
         await window.storage.set('sync-code', val);
