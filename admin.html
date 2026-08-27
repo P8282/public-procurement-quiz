@@ -101,12 +101,21 @@
     return Object.values(data.progress||{}).reduce((sum,ch)=> sum + Object.keys(ch).length, 0);
   }
 
+  // Firestore 규칙에서 "새 코드 생성"을 이 토큰이 있을 때만 허용하도록 막아뒀다(무단 코드 자체발급 방지).
+  // 생성 직후 바로 이 필드를 지워서, 이후 누가 조회(read)해도 토큰 값 자체는 안 보이게 한다.
+  const CREATE_TOKEN = "SC-9f2b7e4a1d6c8830-create";
+
   async function createCode(name){
     const code = generateSyncCode();
     await db.collection('syncCodes').doc(code).set({
       name: name || '',
       progress: {}, reviewCounts: {}, excluded: {}, wrongMastery: { pool:{}, streak:{} },
-      updatedAt: Date.now(), createdByAdmin: true
+      updatedAt: Date.now(), createdByAdmin: true,
+      adminToken: CREATE_TOKEN // 이 필드가 있어야 Firestore 규칙상 생성이 허용됨
+    });
+    // 생성 직후 토큰 필드는 즉시 제거(문서엔 안 남기고, 최초 1회 생성 검증용으로만 사용).
+    await db.collection('syncCodes').doc(code).update({
+      adminToken: firebase.firestore.FieldValue.delete()
     });
     return code;
   }
