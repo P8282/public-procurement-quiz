@@ -875,7 +875,9 @@
                           // 이게 없으면, 이미 완주한 챕터에 문제가 나중에 추가됐을 때 그 몇 문제만 마저 풀어도
                           // 매번 회독수가 올라가버리는 문제가 생긴다. (영구 저장)
     tempIndex: 0,        // 임시 테스트 화면(?temp=1)에서 지금 몇 번째 문제를 보고 있는지 (일시 상태, 저장 안 함)
-    dataSource: null     // 'cloudflare' | 'error' - 지금 문제를 정상적으로 받아왔는지(홈 화면 표시용, 일시 상태)
+    dataSource: null,    // 'cloudflare' | 'error' - 지금 문제를 정상적으로 받아왔는지(홈 화면 표시용, 일시 상태)
+    questionReviewCounts: {} // { chapterKey: { questionIndex: 누적 풀이횟수 } } - "처음부터 다시 풀기"를 해도 안 지워지는
+                              // 문제별 누적 풀이 횟수. 답을 고를 때마다(재도전 포함) +1. (영구 저장)
   };
 
   // 앱 실행 시 저장소가 실제로 쓰기/읽기 가능한지 스스로 테스트한다.
@@ -934,6 +936,10 @@
       const ra = await window.storage.get('round-armed');
       if(ra && ra.value){ state.roundArmed = JSON.parse(ra.value) || {}; }
     }catch(e){ /* no saved round-armed yet */ }
+    try{
+      const qrc = await window.storage.get('question-review-counts');
+      if(qrc && qrc.value){ state.questionReviewCounts = JSON.parse(qrc.value) || {}; }
+    }catch(e){ /* no saved question-review-counts yet */ }
     try{
       const ex = await window.storage.get('excluded-wrong');
       if(ex && ex.value){ state.excluded = JSON.parse(ex.value) || {}; }
@@ -995,6 +1001,11 @@
   async function saveRoundArmed(){
     try{
       await window.storage.set('round-armed', JSON.stringify(state.roundArmed));
+    }catch(e){ /* best effort */ }
+  }
+  async function saveQuestionReviewCounts(){
+    try{
+      await window.storage.set('question-review-counts', JSON.stringify(state.questionReviewCounts));
     }catch(e){ /* best effort */ }
   }
   // 이 챕터를 완주하면 회독수가 올라갈 자격이 있는지. 한 번도 명시적으로 기록된 적 없으면,
@@ -1069,6 +1080,7 @@
       myReports: state.myReports,
       bestAnswered: state.bestAnswered,
       roundArmed: state.roundArmed,
+      questionReviewCounts: state.questionReviewCounts,
       updatedAt: Date.now()
     };
   }
@@ -1082,14 +1094,15 @@
     state.myReports = data.myReports || {};
     state.bestAnswered = data.bestAnswered || {};
     state.roundArmed = data.roundArmed || {};
-    saveProgress(); saveReviewCounts(); saveExcluded(); saveWrongMastery(); saveBestAnswered(); saveRoundArmed();
+    state.questionReviewCounts = data.questionReviewCounts || {};
+    saveProgress(); saveReviewCounts(); saveExcluded(); saveWrongMastery(); saveBestAnswered(); saveRoundArmed(); saveQuestionReviewCounts();
   }
 
   // 두 기록을 문제 단위로 합친다(데이터 손실 방지). 같은 문제를 양쪽 다 풀었으면 로컬(이 기기) 것을 우선한다.
   // - 앱을 열 때마다 자동으로 실행되는 "조용한" 동기화라, 사용자에게 매번 물어보지 않고 안전하게 합치는 방식을 쓴다.
   function mergeProgressData(local, cloud){
     const merged = {
-      progress: {}, reviewCounts: {}, excluded: {}, wrongMastery: { pool:{}, streak:{} }, myReports: {}, bestAnswered: {}, roundArmed: {}
+      progress: {}, reviewCounts: {}, excluded: {}, wrongMastery: { pool:{}, streak:{} }, myReports: {}, bestAnswered: {}, roundArmed: {}, questionReviewCounts: {}
     };
     const chapterKeys = new Set([...Object.keys(local.progress||{}), ...Object.keys(cloud.progress||{})]);
     chapterKeys.forEach(key=>{
@@ -1102,6 +1115,17 @@
     const baKeys = new Set([...Object.keys(local.bestAnswered||{}), ...Object.keys(cloud.bestAnswered||{})]);
     baKeys.forEach(key=>{
       merged.bestAnswered[key] = Math.max((local.bestAnswered||{})[key]||0, (cloud.bestAnswered||{})[key]||0);
+    });
+    // 문제별 누적 풀이 횟수: 챕터>문제 2단계 구조라, 각 문제마다 둘 중 더 큰 값을 취한다.
+    const qrcChapterKeys = new Set([...Object.keys(local.questionReviewCounts||{}), ...Object.keys(cloud.questionReviewCounts||{})]);
+    qrcChapterKeys.forEach(ckey=>{
+      const localCh = (local.questionReviewCounts||{})[ckey] || {};
+      const cloudCh = (cloud.questionReviewCounts||{})[ckey] || {};
+      const qIdxKeys = new Set([...Object.keys(localCh), ...Object.keys(cloudCh)]);
+      merged.questionReviewCounts[ckey] = {};
+      qIdxKeys.forEach(qidx=>{
+        merged.questionReviewCounts[ckey][qidx] = Math.max(localCh[qidx]||0, cloudCh[qidx]||0);
+      });
     });
     // 회독 자격: 어느 한쪽이라도 "소진(false)"이면 소진된 것으로 본다(이미 실제로 완주가 일어났다는 뜻이라 안전 우선).
     // 그게 아니고 어느 한쪽이 명시적으로 true(막 재충전됨)면 true. 둘 다 기록이 없으면 그대로 비워둬서
@@ -1792,6 +1816,10 @@
     const isFiltered = !!state.filterIndices;
     const isWrongSession = state.filterKind === 'wrong';
     const streak = masteryStreak(key, idx);
+    // 이 문제를 지금까지 몇 번째 풀고 있는지. 이미 답을 골랐으면 저장된 값 그대로, 아직 안 골랐으면
+    // "이번이 몇 번째 시도가 될지"를 보여주기 위해 +1 해서 표시한다.
+    const storedReviewCount = (state.questionReviewCounts[key] && state.questionReviewCounts[key][idx]) || 0;
+    const questionReviewNum = saved ? storedReviewCount : storedReviewCount + 1;
 
     const letters = ['①','②','③','④'];
     let optionsHtml = '';
@@ -1856,6 +1884,7 @@
         <div class="quiz-split">
           <div class="qmain">
             <div class="qcard">
+              <div style="font-size:11px;color:var(--ink-soft);margin-bottom:8px;">${questionReviewNum}회째 풀이</div>
               <div class="qtext">${escapeHtml(q.question)}</div>
             </div>
             <div class="options">${optionsHtml}</div>
@@ -1958,6 +1987,11 @@
     const correct = (i === q.answer-1);
     if(!state.progress[key]) state.progress[key] = {};
     state.progress[key][idx] = {selected:i, correct, rev: q.rev || null};
+
+    // 문제별 누적 풀이 횟수 - "다시 풀기"를 해도 안 지워지는 별도 카운터
+    if(!state.questionReviewCounts[key]) state.questionReviewCounts[key] = {};
+    state.questionReviewCounts[key][idx] = (state.questionReviewCounts[key][idx] || 0) + 1;
+    saveQuestionReviewCounts();
 
     // 오답노트 숙달도 갱신: 틀리면 풀에 등록하고 스트릭 리셋, 이미 풀에 있는 문제를 맞히면 스트릭 +1.
     // (어느 화면에서 풀든 동일하게 적용 — 전체 챕터 풀이 중에 맞혀도 숙달도에 반영된다)
