@@ -1629,6 +1629,22 @@
     return 1;
   }
 
+  // 챕터키가 몇 과목(1/2/3과목) 소속인지 - META.subjects의 각 과목이 담고 있는 chapters 배열에서 찾는다.
+  function subjectNumberOf(key){
+    for(let i=0; i<META.subjects.length; i++){
+      if((META.subjects[i].chapters || []).indexOf(key) >= 0) return i + 1;
+    }
+    return null;
+  }
+
+  // 문제 풀이 화면 상단처럼 "지금 몇 과목 몇 챕터를 풀고 있는지" 한눈에 보여줘야 하는 자리에서
+  // "1과목-I. 공공조달 개요"처럼 과목 번호를 챕터명 앞에 붙인다.
+  function chapterNameWithSubject(key){
+    const num = subjectNumberOf(key);
+    const name = META.names[key] || key;
+    return num? `${num}과목-${name}` : name;
+  }
+
   // 1~13 같은 숫자를 로마숫자 문자열로 변환한다(주요항목 말머리용).
   function toRoman(num){
     const table = [[1000,'M'],[900,'CM'],[500,'D'],[400,'CD'],[100,'C'],[90,'XC'],
@@ -2120,7 +2136,7 @@
       <div class="quiz-header-sticky">
         <div class="topbar topbar-quiz" id="quizTopbar">
           <div class="brand"><span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="#F5F1E7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v4h4"/><path d="M9 13l2 2 4-4"/></svg></span>공공조달관리사</div>
-          <div class="stats-chip">${isNumSession? escapeHtml(META.names[key]) : (isFiltered? `📎 ${escapeHtml(q.category2||'')}` : escapeHtml(META.names[key]))}</div>
+          <div class="stats-chip">${isNumSession? escapeHtml(chapterNameWithSubject(key)) : (isFiltered? `📎 ${escapeHtml(q.category2||'')}` : escapeHtml(chapterNameWithSubject(key)))}</div>
         </div>
         <div class="progress-bar-top"><div style="width:${(globalPos)/globalTotal*100}%"></div></div>
       </div>
