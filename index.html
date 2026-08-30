@@ -2120,7 +2120,7 @@
       <div class="quiz-header-sticky">
         <div class="topbar topbar-quiz" id="quizTopbar">
           <div class="brand"><span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="#F5F1E7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v4h4"/><path d="M9 13l2 2 4-4"/></svg></span>공공조달관리사</div>
-          <div class="stats-chip">${isNumSession? '⚡ 숫자 뽀개기.zip' : (isFiltered? `📎 ${escapeHtml(q.category2||'')}` : escapeHtml(META.names[key]))}</div>
+          <div class="stats-chip">${isNumSession? escapeHtml(META.names[key]) : (isFiltered? `📎 ${escapeHtml(q.category2||'')}` : escapeHtml(META.names[key]))}</div>
         </div>
         <div class="progress-bar-top"><div style="width:${(globalPos)/globalTotal*100}%"></div></div>
       </div>
@@ -2339,7 +2339,7 @@
     app.innerHTML = `
       <div class="topbar">
         <div class="brand" id="homeBtn2"><span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="#F5F1E7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v4h4"/><path d="M9 13l2 2 4-4"/></svg></span>공공조달관리사</div>
-        <div class="stats-chip">${filtered? (isNumSession? filteredLabel : `📎 ${filteredLabel}`) : escapeHtml(META.names[key])}</div>
+        <div class="stats-chip">${filtered? (isNumSession? escapeHtml(META.names[key]) : `📎 ${filteredLabel}`) : escapeHtml(META.names[key])}</div>
       </div>
       <div class="complete-wrap">
         <div class="stamp"><b>${pct}%</b><span>정답률</span></div>
