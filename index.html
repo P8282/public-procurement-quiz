@@ -1389,7 +1389,8 @@
     if(cfEnabled() && CF_META[key]){
       (CF_META[key].nums || []).forEach((isNum, i)=>{ if(isNum) indices.push(i); });
     } else {
-      (QUIZ[key] || []).forEach((q, i)=>{ if(q && q.numTag) indices.push(i); });
+      // 정확히 "NUM"일 때만 인정(대소문자 무관) - M열에 다른 목적의 값이 남아있어도 오분류 방지.
+      (QUIZ[key] || []).forEach((q, i)=>{ if(q && (q.numTag||'').toString().trim().toUpperCase()==='NUM') indices.push(i); });
     }
     return indices;
   }
@@ -1398,6 +1399,28 @@
   // 이 챕터에 아직 안 푼 NUM 문제가 남아있는지(전체 NUM 복습을 챕터별로 이어갈 때 종료 조건 판단용).
   function hasUnansweredNum(key){
     return numIndicesOf(key).some(i => !(state.progress[key] && state.progress[key][i]));
+  }
+  // "⚡ 조달 수치 뽀개기"가 챕터를 순서대로 이어갈 때, 주어진 챕터보다 앞선 챕터들에 있는
+  // NUM 문제 수의 합계. 챕터가 바뀌어도 진행률 표시(예: 37/118)가 끊기지 않고 이어지도록 하는 데 쓰인다.
+  function numPrecedingCount(key){
+    let sum = 0;
+    for(const k of allChapterKeys()){
+      if(k === key) break;
+      sum += numCount(k);
+    }
+    return sum;
+  }
+  // 챕터 구분 없이 전체 NUM 문제 기준 정답률(NUM 모아풀기 화면 하단 통계용).
+  function numStats(){
+    let total=0, answered=0, correct=0;
+    allChapterKeys().forEach(k=>{
+      numIndicesOf(k).forEach(i=>{
+        total++;
+        const a = state.progress[k] && state.progress[k][i];
+        if(a){ answered++; if(a.correct) correct++; }
+      });
+    });
+    return {total, answered, correct};
   }
 
   // 오답노트 대상에서 특정 문제를 수동으로 제외한다. 숙달도(연속 정답 횟수)와 무관하게,
@@ -1876,6 +1899,10 @@
     const isFiltered = !!state.filterIndices;
     const isWrongSession = state.filterKind === 'wrong';
     const isNumSession = state.filterKind === 'num';
+    // NUM 모아풀기는 챕터가 바뀌어도 118문제 전체를 하나로 이어서 보여준다(진행률·회차 표시용).
+    // pos/total은 "이 챕터 안에서의" 위치이고, 아래 두 값은 "전체 NUM 목록 안에서의" 위치다.
+    const globalPos = isNumSession? numPrecedingCount(key) + pos : pos;
+    const globalTotal = isNumSession? totalNumCount() : total;
     const streak = masteryStreak(key, idx);
     // 이 문제를 지금까지 몇 번째 풀고 있는지. 이미 답을 골랐으면 저장된 값 그대로, 아직 안 골랐으면
     // "이번이 몇 번째 시도가 될지"를 보여주기 위해 +1 해서 표시한다.
@@ -1919,7 +1946,7 @@
           </div>
           <div class="sheet-foot">
             <button class="nav-btn" id="sheetClose">닫고 보기</button>
-            <button class="nav-btn primary" id="sheetNext">${isLast? (isFiltered? '학습 완료 →' : '단원 완료 →') : '다음 문제 →'}</button>
+            <button class="nav-btn primary" id="sheetNext">${(isLast && !isNumSession)? (isFiltered? '학습 완료 →' : '단원 완료 →') : '다음 문제 →'}</button>
           </div>
         </div>`;
     }
@@ -1930,12 +1957,12 @@
           <div class="brand"><span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="#F5F1E7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v4h4"/><path d="M9 13l2 2 4-4"/></svg></span>공공조달관리사</div>
           <div class="stats-chip">${isNumSession? '⚡ 조달 수치 뽀개기' : (isFiltered? `📎 ${escapeHtml(q.category2||'')}` : escapeHtml(META.names[key]))}</div>
         </div>
-        <div class="progress-bar-top"><div style="width:${(pos)/total*100}%"></div></div>
+        <div class="progress-bar-top"><div style="width:${(globalPos)/globalTotal*100}%"></div></div>
       </div>
       <div class="quiz-wrap">
         <div class="quiz-head">
           <div class="crumb"><b>${escapeHtml(q.category1||'')}</b><br>${escapeHtml(q.category2||'')}</div>
-          <div class="qno">${pos+1} / ${total}</div>
+          <div class="qno">${globalPos+1} / ${globalTotal}</div>
         </div>
         ${isWrongSession? `
         <div class="mastery-row">
@@ -1957,12 +1984,12 @@
           </div>
           <div class="nav-row">
             <button class="nav-btn" id="prevBtn" ${pos===0?'disabled':''}>← 이전</button>
-            <button class="nav-btn primary" id="nextBtn" ${saved? '' : 'disabled'}>${pos===total-1? (isFiltered? '학습 완료 →' : '단원 완료 →') : '다음 →'}</button>
+            <button class="nav-btn primary" id="nextBtn" ${saved? '' : 'disabled'}>${(pos===total-1 && !isNumSession)? (isFiltered? '학습 완료 →' : '단원 완료 →') : '다음 →'}</button>
           </div>
         </div>
         <div class="inline-stats">
           <span>전체 진행 ${os.answered}/${os.total}</span>
-          <span>이 단원 정답률 ${(()=>{const s=chapterStats(key); return s.answered? Math.round(s.correct/s.answered*100):0;})()}%</span>
+          <span>${isNumSession? 'NUM 정답률' : '이 단원 정답률'} ${(()=>{const s=isNumSession? numStats() : chapterStats(key); return s.answered? Math.round(s.correct/s.answered*100):0;})()}%</span>
         </div>
         <div class="kbd-hint"><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd> 답 선택 &nbsp; <kbd>Enter</kbd>/<kbd>Space</kbd> 다음 &nbsp; <kbd>←</kbd>/<kbd>→</kbd> 이동</div>
       </div>
@@ -1986,6 +2013,17 @@
         p++;
       }
       if(p >= total){
+        if(isNumSession){
+          // NUM 모아풀기는 챕터 단위로 안 끊기고 118문제를 하나로 이어서 푸는 게 목적이므로,
+          // 이 챕터의 NUM 문제를 다 풀었다고 완료 화면을 보여주지 않고 다음 챕터로 바로 넘어간다.
+          const nextKey = nextNumChapterKey();
+          if(nextKey){ startNumReview(nextKey); return; }
+          state.globalNumReview = false;
+          alert('🎉 숫자문제(NUM) 복습을 모두 마쳤습니다!');
+          state.view = 'home';
+          render();
+          return;
+        }
         if(!isFiltered) markChapterCompleted(key);
         state.view = 'complete';
         render();
@@ -2195,6 +2233,16 @@
         p++;
       }
       if(p >= total){
+        if(state.filterKind === 'num'){
+          // 키보드 단축키로 넘길 때도 nextBtn/sheetNext와 동일하게 챕터 경계에서 끊지 않고 이어간다.
+          const nextKey = nextNumChapterKey();
+          if(nextKey){ startNumReview(nextKey); return; }
+          state.globalNumReview = false;
+          alert('🎉 숫자문제(NUM) 복습을 모두 마쳤습니다!');
+          state.view = 'home';
+          render();
+          return;
+        }
         if(!state.filterIndices) markChapterCompleted(key);
         state.view='complete'; render();
       } else {
