@@ -652,7 +652,7 @@
   // 시트 형식(고정, 열 순서로 읽으므로 헤더 문구 자체는 안 봄):
   //   1행 헤더(번호,세부항목,세세항목,문제 내용,보기①~④,정답 번호,해설 및 오답노트,출처,구분,숫자문제분류) → 2행부터 바로 데이터
   //   A:번호  B:세부항목  C:세세항목  D:문제 내용  E~H:보기①~④  I:정답 번호(1~4)  J:해설 및 오답노트  K:출처  L:구분(미사용)
-  //   M:숫자문제 분류코드("NUM"이면 홈 화면 "⚡ 조달 수치 뽀개기" 모아풀기 대상에 포함됨)
+  //   M:숫자문제 분류코드("NUM"이면 홈 화면 "⚡ 숫자 뽀개기.zip" 모아풀기 대상에 포함됨)
   // ====== Cloudflare Worker 기반 배치 로딩 (자료 보호용, 선택적) ======
   // CF_API_BASE가 자리표값 그대로면 이 기능은 조용히 비활성화되고, 기존 구글시트 방식이 그대로 사용된다.
   // 실제 Worker를 배포한 뒤 아래 주소를 교체하면, "앱 켜자마자 935문제 전부 받기" 대신
@@ -881,8 +881,8 @@
     filterKind: null,    // 'wrong' | 'subtopic' | 'num' | null - 현재 부분 학습 세션의 종류(일시 상태, 저장하지 않음)
     excluded: {},          // { chapterKey: { idx: true } } - 오답노트 대상에서 수동으로 뺀 문제 목록(영구 저장)
     wrongMastery: { pool: {}, streak: {} }, // pool: 한 번이라도 틀려서 오답노트 대상에 들어간 문제, streak: 그 문제의 현재 연속 정답 횟수(둘 다 영구 저장)
-    globalWrongReview: false, // 메인화면 "전체 오답 복습" 진입 여부(일시 상태, 저장하지 않음) - 챕터를 순차로 이어가는 데 사용
-    globalNumReview: false, // 메인화면 "⚡ 조달 수치 뽀개기" 진입 여부(일시 상태, 저장하지 않음) - 챕터를 순차로 이어가는 데 사용
+    globalWeakReview: false, // 메인화면 "전체 취약 문제 복습" 진입 여부(일시 상태, 저장하지 않음) - 챕터를 순차로 이어가는 데 사용
+    globalNumReview: false, // 메인화면 "⚡ 숫자 뽀개기.zip" 진입 여부(일시 상태, 저장하지 않음) - 챕터를 순차로 이어가는 데 사용
     updateAvailable: false, // 앱 코드(GitHub 배포본) 새 버전이 감지됐는지 여부(일시 상태, 저장하지 않음)
     syncCode: null,     // 클라우드 동기화 코드(예: "A7K9-2XQP"). 연결돼 있으면 값이 있고, 아니면 null (영구 저장)
     syncing: false,     // 지금 동기화 요청이 진행 중인지(중복 클릭 방지용, 일시 상태)
@@ -1415,7 +1415,7 @@
     return {total, answered, correct};
   }
 
-  const MASTERY_TARGET = 10; // 오답노트에서 완전히 빠지려면 필요한 "연속 정답" 횟수
+  const MASTERY_TARGET = 7; // 오답노트에서 완전히 빠지려면 필요한 "연속 정답" 횟수
 
   function isExcludedFromWrong(key, idx){
     return !!(state.excluded[key] && state.excluded[key][idx]);
@@ -1439,8 +1439,8 @@
   function wrongCount(key){ return wrongIndices(key).length; }
 
   // ====== 숙달도 중심 상태 판별 (단순 회독수 대신 "실질적 성취"를 보여주기 위한 보조 지표) ======
-  // wrongIndices/wrongCount는 위 오답노트 로직을 그대로 쓰므로 건드리지 않는다(기존 "전체 틀린 문제 복습" 버튼과
-  // totalWrongCount() 동작을 그대로 보존하기 위함). 아래는 전부 새로 추가된 것들이다.
+  // wrongIndices/wrongCount는 reviewOnlyIndices(복습 단계 판정)가 그대로 재사용하므로 건드리지 않는다.
+  // 메인화면의 전체 복습 진입점은 "전체 취약 문제"(weakCount/startGlobalWeakReview)로 대체되었다.
 
   function isManualWeak(key, idx){
     return !!(state.manualWeak[key] && state.manualWeak[key][idx]);
@@ -1518,7 +1518,7 @@
     return count;
   }
 
-  // M열(NUM) 태그가 붙은 문제만 골라 인덱스 배열로 반환한다("⚡ 조달 수치 뽀개기" 모아풀기용).
+  // M열(NUM) 태그가 붙은 문제만 골라 인덱스 배열로 반환한다("⚡ 숫자 뽀개기.zip" 모아풀기용).
   // Cloudflare 모드에서는 문제 내용을 안 받아도 되는 /meta의 nums(챕터별 불리언 배열)로 판단하고,
   // 그 외(구글시트/내장 데이터)에서는 QUIZ[key] 항목에 직접 담긴 numTag로 판단한다.
   function numIndicesOf(key){
@@ -1537,7 +1537,7 @@
   function hasUnansweredNum(key){
     return numIndicesOf(key).some(i => !(state.progress[key] && state.progress[key][i]));
   }
-  // "⚡ 조달 수치 뽀개기"가 챕터를 순서대로 이어갈 때, 주어진 챕터보다 앞선 챕터들에 있는
+  // "⚡ 숫자 뽀개기.zip"가 챕터를 순서대로 이어갈 때, 주어진 챕터보다 앞선 챕터들에 있는
   // NUM 문제 수의 합계. 챕터가 바뀌어도 진행률 표시(예: 37/118)가 끊기지 않고 이어지도록 하는 데 쓰인다.
   function numPrecedingCount(key){
     let sum = 0;
@@ -1739,7 +1739,7 @@
 
   function renderHome(){
     const os = overallStats();
-    const totalWrong = totalWrongCount();
+    const totalWeak = totalWeakCount();
     const totalNum = totalNumCount();
     let chaptersHtml = '';
     META.subjects.forEach(subj=>{
@@ -1847,8 +1847,8 @@
           <div><b>${os.answered}</b><span>학습 완료</span></div>
         </div>
         <button class="btn btn-primary" id="resumeBtn">${os.answered>0? '이어서 풀기' : '지금 바로 풀어보기'}</button>
-        ${totalWrong>0? `<button class="btn btn-review" id="globalWrongBtn">🔁 전체 틀린 문제 ${totalWrong}개 복습하기</button>` : ''}
-        ${totalNum>0? `<button class="btn btn-num" id="globalNumBtn">⚡ 조달 수치 뽀개기 (${totalNum}문제)</button>` : ''}
+        ${totalWeak>0? `<button class="btn btn-review" id="globalWeakBtn">🔁 전체 취약 문제 ${totalWeak}개 복습하기</button>` : ''}
+        ${totalNum>0? `<button class="btn btn-num" id="globalNumBtn">⚡ 숫자 뽀개기.zip (${totalNum}문제)</button>` : ''}
         ${myReportCount()>0? `<button class="btn btn-review" id="myReportsBtn">🚩 내가 신고한 오류 ${myReportCount()}개 보기</button>` : ''}
       </div>
       <div class="section-wrap">${chaptersHtml}</div>
@@ -1862,8 +1862,8 @@
       if(!key){ alert('아직 불러온 문제가 없습니다. 인터넷 연결을 확인한 뒤 새로고침해주세요.'); return; }
       openChapter(key, true);
     };
-    const globalWrongBtn = document.getElementById('globalWrongBtn');
-    if(globalWrongBtn) globalWrongBtn.onclick = ()=> startGlobalWrongReview();
+    const globalWeakBtn = document.getElementById('globalWeakBtn');
+    if(globalWeakBtn) globalWeakBtn.onclick = ()=> startGlobalWeakReview();
     const globalNumBtn = document.getElementById('globalNumBtn');
     if(globalNumBtn) globalNumBtn.onclick = ()=> startGlobalNumReview();
     const myReportsBtn = document.getElementById('myReportsBtn');
@@ -1937,15 +1937,7 @@
     render();
   }
 
-  // 이전에 틀린 문제만 골라 이어서 풀도록 연다. 세세항목 학습과 동일하게 실제 key의 인덱스만
-  // 필터링하므로, 여기서 맞히면 그 챕터의 진짜 진행률에 바로 반영되어 다음부터 자동으로 목록에서 빠진다.
-  function startWrongReview(key){
-    const idxs = wrongIndices(key);
-    if(!idxs.length) return;
-    openChapter(key, true, idxs, 'wrong');
-  }
-
-  // 🔴 취약 집중공략 / 🟡 복습 다시풀기: 둘 다 오답노트와 같은 filterKind('wrong')를 그대로 써서
+  // 🔴 취약 집중공략 / 🟡 복습 다시풀기: 둘 다 filterKind('wrong')를 그대로 써서
   // 제외 버튼·숙달도 표시 등 기존 오답노트 화면 UI를 그대로 재사용한다. 대상 인덱스만 더 좁혀서 넘긴다.
   function startWeakReview(key){
     const idxs = weakIndices(key);
@@ -1958,19 +1950,19 @@
     openChapter(key, true, idxs, 'wrong');
   }
 
-  // 전체 13개 챕터에 걸친 오답 총 개수(메인화면 "전체 오답 복습" UI에 표시).
-  function totalWrongCount(){
-    return allChapterKeys().reduce((sum, k) => sum + wrongCount(k), 0);
+  // 전체 13개 챕터에 걸친 취약 문제 총 개수(메인화면 "전체 취약 문제 복습" UI에 표시).
+  function totalWeakCount(){
+    return allChapterKeys().reduce((sum, k) => sum + weakCount(k), 0);
   }
 
-  // 메인화면에서 "전체 오답 복습"을 눌렀을 때 진입점. 오답이 있는 첫 챕터부터 시작하고,
+  // 메인화면에서 "전체 취약 문제 복습"을 눌렀을 때 진입점. 취약 문제가 있는 첫 챕터부터 시작하고,
   // 완료 화면에서 다음 챕터로 자동으로 이어간다(goHomeOrContinueGlobalReview 참고).
-  // 기존 startWrongReview/openChapter 로직을 그대로 재사용할 뿐, 별도의 새 퀴즈 진행 로직은 만들지 않는다.
-  function startGlobalWrongReview(){
-    const key = allChapterKeys().find(k => wrongCount(k) > 0);
-    if(!key){ alert('현재 틀린 문제가 없습니다! 🎉'); return; }
-    state.globalWrongReview = true;
-    startWrongReview(key);
+  // 기존 startWeakReview/openChapter 로직을 그대로 재사용할 뿐, 별도의 새 퀴즈 진행 로직은 만들지 않는다.
+  function startGlobalWeakReview(){
+    const key = allChapterKeys().find(k => weakCount(k) > 0);
+    if(!key){ alert('현재 취약 문제가 없습니다! 🎉'); return; }
+    state.globalWeakReview = true;
+    startWeakReview(key);
   }
 
   // 챕터 안의 NUM(숫자문제) 태그가 붙은 문제만 필터링해 이어서 풀도록 연다. wrongReview와 동일하게
@@ -1986,7 +1978,7 @@
     return allChapterKeys().find(k => hasUnansweredNum(k));
   }
 
-  // "⚡ 조달 수치 뽀개기"에서 뒤로("← 이전") 이동할 때 챕터 경계를 넘어가기 위한 대상 챕터.
+  // "⚡ 숫자 뽀개기.zip"에서 뒤로("← 이전") 이동할 때 챕터 경계를 넘어가기 위한 대상 챕터.
   // nextNumChapterKey는 "아직 안 푼 문제가 남은" 챕터를 찾지만(다음 진행용), 이건 이미 푼 문제라도
   // 순서상 이전 문제로 돌아갈 수 있어야 하므로 NUM 문제가 하나라도 있는 챕터면 된다.
   function prevNumChapterKey(key){
@@ -1998,7 +1990,7 @@
     return null;
   }
 
-  // 메인화면 "⚡ 조달 수치 뽀개기" 진입점. 안 푼 NUM 문제가 있는 첫 챕터부터 시작하고,
+  // 메인화면 "⚡ 숫자 뽀개기.zip" 진입점. 안 푼 NUM 문제가 있는 첫 챕터부터 시작하고,
   // 완료 화면에서 다음 챕터로 자동으로 이어간다(goHomeOrContinueGlobalReview 참고).
   // 전부 이미 풀었으면(안 푼 게 없으면) NUM 문제가 하나라도 있는 챕터를 처음부터 다시 보여준다.
   function startGlobalNumReview(){
@@ -2082,6 +2074,9 @@
     const qsm = QUESTION_STATUS_META[qStatus];
     const statusBadgeHtml = `<span style="display:inline-block;font-size:10.5px;font-weight:700;color:${qsm.color};background:${qsm.bg};border-radius:999px;padding:2px 9px;margin-bottom:4px;">${qsm.icon} ${qsm.label}</span><br>`;
     const isWeakNow = isManualWeak(key, idx);
+    // 이미(수동이든 자동이든) '취약' 상태로 판정된 문제라면 "취약문제로 지정하기" 버튼은 보여주지 않는다.
+    // 수동으로 지정한 경우에만 "지정 해제" 버튼을 보여주고, 자동으로만 취약 판정된 경우엔 버튼 자체를 숨긴다.
+    const alreadyWeakStatus = qStatus === 'weak';
 
     const letters = ['①','②','③','④'];
     let optionsHtml = '';
@@ -2113,10 +2108,10 @@
           </div>
           <div class="sheet-tip">💡 이 패널을 누르면 다음 문제로 넘어가요</div>
           <div class="sheet-body">
-            ${justMastered? `<div style="background:var(--correct-tint);color:#204636;border:1px solid #BFDBCB;border-radius:9px;padding:12px 14px;margin-bottom:14px;font-weight:700;font-size:13.5px;">🎉 연속 정답 ${MASTERY_TARGET}회 달성! 이 문제는 오답노트에서 제외됩니다.</div>` : ''}
+            ${justMastered? `<div style="background:var(--correct-tint);color:#204636;border:1px solid #BFDBCB;border-radius:9px;padding:12px 14px;margin-bottom:14px;font-weight:700;font-size:13.5px;">🎉 연속 정답 ${MASTERY_TARGET}회 달성! 이 문제는 취약문제에서 제외됩니다.</div>` : ''}
             ${escapeHtml(q.explanation||'해설이 제공되지 않았습니다.')}${q.source? `<div class="sheet-src">§ 출처: ${escapeHtml(q.source)}</div>` : ''}
-            <button id="manualWeakBtn" style="margin-top:14px;width:100%;background:${isWeakNow? 'var(--correct-tint)':'var(--seal-tint)'};border:1px solid ${isWeakNow? '#BFDBCB':'#E9C2BC'};border-radius:9px;padding:10px;font-size:12.5px;color:${isWeakNow? '#204636':'var(--seal)'};font-weight:700;cursor:pointer;">${isWeakNow? '✔ 취약문제 지정 해제' : '🚨 취약문제로 지정하기'}</button>
-            ${isWrongSession? `<button id="excludeBtn" style="margin-top:10px;width:100%;background:var(--paper-deep);border:1px solid var(--line-strong);border-radius:9px;padding:10px;font-size:12.5px;color:var(--ink-soft);cursor:pointer;">✕ 이 문제는 오답노트에서 그만 보기</button>` : ''}
+            ${(isWeakNow || !alreadyWeakStatus)? `<button id="manualWeakBtn" style="margin-top:14px;width:100%;background:${isWeakNow? 'var(--correct-tint)':'var(--seal-tint)'};border:1px solid ${isWeakNow? '#BFDBCB':'#E9C2BC'};border-radius:9px;padding:10px;font-size:12.5px;color:${isWeakNow? '#204636':'var(--seal)'};font-weight:700;cursor:pointer;">${isWeakNow? '✔ 취약문제 지정 해제' : '🚨 취약문제로 지정하기'}</button>` : ''}
+            ${isWrongSession? `<button id="excludeBtn" style="margin-top:10px;width:100%;background:var(--paper-deep);border:1px solid var(--line-strong);border-radius:9px;padding:10px;font-size:12.5px;color:var(--ink-soft);cursor:pointer;">✕ 이 문제는 취약문제에서 그만 보기</button>` : ''}
             <button id="reportErrorBtn" style="margin-top:10px;width:100%;background:transparent;border:1px dashed var(--line-strong);border-radius:9px;padding:9px;font-size:12px;color:var(--ink-soft);cursor:pointer;">🚩 문제 오류 신고</button>
             <div style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--line-strong);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
               <span style="font-size:11.5px;color:var(--ink-soft);">총 ${storedReviewCount}회 풀이 · 정답률 ${questionAccuracy(key, idx) ?? 0}%</span>
@@ -2134,7 +2129,7 @@
       <div class="quiz-header-sticky">
         <div class="topbar topbar-quiz" id="quizTopbar">
           <div class="brand"><span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="#F5F1E7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v4h4"/><path d="M9 13l2 2 4-4"/></svg></span>공공조달관리사</div>
-          <div class="stats-chip">${isNumSession? '⚡ 조달 수치 뽀개기' : (isFiltered? `📎 ${escapeHtml(q.category2||'')}` : escapeHtml(META.names[key]))}</div>
+          <div class="stats-chip">${isNumSession? '⚡ 숫자 뽀개기.zip' : (isFiltered? `📎 ${escapeHtml(q.category2||'')}` : escapeHtml(META.names[key]))}</div>
         </div>
         <div class="progress-bar-top"><div style="width:${(globalPos)/globalTotal*100}%"></div></div>
       </div>
@@ -2265,7 +2260,7 @@
     render();
   }
 
-  // "← 이전" 이동 전용. 보통은 goto(pos-1)과 같지만, "⚡ 조달 수치 뽀개기"(NUM 모아풀기)는
+  // "← 이전" 이동 전용. 보통은 goto(pos-1)과 같지만, "⚡ 숫자 뽀개기.zip"(NUM 모아풀기)는
   // 13개 챕터를 하나로 이어서 보여주는 세션이라, 지금 챕터의 첫 NUM 문제(pos===0)에서
   // 더 뒤로 가려 하면 goto가 범위를 벗어나 아무 동작도 안 하는 문제가 있었다.
   // "다음"이 챕터 경계에서 다음 챕터로 자동으로 넘어가는 것과 대칭되게, 여기서도
@@ -2348,7 +2343,7 @@
       s = chapterStats(key);
     }
     const isNumSession = filterKind === 'num';
-    const filteredLabel = isNumSession? '⚡ 조달 수치 뽀개기' : escapeHtml(topicLabel);
+    const filteredLabel = isNumSession? '⚡ 숫자 뽀개기.zip' : escapeHtml(topicLabel);
     const pct = s.answered? Math.round(s.correct/s.answered*100) : 0;
     app.innerHTML = `
       <div class="topbar">
@@ -2386,17 +2381,17 @@
     };
   }
 
-  // 전체 오답 복습(state.globalWrongReview) 중일 때만 다음 챕터의 오답으로 자동 이어간다.
+  // 전체 취약 문제 복습(state.globalWeakReview) 중일 때만 다음 챕터의 취약 문제로 자동 이어간다.
   // 일반 완료 화면(단일 챕터/세세항목)에서는 기존 그대로 홈으로 이동한다.
   function goHomeOrContinueGlobalReview(){
-    if(state.globalWrongReview){
-      const nextKey = allChapterKeys().find(k => wrongCount(k) > 0);
+    if(state.globalWeakReview){
+      const nextKey = allChapterKeys().find(k => weakCount(k) > 0);
       if(nextKey){
-        startWrongReview(nextKey); // 기존 startWrongReview 로직 그대로 재사용
+        startWeakReview(nextKey); // 기존 startWeakReview 로직 그대로 재사용
         return;
       }
-      state.globalWrongReview = false;
-      alert('🎉 전체 오답 복습을 모두 마쳤습니다!');
+      state.globalWeakReview = false;
+      alert('🎉 전체 취약 문제 복습을 모두 마쳤습니다!');
     }
     if(state.globalNumReview){
       const nextKey = nextNumChapterKey();
