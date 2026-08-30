@@ -863,6 +863,7 @@
     progress: {},   // { chapterKey: { qIndexAsStr: {selected, correct} } }
     reviewCounts: {}, // { chapterKey: number } - 단원별 완주(회독) 횟수. progress와 별개로 영구 보존.
     sheetOpen: false, // 해설 시트 표시 여부(일시 상태, 저장하지 않음)
+    reviewAnswered: false, // 🔴 취약 집중공략/🟡 복습 다시풀기 화면에서 "이번 방문에서 다시 답을 골랐는지"(일시 상태, 저장하지 않음) - 예전 정답 기록 때문에 옵션이 다시 못 고르게 굳는 것을 막는 데 사용
     remoteErrors: {},  // { chapterKey: true } - 구글시트 URL은 설정됐지만 로드도/캐시도 실패한 챕터(진단용, 저장하지 않음)
     storageOk: null,   // true/false/null(테스트 전) - 저장소(window.storage) 실제 동작 여부 자체진단 결과
     expandedChapter: null, // 홈 화면에서 목차(대분류>세세항목)를 카드 안에 펼쳐놓은 챕터키(일시 상태, 저장하지 않음)
@@ -873,6 +874,7 @@
     globalWeakReview: false, // 메인화면 "전체 취약 문제 복습" 진입 여부(일시 상태, 저장하지 않음) - 챕터를 순차로 이어가는 데 사용
     globalWeakQueue: [],     // 전체 취약 문제 복습을 시작한 시점에 취약 문제가 있던 챕터 목록(일시 상태) - 한 번 정한 순서를 그대로 순회
     globalWeakQueueIndex: 0, // globalWeakQueue 안에서 지금 몇 번째 챕터를 보고 있는지(일시 상태)
+    globalWeakCounts: [],    // globalWeakQueue와 짝을 이루는, 시작 시점의 챕터별 취약 문제 개수 스냅샷(일시 상태) - 진행률 "N/전체" 표시용
     globalNumReview: false, // 메인화면 "⚡ 숫자 뽀개기.zip" 진입 여부(일시 상태, 저장하지 않음) - 챕터를 순차로 이어가는 데 사용
     updateAvailable: false, // 앱 코드(GitHub 배포본) 새 버전이 감지됐는지 여부(일시 상태, 저장하지 않음)
     syncCode: null,     // 클라우드 동기화 코드(예: "A7K9-2XQP"). 연결돼 있으면 값이 있고, 아니면 null (영구 저장)
@@ -2041,6 +2043,8 @@
       state.index = indices[0];
     }
     state.view = 'quiz';
+    state.sheetOpen = false;
+    state.reviewAnswered = false; // 새 세션을 여는 것이므로, 이전 문제에서 쓰던 "이번에 다시 답함" 표시를 지운다.
     saveProgress();
     render();
   }
@@ -2076,7 +2080,22 @@
     state.globalWeakReview = true;
     state.globalWeakQueue = queue;
     state.globalWeakQueueIndex = 0;
+    // 지금 이 순간의 챕터별 취약 문제 개수를 스냅샷으로 고정해둔다. 진행률 표시(예: "3/18")가
+    // 챕터를 넘어갈 때마다 "이 챕터 안에서 몇 번째"로 되돌아가 보이지 않고(예: "3/18" 대신 "3/5"),
+    // 세션 시작 시점 기준 전체 취약 문제 수 안에서 몇 번째인지 계속 이어서 보여주기 위함이다.
+    state.globalWeakCounts = queue.map(k => weakCount(k));
     startWeakReview(queue[0]);
+  }
+
+  // globalWeakQueue 안에서 지금 챕터(globalWeakQueueIndex)보다 앞선 챕터들의 취약 문제 수 합계.
+  function globalWeakPrecedingCount(){
+    let sum = 0;
+    for(let i=0; i<state.globalWeakQueueIndex; i++) sum += (state.globalWeakCounts[i] || 0);
+    return sum;
+  }
+  // "전체 취약 문제 복습" 세션 전체의 총 문제 수(시작 시점 스냅샷 기준 - NUM 모아풀기의 totalNumCount와 같은 역할).
+  function globalWeakTotalCount(){
+    return (state.globalWeakCounts || []).reduce((a, b) => a + b, 0);
   }
 
   // 챕터 안의 NUM(숫자문제) 태그가 붙은 문제만 필터링해 이어서 풀도록 연다. wrongReview와 동일하게
@@ -2170,16 +2189,24 @@
       return;
     }
 
-    const saved = state.progress[key] && state.progress[key][idx];
     const total = indices.length;
     const os = overallStats();
     const isFiltered = !!state.filterIndices;
     const isWrongSession = state.filterKind === 'wrong';
     const isNumSession = state.filterKind === 'num';
+    // 🔴 취약 집중공략 / 🟡 복습 다시풀기(isWrongSession)의 모든 문제는 예전에 이미 한 번은
+    // 정식으로 풀렸던 문제라서, state.progress의 "옛날 기록"을 그대로 saved로 취급하면 옵션이
+    // 처음부터 "이미 정답 표시된" 상태로 굳어버려 다시 답을 고를 수 없게 된다(재풀이 비활성화
+    // 버그). 그래서 이 세션에서는 "이번 방문에서 실제로 다시 답을 골랐는지"(state.reviewAnswered)를
+    // 기준으로 삼아, 아직 다시 안 골랐다면 옛날 기록이 있어도 "안 푼 문제"처럼 보여준다.
+    const rawAnswered = state.progress[key] && state.progress[key][idx];
+    const saved = isWrongSession ? (state.reviewAnswered ? rawAnswered : null) : rawAnswered;
     // NUM 모아풀기는 챕터가 바뀌어도 118문제 전체를 하나로 이어서 보여준다(진행률·회차 표시용).
-    // pos/total은 "이 챕터 안에서의" 위치이고, 아래 두 값은 "전체 NUM 목록 안에서의" 위치다.
-    const globalPos = isNumSession? numPrecedingCount(key) + pos : pos;
-    const globalTotal = isNumSession? totalNumCount() : total;
+    // "전체 취약 문제 복습" 역시 여러 챕터를 하나로 이어서 보여주므로 같은 방식으로 처리한다.
+    // pos/total은 "이 챕터 안에서의" 위치이고, 아래 두 값은 "전체 목록 안에서의" 위치다.
+    const isGlobalWrongSession = isWrongSession && state.globalWeakReview;
+    const globalPos = isNumSession? numPrecedingCount(key) + pos : (isGlobalWrongSession? globalWeakPrecedingCount() + pos : pos);
+    const globalTotal = isNumSession? totalNumCount() : (isGlobalWrongSession? globalWeakTotalCount() : total);
     const streak = masteryStreak(key, idx);
     // 이 문제를 지금까지 몇 번 풀었는지(누적). 해설 시트 하단 통계("총 N회 풀이")에 쓰인다.
     const storedReviewCount = (state.questionReviewCounts[key] && state.questionReviewCounts[key][idx]) || 0;
@@ -2293,6 +2320,7 @@
     // 초기화된 경우에도 "이어서 풀기"가 매번 안 푼 것만 보여주도록 하기 위함.
     const goToNextUnanswered = ()=>{
       state.sheetOpen = false;
+      state.reviewAnswered = false;
       let p = pos + 1;
       // 🔴 취약 집중공략 / 🟡 복습 다시풀기(isWrongSession)는 목록의 모든 문제가 이미 예전에
       // 정식으로 풀렸던 문제라서, 아래 "이미 푼 문제는 건너뛰기" 로직을 적용하면 다음 문제도
@@ -2387,6 +2415,7 @@
     if(newPos<0 || newPos>=indices.length) return;
     state.index = indices[newPos];
     state.sheetOpen = false; // 문제를 옮기면 해설 시트는 닫는다
+    state.reviewAnswered = false; // 다음 문제로 넘어가는 것이므로 "이번에 다시 답함" 표시도 초기화한다.
     render();
   }
 
@@ -2421,6 +2450,10 @@
     const correct = (i === q.answer-1);
     if(!state.progress[key]) state.progress[key] = {};
     state.progress[key][idx] = {selected:i, correct, rev: q.rev || null};
+    // 🔴 취약 집중공략 / 🟡 복습 다시풀기 화면에서 "지금 이 방문에서 다시 답을 골랐다"는 표시.
+    // renderQuiz()가 isWrongSession일 때 saved 여부를 이 값으로 판단해, 예전 기록 때문에
+    // 옵션이 클릭 불가능한 상태로 굳어있지 않고 실제로 다시 풀 수 있게 한다.
+    state.reviewAnswered = true;
 
     // 문제별 누적 풀이 횟수 - "다시 풀기"를 해도 안 지워지는 별도 카운터
     if(!state.questionReviewCounts[key]) state.questionReviewCounts[key] = {};
