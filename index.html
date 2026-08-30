@@ -1986,6 +1986,18 @@
     return allChapterKeys().find(k => hasUnansweredNum(k));
   }
 
+  // "⚡ 조달 수치 뽀개기"에서 뒤로("← 이전") 이동할 때 챕터 경계를 넘어가기 위한 대상 챕터.
+  // nextNumChapterKey는 "아직 안 푼 문제가 남은" 챕터를 찾지만(다음 진행용), 이건 이미 푼 문제라도
+  // 순서상 이전 문제로 돌아갈 수 있어야 하므로 NUM 문제가 하나라도 있는 챕터면 된다.
+  function prevNumChapterKey(key){
+    const keys = allChapterKeys();
+    const i = keys.indexOf(key);
+    for(let p = i - 1; p >= 0; p--){
+      if(numCount(keys[p]) > 0) return keys[p];
+    }
+    return null;
+  }
+
   // 메인화면 "⚡ 조달 수치 뽀개기" 진입점. 안 푼 NUM 문제가 있는 첫 챕터부터 시작하고,
   // 완료 화면에서 다음 챕터로 자동으로 이어간다(goHomeOrContinueGlobalReview 참고).
   // 전부 이미 풀었으면(안 푼 게 없으면) NUM 문제가 하나라도 있는 챕터를 처음부터 다시 보여준다.
@@ -2149,7 +2161,7 @@
             ${(!saved || !state.sheetOpen)? `<div class="qside-placeholder">정답을 선택하면<br>여기에 해설이 표시됩니다.<br><span class="tip-line">💡 해설을 누르면 다음 문제로 넘어가요</span>${saved? `<button class="nav-btn" id="showSheetBtnSide">📖 해설 다시 보기</button>` : ''}</div>` : ''}
           </div>
           <div class="nav-row">
-            <button class="nav-btn" id="prevBtn" ${pos===0?'disabled':''}>← 이전</button>
+            <button class="nav-btn" id="prevBtn" ${(pos===0 && !(isNumSession && prevNumChapterKey(key)))?'disabled':''}>← 이전</button>
             <button class="nav-btn primary" id="nextBtn" ${saved? '' : 'disabled'}>${(pos===total-1 && !isNumSession)? (isFiltered? '학습 완료 →' : '단원 완료 →') : '다음 →'}</button>
           </div>
         </div>
@@ -2163,7 +2175,7 @@
 
     document.getElementById('quizTopbar').onclick = ()=>{ state.view='home'; saveProgress(); render(); };
 
-    document.getElementById('prevBtn').onclick = ()=> goto(pos-1);
+    document.getElementById('prevBtn').onclick = ()=> goPrev();
 
     // "다음"으로 이동할 때 이미 푼 문제는 건너뛰고, 처음 만나는 "안 푼 문제"로 간다.
     // 남은 문제가 전부 이미 풀려있으면(더 건너뛸 데가 없으면) 챕터 완료 화면으로 넘어간다.
@@ -2251,6 +2263,31 @@
     state.index = indices[newPos];
     state.sheetOpen = false; // 문제를 옮기면 해설 시트는 닫는다
     render();
+  }
+
+  // "← 이전" 이동 전용. 보통은 goto(pos-1)과 같지만, "⚡ 조달 수치 뽀개기"(NUM 모아풀기)는
+  // 13개 챕터를 하나로 이어서 보여주는 세션이라, 지금 챕터의 첫 NUM 문제(pos===0)에서
+  // 더 뒤로 가려 하면 goto가 범위를 벗어나 아무 동작도 안 하는 문제가 있었다.
+  // "다음"이 챕터 경계에서 다음 챕터로 자동으로 넘어가는 것과 대칭되게, 여기서도
+  // 이전 챕터(NUM 문제가 있는 가장 가까운 챕터)의 마지막 NUM 문제로 건너간다.
+  function goPrev(){
+    const key = state.chapter;
+    const indices = state.filterIndices || allIndicesOf(key);
+    const pos = indices.indexOf(state.index);
+    if(state.filterKind === 'num' && pos <= 0){
+      const prevKey = prevNumChapterKey(key);
+      if(!prevKey) return; // 전체 NUM 목록의 첫 문제 - 더 갈 곳 없음
+      const prevIdxs = numIndicesOf(prevKey);
+      state.chapter = prevKey;
+      state.filterIndices = prevIdxs;
+      state.filterKind = 'num';
+      state.index = prevIdxs[prevIdxs.length - 1];
+      state.sheetOpen = false;
+      saveProgress();
+      render();
+      return;
+    }
+    goto(pos - 1);
   }
 
   function selectAnswer(i){
@@ -2429,7 +2466,7 @@
         goto(p);
       }
     } else if(e.key==='ArrowLeft'){
-      goto(pos-1);
+      goPrev();
     }
   });
 
