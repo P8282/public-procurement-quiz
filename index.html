@@ -1610,6 +1610,23 @@
     });
   }
 
+  // 문제 풀이 화면 상단 breadcrumb(대분류/세부분류)에 "4. 계약종결 관리" / "4-2. 대금지급 절차"처럼
+  // 정확한 번호를 매긴다. 문제 원본(q.category1/category2)에 붙어있는 번호는 구글시트 입력 실수 등으로
+  // 출제기준(TOC_BLUEPRINT) 순서와 어긋날 수 있으므로, 번호는 무시하고 순수 이름만으로 다시 매칭해서
+  // getChapterToc()와 동일한 기준으로 번호를 새로 매긴다. 매칭에 실패하면(출제기준에 없는 이름 등)
+  // 원본 category1/category2 텍스트를 그대로 돌려준다(안전한 폴백).
+  function questionTocLabels(key, q){
+    const blueprint = TOC_BLUEPRINT[key] || [];
+    const c1 = (q.category1 || '').trim().replace(/^\d+\.\s*/, '');
+    const c2 = (q.category2 || '').trim().replace(/^\d+\.\s*/, '');
+    const gi = blueprint.findIndex(g => g.name === c1);
+    if(gi < 0) return { group: q.category1 || '', sub: q.category2 || '' };
+    const group = `${gi+1}. ${blueprint[gi].name}`;
+    const si = (blueprint[gi].subs || []).findIndex(s => s === c2);
+    const sub = si >= 0 ? `${gi+1}-${si+1}. ${blueprint[gi].subs[si]}` : (q.category2 || '');
+    return { group, sub };
+  }
+
   function allChapterKeys(){
     return META.subjects.reduce((acc, subj)=>acc.concat(subj.chapters), []);
   }
@@ -2080,6 +2097,7 @@
     const qStatus = getQuestionStatus(key, idx);
     const qsm = QUESTION_STATUS_META[qStatus];
     const statusBadgeHtml = `<span style="display:inline-block;font-size:10.5px;font-weight:700;color:${qsm.color};background:${qsm.bg};border-radius:999px;padding:2px 9px;margin-bottom:4px;">${qsm.icon} ${qsm.label}</span><br>`;
+    const tocLabels = questionTocLabels(key, q); // crumb에 쓸 "4. 계약종결 관리" / "4-2. 대금지급 절차" 형식 라벨
     const isWeakNow = isManualWeak(key, idx);
     // 이미(수동이든 자동이든) '취약' 상태로 판정된 문제라면 "취약문제로 지정하기" 버튼은 보여주지 않는다.
     // 수동으로 지정한 경우에만 "지정 해제" 버튼을 보여주고, 자동으로만 취약 판정된 경우엔 버튼 자체를 숨긴다.
@@ -2142,7 +2160,7 @@
       </div>
       <div class="quiz-wrap">
         <div class="quiz-head">
-          <div class="crumb">${statusBadgeHtml}<b>${escapeHtml(q.category1||'')}</b><br>${escapeHtml(q.category2||'')}</div>
+          <div class="crumb">${statusBadgeHtml}<b>${escapeHtml(tocLabels.group)}</b><br>${escapeHtml(tocLabels.sub)}</div>
           <div class="qno">${globalPos+1} / ${globalTotal}</div>
         </div>
         ${isWrongSession? `
