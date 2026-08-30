@@ -1349,47 +1349,121 @@
       alert('이 문제를 찾을 수 없습니다. (구글시트에서 삭제되었거나 순서가 바뀌었을 수 있어요)');
       return;
     }
-    document.getElementById('myReportsOverlay')?.remove();
+    closeMyReportsView();
     openChapter(chapterKey, false, [questionIndex], null);
   }
 
+  // "내가 신고한 오류 모아보기" — admin 모아보기와 같은 방식으로, 한 번에 하나씩
+  // 문제/보기(정답 표시)/해설/내 신고내용을 함께 보여주며 이전·다음으로 넘겨본다.
+  let myReportsList = [];   // [ [reportId, reportObj], ... ] — 열 때 한 번 스냅샷
+  let myReportsIndex = 0;
+
   function openMyReportsModal(){
-    const overlay = document.createElement('div');
-    overlay.id = 'myReportsOverlay';
-    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(20,18,12,.55);z-index:80;display:flex;align-items:center;justify-content:center;padding:20px;';
-    const items = Object.entries(state.myReports || {}).sort((a,b)=> (b[1].createdAt||0) - (a[1].createdAt||0));
-    overlay.innerHTML = `
-      <div style="background:var(--card);border-radius:16px;padding:20px;max-width:400px;width:100%;max-height:80vh;display:flex;flex-direction:column;">
-        <div style="font-weight:800;font-size:15px;color:var(--navy);margin-bottom:14px;flex-shrink:0;">🚩 내가 신고한 오류</div>
-        <div style="overflow-y:auto;flex:1;">
-          ${items.map(([id, r])=>`
-            <div style="border:1px solid var(--line-strong);border-radius:11px;padding:12px;margin-bottom:10px;">
-              <div style="font-size:11px;color:var(--ink-soft);margin-bottom:4px;">${escapeHtml(META.names[r.chapterKey] || r.chapterKey)}</div>
-              <div style="font-size:12.5px;color:var(--ink);line-height:1.6;margin-bottom:6px;word-break:keep-all;">${escapeHtml(r.questionText || '').slice(0,60)}${(r.questionText||'').length>60?'...':''}</div>
-              <div style="font-size:12.5px;color:var(--seal);background:var(--seal-tint);border-radius:7px;padding:8px 10px;margin-bottom:8px;line-height:1.6;word-break:keep-all;">${escapeHtml(r.content)}</div>
-              <div style="display:flex;gap:6px;">
-                <button class="mini-goto-btn" data-key="${escapeHtml(r.chapterKey)}" data-idx="${r.questionIndex}" style="flex:1;background:var(--navy);color:#fff;border:none;border-radius:7px;padding:7px;font-size:11.5px;cursor:pointer;">문제로 이동</button>
-                <button class="mini-delete-btn" data-id="${escapeHtml(id)}" style="background:transparent;border:1px solid var(--line-strong);color:var(--ink-soft);border-radius:7px;padding:7px 10px;font-size:11.5px;cursor:pointer;">삭제</button>
-              </div>
-            </div>
-          `).join('') || '<div style="color:var(--ink-soft);font-size:13px;text-align:center;padding:20px 0;">신고 내역이 없습니다.</div>'}
+    myReportsList = Object.entries(state.myReports || {}).sort((a,b)=> (b[1].createdAt||0) - (a[1].createdAt||0));
+    if(!myReportsList.length){ alert('신고 내역이 없습니다.'); return; }
+    myReportsIndex = 0;
+    document.addEventListener('keydown', myReportsKeyHandler);
+    renderMyReportsView();
+  }
+
+  function closeMyReportsView(){
+    document.getElementById('myReportsOverlay')?.remove();
+    document.removeEventListener('keydown', myReportsKeyHandler);
+  }
+
+  function myReportsKeyHandler(e){
+    if(!document.getElementById('myReportsOverlay')) return;
+    if(e.key === 'ArrowRight') myReportsNav(1);
+    else if(e.key === 'ArrowLeft') myReportsNav(-1);
+    else if(e.key === 'Escape') closeMyReportsView();
+  }
+
+  function myReportsNav(dir){
+    const next = myReportsIndex + dir;
+    if(next < 0 || next >= myReportsList.length) return;
+    myReportsIndex = next;
+    renderMyReportsView();
+  }
+
+  // 삭제 실제 처리는 기존 deleteMyReport(confirm+API 호출)를 그대로 재사용하고,
+  // 이 화면(overlay)의 목록/인덱스만 갱신해 계속 이어서 볼 수 있게 한다.
+  async function myReportsHandleDelete(id){
+    const before = myReportCount();
+    await deleteMyReport(id);
+    if(myReportCount() === before) return; // 취소했거나 삭제 실패
+    myReportsList = myReportsList.filter(([rid]) => rid !== id);
+    if(!myReportsList.length){ closeMyReportsView(); return; }
+    if(myReportsIndex >= myReportsList.length) myReportsIndex = myReportsList.length - 1;
+    renderMyReportsView();
+  }
+
+  function renderMyReportsView(){
+    const total = myReportsList.length;
+    const [id, r] = myReportsList[myReportsIndex];
+    const q = (QUIZ[r.chapterKey] || [])[r.questionIndex];
+    const dateStr = r.createdAt? new Date(r.createdAt).toLocaleString('ko-KR', {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
+    const statusLabel = r.status === 'resolved' ? '✅ 처리완료' : '🕓 접수됨';
+
+    let questionBlockHtml;
+    if(q){
+      const letters = ['①','②','③','④'];
+      const optionsHtml = q.options.map((opt,i)=>`
+        <div class="option${i===q.answer-1? ' correct':' dim'}"><div class="num">${letters[i]}</div><div>${escapeHtml(opt)}</div></div>
+      `).join('');
+      const tocLabels = questionTocLabels(r.chapterKey, q);
+      questionBlockHtml = `
+        <div class="quiz-head"><div class="crumb"><b>${escapeHtml(tocLabels.group)}</b><br>${escapeHtml(tocLabels.sub)}</div></div>
+        <div class="qcard"><div class="qtext">${escapeHtml(q.question)}</div></div>
+        <div class="options">${optionsHtml}</div>
+        <div class="sheet-inline-slot">
+          <div class="sheet" style="position:static;max-width:none;width:100%;margin:14px 0 0;animation:none;box-shadow:var(--shadow);">
+            <div class="sheet-head ok"><span>💡 해설</span></div>
+            <div class="sheet-body">${escapeHtml(q.explanation || '해설이 제공되지 않았습니다.')}${q.source? `<div class="sheet-src">§ 출처: ${escapeHtml(q.source)}</div>` : ''}</div>
+          </div>
         </div>
-        <button id="myReportsCloseBtn" class="nav-btn" style="margin-top:12px;flex-shrink:0;">닫기</button>
+      `;
+    } else {
+      questionBlockHtml = `
+        <div class="quiz-head"><div class="crumb"><b>${escapeHtml(META.names[r.chapterKey] || r.chapterKey)}</b></div></div>
+        <div class="qcard"><div class="qtext" style="color:var(--ink-soft);">${escapeHtml(r.questionText || '(문제 내용 없음)')}</div></div>
+        <div style="font-size:12.5px;color:var(--ink-soft);margin:-4px 0 4px;">⚠️ 이 문제를 찾을 수 없습니다. (구글시트에서 삭제되었거나 순서가 바뀌었을 수 있어요)</div>
+      `;
+    }
+
+    const overlay = document.getElementById('myReportsOverlay') || document.createElement('div');
+    overlay.id = 'myReportsOverlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:var(--paper);z-index:80;overflow-y:auto;';
+    overlay.innerHTML = `
+      <div class="topbar topbar-quiz" id="myReportsTopbar">
+        <div class="brand">🚩 내가 신고한 오류</div>
+        <div class="stats-chip">${myReportsIndex+1} / ${total}</div>
+      </div>
+      <div class="quiz-wrap">
+        ${questionBlockHtml}
+        <div class="qcard" style="background:var(--seal-tint);border-color:transparent;margin-top:16px;">
+          <div style="font-size:11.5px;color:var(--ink-soft);margin-bottom:8px;">${statusLabel} · ${escapeHtml(dateStr)}</div>
+          <div style="font-size:14px;color:var(--seal);line-height:1.75;white-space:pre-wrap;word-break:keep-all;">${escapeHtml(r.content)}</div>
+        </div>
+        <div class="nav-row">
+          <button class="nav-btn" id="myReportsPrevBtn" ${myReportsIndex===0?'disabled':''}>← 이전</button>
+          <button class="nav-btn" id="myReportsNextBtn" ${myReportsIndex===total-1?'disabled':''}>다음 →</button>
+        </div>
+        <div class="nav-row">
+          ${q? `<button class="nav-btn" id="myReportsGotoBtn">문제로 이동</button>` : ''}
+          <button class="nav-btn" id="myReportsDeleteBtn" style="color:var(--seal);">삭제</button>
+          <button class="nav-btn primary" id="myReportsCloseBtn">닫기</button>
+        </div>
+        <div class="kbd-hint">←/→ 이전·다음 &nbsp; Esc 닫기</div>
       </div>
     `;
-    document.body.appendChild(overlay);
-    overlay.addEventListener('click', (e)=>{ if(e.target === overlay) overlay.remove(); });
-    document.getElementById('myReportsCloseBtn').onclick = ()=> overlay.remove();
-    overlay.querySelectorAll('.mini-goto-btn').forEach(btn=>{
-      btn.onclick = ()=> goToReportedQuestion(btn.dataset.key, Number(btn.dataset.idx));
-    });
-    overlay.querySelectorAll('.mini-delete-btn').forEach(btn=>{
-      btn.onclick = async ()=>{
-        await deleteMyReport(btn.dataset.id);
-        overlay.remove();
-        openMyReportsModal(); // 갱신된 목록으로 다시 열기
-      };
-    });
+    if(!overlay.parentNode) document.body.appendChild(overlay);
+
+    document.getElementById('myReportsTopbar').onclick = ()=> closeMyReportsView();
+    document.getElementById('myReportsPrevBtn').onclick = (e)=>{ e.stopPropagation(); myReportsNav(-1); };
+    document.getElementById('myReportsNextBtn').onclick = (e)=>{ e.stopPropagation(); myReportsNav(1); };
+    document.getElementById('myReportsCloseBtn').onclick = (e)=>{ e.stopPropagation(); closeMyReportsView(); };
+    document.getElementById('myReportsDeleteBtn').onclick = (e)=>{ e.stopPropagation(); myReportsHandleDelete(id); };
+    if(q) document.getElementById('myReportsGotoBtn').onclick = (e)=>{ e.stopPropagation(); goToReportedQuestion(r.chapterKey, r.questionIndex); };
   }
 
   function chapterStats(key){
