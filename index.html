@@ -29,6 +29,9 @@
     --seal-deep:#8B2A22;
     --seal-tint:#F6E4E1;
     --gold:#B08A3E;
+    --gold-tint:#F6EEDA;
+    --gold-text:#8A6216;
+    --gold-border:#E6D3A0;
     --correct:#2E6B4F;
     --correct-tint:#E1EDE5;
     --wrong:#AE342A;
@@ -152,6 +155,11 @@
     border:1.4px solid #E9C2BC; margin-top:10px; letter-spacing:.01em;
   }
   .btn-review:hover{ background:#F0D3CE; }
+  .btn-num{
+    background:var(--gold-tint); color:var(--gold-text); font-size:13.5px; padding:12px 18px; width:100%;
+    border:1.4px solid var(--gold-border); margin-top:10px; letter-spacing:.01em;
+  }
+  .btn-num:hover{ filter:brightness(.97); }
 
   /* ---------- 동기화(로그인/로그아웃) 상태 바 - 홈 화면 상단 상시 노출 ---------- */
   .sync-bar{
@@ -537,6 +545,9 @@
       --seal:#E0857A;
       --seal-tint:#3A2320;
       --gold:#C9A45C;
+      --gold-tint:#332B1A;
+      --gold-text:#E3C583;
+      --gold-border:#5C4C2A;
       --correct:#6FCB9A;
       --correct-tint:#1E3329;
       --wrong:#E0857A;
@@ -634,8 +645,9 @@
   // 비워둔(빈 문자열) 챕터는 기존 내장 문제를 그대로 사용합니다. 일부만 채워도 됩니다.
   //
   // 시트 형식(고정, 열 순서로 읽으므로 헤더 문구 자체는 안 봄):
-  //   1행 헤더(번호,세부항목,세세항목,문제 내용,보기①~④,정답 번호,해설 및 오답노트,출처,구분) → 2행부터 바로 데이터
+  //   1행 헤더(번호,세부항목,세세항목,문제 내용,보기①~④,정답 번호,해설 및 오답노트,출처,구분,숫자문제분류) → 2행부터 바로 데이터
   //   A:번호  B:세부항목  C:세세항목  D:문제 내용  E~H:보기①~④  I:정답 번호(1~4)  J:해설 및 오답노트  K:출처  L:구분(미사용)
+  //   M:숫자문제 분류코드("NUM"이면 홈 화면 "⚡ 조달 수치 뽀개기" 모아풀기 대상에 포함됨)
   // ====== Cloudflare Worker 기반 배치 로딩 (자료 보호용, 선택적) ======
   // CF_API_BASE가 자리표값 그대로면 이 기능은 조용히 비활성화되고, 기존 구글시트 방식이 그대로 사용된다.
   // 실제 Worker를 배포한 뒤 아래 주소를 교체하면, "앱 켜자마자 935문제 전부 받기" 대신
@@ -861,10 +873,11 @@
     storageOk: null,   // true/false/null(테스트 전) - 저장소(window.storage) 실제 동작 여부 자체진단 결과
     expandedChapter: null, // 홈 화면에서 목차(대분류>세세항목)를 카드 안에 펼쳐놓은 챕터키(일시 상태, 저장하지 않음)
     filterIndices: null, // 세세항목 등 부분 학습 세션에서 사용할 QUIZ[key] 안의 인덱스 목록(일시 상태, 저장하지 않음)
-    filterKind: null,    // 'wrong' | 'subtopic' | null - 현재 부분 학습 세션의 종류(일시 상태, 저장하지 않음)
+    filterKind: null,    // 'wrong' | 'subtopic' | 'num' | null - 현재 부분 학습 세션의 종류(일시 상태, 저장하지 않음)
     excluded: {},          // { chapterKey: { idx: true } } - 오답노트 대상에서 수동으로 뺀 문제 목록(영구 저장)
     wrongMastery: { pool: {}, streak: {} }, // pool: 한 번이라도 틀려서 오답노트 대상에 들어간 문제, streak: 그 문제의 현재 연속 정답 횟수(둘 다 영구 저장)
     globalWrongReview: false, // 메인화면 "전체 오답 복습" 진입 여부(일시 상태, 저장하지 않음) - 챕터를 순차로 이어가는 데 사용
+    globalNumReview: false, // 메인화면 "⚡ 조달 수치 뽀개기" 진입 여부(일시 상태, 저장하지 않음) - 챕터를 순차로 이어가는 데 사용
     updateAvailable: false, // 앱 코드(GitHub 배포본) 새 버전이 감지됐는지 여부(일시 상태, 저장하지 않음)
     syncCode: null,     // 클라우드 동기화 코드(예: "A7K9-2XQP"). 연결돼 있으면 값이 있고, 아니면 null (영구 저장)
     syncing: false,     // 지금 동기화 요청이 진행 중인지(중복 클릭 방지용, 일시 상태)
@@ -1368,6 +1381,25 @@
   }
   function wrongCount(key){ return wrongIndices(key).length; }
 
+  // M열(NUM) 태그가 붙은 문제만 골라 인덱스 배열로 반환한다("⚡ 조달 수치 뽀개기" 모아풀기용).
+  // Cloudflare 모드에서는 문제 내용을 안 받아도 되는 /meta의 nums(챕터별 불리언 배열)로 판단하고,
+  // 그 외(구글시트/내장 데이터)에서는 QUIZ[key] 항목에 직접 담긴 numTag로 판단한다.
+  function numIndicesOf(key){
+    const indices = [];
+    if(cfEnabled() && CF_META[key]){
+      (CF_META[key].nums || []).forEach((isNum, i)=>{ if(isNum) indices.push(i); });
+    } else {
+      (QUIZ[key] || []).forEach((q, i)=>{ if(q && q.numTag) indices.push(i); });
+    }
+    return indices;
+  }
+  function numCount(key){ return numIndicesOf(key).length; }
+  function totalNumCount(){ return allChapterKeys().reduce((sum,k)=> sum + numCount(k), 0); }
+  // 이 챕터에 아직 안 푼 NUM 문제가 남아있는지(전체 NUM 복습을 챕터별로 이어갈 때 종료 조건 판단용).
+  function hasUnansweredNum(key){
+    return numIndicesOf(key).some(i => !(state.progress[key] && state.progress[key][i]));
+  }
+
   // 오답노트 대상에서 특정 문제를 수동으로 제외한다. 숙달도(연속 정답 횟수)와 무관하게,
   // 사용자가 "이제 이 문제는 그만 보고 싶다"고 판단했을 때 누르는 버튼용.
   // 이후 이 문제를 다시 틀리더라도 제외 상태는 풀리지 않는다(직접 해제하기 전까지 유지).
@@ -1548,6 +1580,7 @@
   function renderHome(){
     const os = overallStats();
     const totalWrong = totalWrongCount();
+    const totalNum = totalNumCount();
     let chaptersHtml = '';
     META.subjects.forEach(subj=>{
       const subjTotal = subj.chapters.reduce((a,k)=>a+QUIZ[k].length,0);
@@ -1649,6 +1682,7 @@
         </div>
         <button class="btn btn-primary" id="resumeBtn">${os.answered>0? '이어서 풀기' : '지금 바로 풀어보기'}</button>
         ${totalWrong>0? `<button class="btn btn-review" id="globalWrongBtn">🔁 전체 틀린 문제 ${totalWrong}개 복습하기</button>` : ''}
+        ${totalNum>0? `<button class="btn btn-num" id="globalNumBtn">⚡ 조달 수치 뽀개기 (${totalNum}문제)</button>` : ''}
         ${myReportCount()>0? `<button class="btn btn-review" id="myReportsBtn">🚩 내가 신고한 오류 ${myReportCount()}개 보기</button>` : ''}
       </div>
       <div class="section-wrap">${chaptersHtml}</div>
@@ -1664,6 +1698,8 @@
     };
     const globalWrongBtn = document.getElementById('globalWrongBtn');
     if(globalWrongBtn) globalWrongBtn.onclick = ()=> startGlobalWrongReview();
+    const globalNumBtn = document.getElementById('globalNumBtn');
+    if(globalNumBtn) globalNumBtn.onclick = ()=> startGlobalNumReview();
     const myReportsBtn = document.getElementById('myReportsBtn');
     if(myReportsBtn) myReportsBtn.onclick = ()=> openMyReportsModal();
 
@@ -1755,6 +1791,30 @@
     startWrongReview(key);
   }
 
+  // 챕터 안의 NUM(숫자문제) 태그가 붙은 문제만 필터링해 이어서 풀도록 연다. wrongReview와 동일하게
+  // 실제 챕터의 진짜 인덱스만 쓰므로, 여기서 푼 답은 그 챕터의 진짜 진행률에 그대로 반영·누적된다.
+  function startNumReview(key){
+    const idxs = numIndicesOf(key);
+    if(!idxs.length) return;
+    openChapter(key, true, idxs, 'num');
+  }
+
+  // 아직 안 푼 NUM 문제가 남아있는 챕터키를 찾는다("전체 NUM 복습"을 챕터별로 이어갈 때 사용).
+  function nextNumChapterKey(){
+    return allChapterKeys().find(k => hasUnansweredNum(k));
+  }
+
+  // 메인화면 "⚡ 조달 수치 뽀개기" 진입점. 안 푼 NUM 문제가 있는 첫 챕터부터 시작하고,
+  // 완료 화면에서 다음 챕터로 자동으로 이어간다(goHomeOrContinueGlobalReview 참고).
+  // 전부 이미 풀었으면(안 푼 게 없으면) NUM 문제가 하나라도 있는 챕터를 처음부터 다시 보여준다.
+  function startGlobalNumReview(){
+    let key = nextNumChapterKey();
+    if(!key) key = allChapterKeys().find(k => numCount(k) > 0);
+    if(!key){ alert('아직 등록된 숫자문제(NUM)가 없습니다.'); return; }
+    state.globalNumReview = true;
+    startNumReview(key);
+  }
+
   // 챕터 안에서 특정 세부항목(category1) 또는 세세항목(category2)에 해당하는 문제만 골라 이어서 풀도록 연다.
   // level: 'sub'(세세항목, 기존 방식) | 'group'(세부항목 - 그 아래 세세항목 전부 포함)
   // 번호("1. " 등) 접두사는 무시하고 순수 이름으로 매칭한다(출제기준 청사진과 표기 방식이 다를 수 있어서).
@@ -1815,6 +1875,7 @@
     const os = overallStats();
     const isFiltered = !!state.filterIndices;
     const isWrongSession = state.filterKind === 'wrong';
+    const isNumSession = state.filterKind === 'num';
     const streak = masteryStreak(key, idx);
     // 이 문제를 지금까지 몇 번째 풀고 있는지. 이미 답을 골랐으면 저장된 값 그대로, 아직 안 골랐으면
     // "이번이 몇 번째 시도가 될지"를 보여주기 위해 +1 해서 표시한다.
@@ -1867,7 +1928,7 @@
       <div class="quiz-header-sticky">
         <div class="topbar topbar-quiz" id="quizTopbar">
           <div class="brand"><span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="#F5F1E7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v4h4"/><path d="M9 13l2 2 4-4"/></svg></span>공공조달관리사</div>
-          <div class="stats-chip">${isFiltered? `📎 ${escapeHtml(q.category2||'')}` : escapeHtml(META.names[key])}</div>
+          <div class="stats-chip">${isNumSession? '⚡ 조달 수치 뽀개기' : (isFiltered? `📎 ${escapeHtml(q.category2||'')}` : escapeHtml(META.names[key]))}</div>
         </div>
         <div class="progress-bar-top"><div style="width:${(pos)/total*100}%"></div></div>
       </div>
@@ -2031,15 +2092,17 @@
     } else {
       s = chapterStats(key);
     }
+    const isNumSession = filterKind === 'num';
+    const filteredLabel = isNumSession? '⚡ 조달 수치 뽀개기' : escapeHtml(topicLabel);
     const pct = s.answered? Math.round(s.correct/s.answered*100) : 0;
     app.innerHTML = `
       <div class="topbar">
         <div class="brand" id="homeBtn2"><span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="#F5F1E7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v4h4"/><path d="M9 13l2 2 4-4"/></svg></span>공공조달관리사</div>
-        <div class="stats-chip">${filtered? `📎 ${escapeHtml(topicLabel)}` : escapeHtml(META.names[key])}</div>
+        <div class="stats-chip">${filtered? (isNumSession? filteredLabel : `📎 ${filteredLabel}`) : escapeHtml(META.names[key])}</div>
       </div>
       <div class="complete-wrap">
         <div class="stamp"><b>${pct}%</b><span>정답률</span></div>
-        <h2>${filtered? escapeHtml(topicLabel) : escapeHtml(META.names[key])} 완료</h2>
+        <h2>${filtered? filteredLabel : escapeHtml(META.names[key])} 완료</h2>
         <p>총 ${s.total}문항 중 ${s.answered}문항을 풀었습니다.</p>
         ${filtered? '' : `<p style="color:var(--seal);font-weight:700;font-size:13px;margin-top:-14px;">🔁 이 단원 누적 ${reviewCount(key)}회독</p>`}
         <div class="score-row">
@@ -2079,6 +2142,15 @@
       }
       state.globalWrongReview = false;
       alert('🎉 전체 오답 복습을 모두 마쳤습니다!');
+    }
+    if(state.globalNumReview){
+      const nextKey = nextNumChapterKey();
+      if(nextKey){
+        startNumReview(nextKey); // 기존 startNumReview 로직 그대로 재사용
+        return;
+      }
+      state.globalNumReview = false;
+      alert('🎉 숫자문제(NUM) 복습을 모두 마쳤습니다!');
     }
     state.view = 'home';
     render();
