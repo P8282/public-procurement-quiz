@@ -871,6 +871,8 @@
     excluded: {},          // { chapterKey: { idx: true } } - 오답노트 대상에서 수동으로 뺀 문제 목록(영구 저장)
     wrongMastery: { pool: {}, streak: {} }, // pool: 한 번이라도 틀려서 오답노트 대상에 들어간 문제, streak: 그 문제의 현재 연속 정답 횟수(둘 다 영구 저장)
     globalWeakReview: false, // 메인화면 "전체 취약 문제 복습" 진입 여부(일시 상태, 저장하지 않음) - 챕터를 순차로 이어가는 데 사용
+    globalWeakQueue: [],     // 전체 취약 문제 복습을 시작한 시점에 취약 문제가 있던 챕터 목록(일시 상태) - 한 번 정한 순서를 그대로 순회
+    globalWeakQueueIndex: 0, // globalWeakQueue 안에서 지금 몇 번째 챕터를 보고 있는지(일시 상태)
     globalNumReview: false, // 메인화면 "⚡ 숫자 뽀개기.zip" 진입 여부(일시 상태, 저장하지 않음) - 챕터를 순차로 이어가는 데 사용
     updateAvailable: false, // 앱 코드(GitHub 배포본) 새 버전이 감지됐는지 여부(일시 상태, 저장하지 않음)
     syncCode: null,     // 클라우드 동기화 코드(예: "A7K9-2XQP"). 연결돼 있으면 값이 있고, 아니면 null (영구 저장)
@@ -2062,10 +2064,16 @@
   // 완료 화면에서 다음 챕터로 자동으로 이어간다(goHomeOrContinueGlobalReview 참고).
   // 기존 startWeakReview/openChapter 로직을 그대로 재사용할 뿐, 별도의 새 퀴즈 진행 로직은 만들지 않는다.
   function startGlobalWeakReview(){
-    const key = allChapterKeys().find(k => weakCount(k) > 0);
-    if(!key){ alert('현재 취약 문제가 없습니다! 🎉'); return; }
+    // 지금 시점에 취약 문제가 있는 챕터들을 순서대로 큐에 담아두고, 그 순서 그대로 한 챕터씩 이동한다.
+    // (예전에는 "취약한 챕터를 아무거나 하나 찾기"를 매번 새로 하다 보니, 방금 본 챕터가 한 문제만
+    //  맞혀서는 여전히 취약 상태로 남아있는 경우 계속 같은 챕터로만 되돌아가 다른 챕터로 넘어가지
+    //  못하는 문제가 있었다 - "16개 복습하기가 안 됨" 버그의 원인)
+    const queue = allChapterKeys().filter(k => weakCount(k) > 0);
+    if(!queue.length){ alert('현재 취약 문제가 없습니다! 🎉'); return; }
     state.globalWeakReview = true;
-    startWeakReview(key);
+    state.globalWeakQueue = queue;
+    state.globalWeakQueueIndex = 0;
+    startWeakReview(queue[0]);
   }
 
   // 챕터 안의 NUM(숫자문제) 태그가 붙은 문제만 필터링해 이어서 풀도록 연다. wrongReview와 동일하게
@@ -2495,12 +2503,23 @@
   // 일반 완료 화면(단일 챕터/세세항목)에서는 기존 그대로 홈으로 이동한다.
   function goHomeOrContinueGlobalReview(){
     if(state.globalWeakReview){
-      const nextKey = allChapterKeys().find(k => weakCount(k) > 0);
+      // startGlobalWeakReview()가 시작할 때 정해둔 큐(state.globalWeakQueue)를 순서대로 한 칸씩
+      // 전진한다 - 매번 "취약한 챕터 아무거나 찾기"를 다시 하면, 방금 본 챕터가 한 번 맞혔다고
+      // 바로 취약 상태를 벗어나지는 않으므로(연속 3회 이상 맞혀야 함) 계속 같은 챕터로 되돌아와
+      // 다른 챕터로 못 넘어가는 문제가 있었다. 다만 큐에 담긴 챕터가 그 사이 이미 다 극복됐다면
+      // (weakCount 0) 그 챕터는 건너뛰고 다음 챕터를 찾는다.
+      let nextKey = null;
+      while(state.globalWeakQueueIndex + 1 < state.globalWeakQueue.length){
+        state.globalWeakQueueIndex++;
+        const cand = state.globalWeakQueue[state.globalWeakQueueIndex];
+        if(weakCount(cand) > 0){ nextKey = cand; break; }
+      }
       if(nextKey){
         startWeakReview(nextKey); // 기존 startWeakReview 로직 그대로 재사용
         return;
       }
       state.globalWeakReview = false;
+      state.globalWeakQueue = [];
       alert('🎉 전체 취약 문제 복습을 모두 마쳤습니다!');
     }
     if(state.globalNumReview){
