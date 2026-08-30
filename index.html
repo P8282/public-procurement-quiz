@@ -662,6 +662,23 @@
   const CF_LOADED = {};          // { chapterKey: Set(불러온 인덱스) } - 중복 요청 방지용(일시 상태)
   const CF_PENDING = {};         // { chapterKey: { batchStartIndex: Promise } } - 동시에 같은 배치를 두 번 요청하지 않기 위함
 
+  let CF_DAILY_LIMIT_ALERTED = false; // 하루 상한 알림은 이 페이지가 떠 있는 동안 한 번만 띄운다(배치마다 뜨면 스팸이 됨)
+
+  // 하루 누적 상한(daily)에 도달했음을 사용자에게 알린다 - burst와 달리 몇 초 기다린다고 풀리지
+  // 않고 그날 안엔 계속 막히므로, 조용히 재시도만 반복하지 않고 명확하게 알려준다.
+  function notifyDailyLimitReached(){
+    if(CF_DAILY_LIMIT_ALERTED) return;
+    CF_DAILY_LIMIT_ALERTED = true;
+    alert('오늘 받아갈 수 있는 학습 데이터 상한에 도달했습니다.\n내일 다시 시도해주세요.');
+  }
+
+  // 순간 속도 제한(burst)에 걸려 잠시 대기 중임을 알린다. alert처럼 화면을 막지 않고, 로딩 화면
+  // ("문제를 불러오는 중...")의 안내 문구만 바꿔서 "멈춘 게 아니라 잠시 기다리는 중"임을 보여준다.
+  function notifyBurstLimitWaiting(waiting){
+    state.cfBurstWaiting = waiting;
+    if(state.view === 'quiz') render(true);
+  }
+
   async function cfFetchWithRetry(url, tries){
     tries = tries || 3;
     for(let attempt=0; attempt<=tries; attempt++){
@@ -670,18 +687,32 @@
         if(!res.ok){
           const err = new Error('HTTP ' + res.status);
           err.status = res.status;
+          if(res.status === 429){
+            try{
+              const body = await res.json();
+              err.limitReason = body && body.limitReason; // 'burst' | 'daily'
+            }catch(e2){ /* 응답 본문이 JSON이 아니면 그냥 무시하고 burst로 취급 */ }
+          }
           throw err;
         }
         return await res.json();
       }catch(e){
+        // 하루 누적 상한(daily)은 그날 안엔 절대 안 풀리므로, 재시도해봐야 시간과 요청만 더 쓸 뿐이다.
+        // 남은 재시도 횟수와 무관하게 즉시 포기하고, 사용자에게 한 번은 명확히 알린다.
+        if(e && e.limitReason === 'daily'){
+          notifyDailyLimitReached();
+          throw e;
+        }
         if(attempt === tries) throw e;
         if(e && e.status === 429){
-          // Worker의 속도 제한(짧은 시간 안에 같은 코드로 너무 많이 요청 - 5초에 5건)에 걸린 경우다.
-          // "전체 취약 문제 복습"처럼 여러 챕터를 빠르게 이어서 넘어가면, 아직 이번 세션에 한 번도
-          // 안 열어본 챕터들의 문제를 짧은 시간에 연달아 받아와야 해서 이 제한에 걸리기 쉽다.
-          // 짧게(0.4~1.2초) 재시도하면 아직 같은 5초 창 안이라 계속 막히므로, 그 창이 넘어갈 만큼
-          // (5.2초) 확실히 기다렸다가 재시도한다.
-          await new Promise(r=> setTimeout(r, 5200));
+          // 순간 속도 제한(burst - 10초에 30건)에 걸린 경우다. "전체 취약 문제 복습"처럼 여러
+          // 챕터를 빠르게 이어서 넘어가면, 아직 이번 세션에 한 번도 안 열어본 챕터들의 문제를
+          // 짧은 시간에 연달아 받아와야 해서 이 제한에 걸리기 쉽다. 짧게 재시도하면 아직 같은
+          // 창(10초) 안이라 계속 막히므로, 그 창이 넘어갈 만큼(10.2초) 확실히 기다렸다가
+          // 재시도한다. 기다리는 동안 로딩 화면에 안내 문구를 띄워 멈춘 게 아님을 보여준다.
+          notifyBurstLimitWaiting(true);
+          await new Promise(r=> setTimeout(r, 10200));
+          notifyBurstLimitWaiting(false);
         } else {
           await new Promise(r=> setTimeout(r, 400 * (attempt+1))); // 살짝 텀을 두고 재시도
         }
@@ -719,6 +750,9 @@
         invalidateChangedAnswers(key); // 방금 받은 문제들 중 개정일자가 바뀐 게 있으면 조용히 초기화
       }catch(e){
         console.warn('[Cloudflare] 배치 로드 실패:', key, batchStart, e);
+        // 홈 화면 챕터 카드에 경고 표시가 뜨도록 기록해둔다(hasError) - 알림(alert)은 하루 상한처럼
+        // 확실히 알려야 할 때만 따로 뜨고, 여기서는 "이 챕터에 문제가 있었다"는 조용한 표시만 남긴다.
+        state.remoteErrors[key] = true;
       }finally{
         delete CF_PENDING[key][batchStart];
       }
@@ -878,6 +912,7 @@
     sheetOpen: false, // 해설 시트 표시 여부(일시 상태, 저장하지 않음)
     reviewAnswered: false, // 🔴 취약 집중공략/🟡 복습 다시풀기 화면에서 "이번 방문에서 다시 답을 골랐는지"(일시 상태, 저장하지 않음) - 예전 정답 기록 때문에 옵션이 다시 못 고르게 굳는 것을 막는 데 사용
     remoteErrors: {},  // { chapterKey: true } - 구글시트 URL은 설정됐지만 로드도/캐시도 실패한 챕터(진단용, 저장하지 않음)
+    cfBurstWaiting: false, // Cloudflare 순간 속도 제한에 걸려 재시도 대기 중인지(일시 상태, 저장하지 않음) - 로딩 화면 문구 전환용
     storageOk: null,   // true/false/null(테스트 전) - 저장소(window.storage) 실제 동작 여부 자체진단 결과
     expandedChapter: null, // 홈 화면에서 목차(대분류>세세항목)를 카드 안에 펼쳐놓은 챕터키(일시 상태, 저장하지 않음)
     filterIndices: null, // 세세항목 등 부분 학습 세션에서 사용할 QUIZ[key] 안의 인덱스 목록(일시 상태, 저장하지 않음)
@@ -2193,7 +2228,9 @@
       app.innerHTML = `
         <div class="topbar"><div class="brand">문제를 불러오는 중...</div></div>
         <div style="padding:60px 20px; text-align:center; color:var(--ink-soft); font-size:14px;">
-          ⏳ 잠시만 기다려주세요<br>
+          ${state.cfBurstWaiting
+            ? '🚦 요청이 몰려 잠시 대기 중입니다...<br>화면이 멈춘 게 아니라, 곧 자동으로 다시 시도합니다.'
+            : '⏳ 잠시만 기다려주세요'}<br>
           <button id="loadingHomeBtn" class="nav-btn" style="width:auto;margin-top:20px;padding:10px 20px;">홈으로 돌아가기</button>
         </div>
       `;
