@@ -667,11 +667,24 @@
     for(let attempt=0; attempt<=tries; attempt++){
       try{
         const res = await fetch(url, {cache:'no-store'});
-        if(!res.ok) throw new Error('HTTP ' + res.status);
+        if(!res.ok){
+          const err = new Error('HTTP ' + res.status);
+          err.status = res.status;
+          throw err;
+        }
         return await res.json();
       }catch(e){
         if(attempt === tries) throw e;
-        await new Promise(r=> setTimeout(r, 400 * (attempt+1))); // 살짝 텀을 두고 재시도
+        if(e && e.status === 429){
+          // Worker의 속도 제한(짧은 시간 안에 같은 코드로 너무 많이 요청 - 5초에 5건)에 걸린 경우다.
+          // "전체 취약 문제 복습"처럼 여러 챕터를 빠르게 이어서 넘어가면, 아직 이번 세션에 한 번도
+          // 안 열어본 챕터들의 문제를 짧은 시간에 연달아 받아와야 해서 이 제한에 걸리기 쉽다.
+          // 짧게(0.4~1.2초) 재시도하면 아직 같은 5초 창 안이라 계속 막히므로, 그 창이 넘어갈 만큼
+          // (5.2초) 확실히 기다렸다가 재시도한다.
+          await new Promise(r=> setTimeout(r, 5200));
+        } else {
+          await new Promise(r=> setTimeout(r, 400 * (attempt+1))); // 살짝 텀을 두고 재시도
+        }
       }
     }
   }
