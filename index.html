@@ -471,6 +471,11 @@
       display:inline-block; margin-top:10px; font-size:11.5px; font-weight:700;
       color:var(--seal); background:var(--seal-tint); border-radius:999px; padding:5px 12px;
     }
+    /* 태블릿/PC: 답을 이미 골랐는데 해설 패널을 닫아둔 상태일 때, 안내 문구 박스 안에서
+       바로 다시 열 수 있도록 하는 버튼(모바일의 #showSheetBtn과 같은 역할, 위치만 다름) */
+    .qside-placeholder #showSheetBtnSide{
+      margin-top:14px; width:auto; padding:10px 20px; font-size:13px;
+    }
 
     /* 해설 패널을 열었을 때도 상단에 재차 안내(정답/오답 표시 바로 아래) */
     .sheet-tip{
@@ -889,8 +894,13 @@
                           // 매번 회독수가 올라가버리는 문제가 생긴다. (영구 저장)
     tempIndex: 0,        // 임시 테스트 화면(?temp=1)에서 지금 몇 번째 문제를 보고 있는지 (일시 상태, 저장 안 함)
     dataSource: null,    // 'cloudflare' | 'error' - 지금 문제를 정상적으로 받아왔는지(홈 화면 표시용, 일시 상태)
-    questionReviewCounts: {} // { chapterKey: { questionIndex: 누적 풀이횟수 } } - "처음부터 다시 풀기"를 해도 안 지워지는
+    questionReviewCounts: {}, // { chapterKey: { questionIndex: 누적 풀이횟수 } } - "처음부터 다시 풀기"를 해도 안 지워지는
                               // 문제별 누적 풀이 횟수. 답을 고를 때마다(재도전 포함) +1. (영구 저장)
+    manualWeak: {},          // { chapterKey: { questionIndex: true|false } } - 사용자가 해설 화면에서 수동으로
+                              // 취약문제 지정/해제한 기록. 명시적으로 true/false를 저장(키를 지우지 않음)해서
+                              // 클라우드 병합 시 "지정 해제"도 정확히 동기화되도록 한다. (영구 저장)
+    questionCorrectCounts: {} // { chapterKey: { questionIndex: 누적 정답횟수 } } - questionReviewCounts와 짝을 이루는
+                              // 문제별 누적 "정답" 횟수. 정답률(=correctCounts/reviewCounts) 산출용. (영구 저장)
   };
 
   // 앱 실행 시 저장소가 실제로 쓰기/읽기 가능한지 스스로 테스트한다.
@@ -953,6 +963,14 @@
       const qrc = await window.storage.get('question-review-counts');
       if(qrc && qrc.value){ state.questionReviewCounts = JSON.parse(qrc.value) || {}; }
     }catch(e){ /* no saved question-review-counts yet */ }
+    try{
+      const qcc = await window.storage.get('question-correct-counts');
+      if(qcc && qcc.value){ state.questionCorrectCounts = JSON.parse(qcc.value) || {}; }
+    }catch(e){ /* no saved question-correct-counts yet */ }
+    try{
+      const mw = await window.storage.get('manual-weak');
+      if(mw && mw.value){ state.manualWeak = JSON.parse(mw.value) || {}; }
+    }catch(e){ /* no saved manual-weak yet */ }
     try{
       const ex = await window.storage.get('excluded-wrong');
       if(ex && ex.value){ state.excluded = JSON.parse(ex.value) || {}; }
@@ -1019,6 +1037,16 @@
   async function saveQuestionReviewCounts(){
     try{
       await window.storage.set('question-review-counts', JSON.stringify(state.questionReviewCounts));
+    }catch(e){ /* best effort */ }
+  }
+  async function saveQuestionCorrectCounts(){
+    try{
+      await window.storage.set('question-correct-counts', JSON.stringify(state.questionCorrectCounts));
+    }catch(e){ /* best effort */ }
+  }
+  async function saveManualWeak(){
+    try{
+      await window.storage.set('manual-weak', JSON.stringify(state.manualWeak));
     }catch(e){ /* best effort */ }
   }
   // 이 챕터를 완주하면 회독수가 올라갈 자격이 있는지. 한 번도 명시적으로 기록된 적 없으면,
@@ -1094,6 +1122,8 @@
       bestAnswered: state.bestAnswered,
       roundArmed: state.roundArmed,
       questionReviewCounts: state.questionReviewCounts,
+      questionCorrectCounts: state.questionCorrectCounts,
+      manualWeak: state.manualWeak,
       updatedAt: Date.now()
     };
   }
@@ -1108,14 +1138,17 @@
     state.bestAnswered = data.bestAnswered || {};
     state.roundArmed = data.roundArmed || {};
     state.questionReviewCounts = data.questionReviewCounts || {};
-    saveProgress(); saveReviewCounts(); saveExcluded(); saveWrongMastery(); saveBestAnswered(); saveRoundArmed(); saveQuestionReviewCounts();
+    state.questionCorrectCounts = data.questionCorrectCounts || {};
+    state.manualWeak = data.manualWeak || {};
+    saveProgress(); saveReviewCounts(); saveExcluded(); saveWrongMastery(); saveBestAnswered(); saveRoundArmed(); saveQuestionReviewCounts(); saveQuestionCorrectCounts(); saveManualWeak();
   }
 
   // 두 기록을 문제 단위로 합친다(데이터 손실 방지). 같은 문제를 양쪽 다 풀었으면 로컬(이 기기) 것을 우선한다.
   // - 앱을 열 때마다 자동으로 실행되는 "조용한" 동기화라, 사용자에게 매번 물어보지 않고 안전하게 합치는 방식을 쓴다.
   function mergeProgressData(local, cloud){
     const merged = {
-      progress: {}, reviewCounts: {}, excluded: {}, wrongMastery: { pool:{}, streak:{} }, myReports: {}, bestAnswered: {}, roundArmed: {}, questionReviewCounts: {}
+      progress: {}, reviewCounts: {}, excluded: {}, wrongMastery: { pool:{}, streak:{} }, myReports: {}, bestAnswered: {}, roundArmed: {}, questionReviewCounts: {},
+      questionCorrectCounts: {}, manualWeak: {}
     };
     const chapterKeys = new Set([...Object.keys(local.progress||{}), ...Object.keys(cloud.progress||{})]);
     chapterKeys.forEach(key=>{
@@ -1138,6 +1171,30 @@
       merged.questionReviewCounts[ckey] = {};
       qIdxKeys.forEach(qidx=>{
         merged.questionReviewCounts[ckey][qidx] = Math.max(localCh[qidx]||0, cloudCh[qidx]||0);
+      });
+    });
+    // 문제별 누적 정답 횟수: questionReviewCounts와 동일한 2단계 구조·동일한 병합 방식(더 큰 값 채택).
+    const qccChapterKeys = new Set([...Object.keys(local.questionCorrectCounts||{}), ...Object.keys(cloud.questionCorrectCounts||{})]);
+    qccChapterKeys.forEach(ckey=>{
+      const localCh = (local.questionCorrectCounts||{})[ckey] || {};
+      const cloudCh = (cloud.questionCorrectCounts||{})[ckey] || {};
+      const qIdxKeys = new Set([...Object.keys(localCh), ...Object.keys(cloudCh)]);
+      merged.questionCorrectCounts[ckey] = {};
+      qIdxKeys.forEach(qidx=>{
+        merged.questionCorrectCounts[ckey][qidx] = Math.max(localCh[qidx]||0, cloudCh[qidx]||0);
+      });
+    });
+    // 수동 취약 지정: 명시적으로 true/false를 저장해두었으므로(키를 지우지 않음),
+    // 어느 한쪽이라도 true면 취약으로 본다(roundArmed의 "소진되면 소진" 원칙과 같은 안전 우선 방향 - 지정 자체가
+    // 사용자의 명시적 의사표시라 함부로 무시하지 않되, 양쪽 다 false로 확정된 경우에만 해제로 합쳐진다).
+    const mwChapterKeys = new Set([...Object.keys(local.manualWeak||{}), ...Object.keys(cloud.manualWeak||{})]);
+    mwChapterKeys.forEach(ckey=>{
+      const localCh = (local.manualWeak||{})[ckey] || {};
+      const cloudCh = (cloud.manualWeak||{})[ckey] || {};
+      const qIdxKeys = new Set([...Object.keys(localCh), ...Object.keys(cloudCh)]);
+      merged.manualWeak[ckey] = {};
+      qIdxKeys.forEach(qidx=>{
+        merged.manualWeak[ckey][qidx] = !!(localCh[qidx] || cloudCh[qidx]);
       });
     });
     // 회독 자격: 어느 한쪽이라도 "소진(false)"이면 소진된 것으로 본다(이미 실제로 완주가 일어났다는 뜻이라 안전 우선).
@@ -1381,6 +1438,86 @@
   }
   function wrongCount(key){ return wrongIndices(key).length; }
 
+  // ====== 숙달도 중심 상태 판별 (단순 회독수 대신 "실질적 성취"를 보여주기 위한 보조 지표) ======
+  // wrongIndices/wrongCount는 위 오답노트 로직을 그대로 쓰므로 건드리지 않는다(기존 "전체 틀린 문제 복습" 버튼과
+  // totalWrongCount() 동작을 그대로 보존하기 위함). 아래는 전부 새로 추가된 것들이다.
+
+  function isManualWeak(key, idx){
+    return !!(state.manualWeak[key] && state.manualWeak[key][idx]);
+  }
+  function toggleManualWeak(key, idx){
+    if(!state.manualWeak[key]) state.manualWeak[key] = {};
+    state.manualWeak[key][idx] = !isManualWeak(key, idx);
+    saveManualWeak();
+    syncPush();
+  }
+
+  // 문제별 누적 정답률(%). 한 번도 안 풀었으면 null.
+  function questionAccuracy(key, idx){
+    const attempts = (state.questionReviewCounts[key] && state.questionReviewCounts[key][idx]) || 0;
+    if(!attempts) return null;
+    const corrects = (state.questionCorrectCounts[key] && state.questionCorrectCounts[key][idx]) || 0;
+    return Math.round(corrects / attempts * 100);
+  }
+
+  // 'none'(미풀이) | 'weak'(취약) | 'review'(복습) | 'mastered'(숙달)
+  // 우선순위: 미풀이 → 수동지정 → (한 번도 안 틀림=숙달) → 스트릭10↑(숙달) → 낮은 정답률/낮은 스트릭(취약) → 나머지(복습)
+  // "한 번도 안 틀린 문제"는 wrongMastery.pool에 아예 없어서 streak가 항상 0으로 잡히는데,
+  // 이걸 streak 기준(0~2=취약)으로만 판단하면 정답률 100%인 문제가 취약으로 잘못 표시되므로
+  // pool 소속 여부를 스트릭 판정보다 먼저 분기한다.
+  function getQuestionStatus(key, idx){
+    const attempts = (state.questionReviewCounts[key] && state.questionReviewCounts[key][idx]) || 0;
+    if(!attempts) return 'none';
+    if(isManualWeak(key, idx)) return 'weak';
+    const inPool = !!(state.wrongMastery.pool[key] && state.wrongMastery.pool[key][idx]);
+    if(!inPool) return 'mastered'; // 틀린 적이 없으므로 누적 정답률은 항상 100%
+    const streak = masteryStreak(key, idx);
+    if(streak >= MASTERY_TARGET) return 'mastered';
+    const acc = questionAccuracy(key, idx);
+    if(attempts >= 2 && acc !== null && acc < 50) return 'weak';
+    if(streak <= 2) return 'weak';
+    return 'review'; // pool에 있고 스트릭 3~9
+  }
+
+  const QUESTION_STATUS_META = {
+    none:     { icon:'⚪', label:'미풀이',  color:'var(--ink-soft)',  bg:'var(--paper-deep)' },
+    weak:     { icon:'🔴', label:'취약',    color:'var(--seal)',      bg:'var(--seal-tint)' },
+    review:   { icon:'🟡', label:'복습',    color:'var(--gold-text)', bg:'var(--gold-tint)' },
+    mastered: { icon:'🟢', label:'숙달',    color:'var(--correct)',   bg:'var(--correct-tint)' },
+  };
+
+  // getQuestionStatus가 '취약'으로 판정하는 문제만 모은다. wrongIndices(key)와 달리
+  // "틀린 적은 없지만 수동으로 취약 지정한 문제"도 포함하고, 스트릭이 이미 3 이상(복습 단계)인
+  // 문제는 제외한다 - QUIZ[key]의 전체 인덱스를 훑어야 하므로 별도 함수로 둔다.
+  function weakIndices(key){
+    const total = (QUIZ[key] || []).length;
+    const idxs = [];
+    for(let i=0;i<total;i++){
+      if(getQuestionStatus(key, i) === 'weak') idxs.push(i);
+    }
+    return idxs;
+  }
+  function weakCount(key){ return weakIndices(key).length; }
+
+  // 오답노트 대상(wrongIndices) 중 '취약'이 아닌(=복습 단계, 스트릭 3~9) 문제만 남긴다.
+  // wrongCount(key) = weakCount(key) + reviewOnlyCount(key)가 항상 성립하지는 않는다(수동 지정으로
+  // pool 밖의 문제가 weakIndices에 추가로 들어올 수 있어서) - 이는 의도된 동작이다.
+  function reviewOnlyIndices(key){
+    const weakSet = new Set(weakIndices(key));
+    return wrongIndices(key).filter(i => !weakSet.has(i));
+  }
+  function reviewOnlyCount(key){ return reviewOnlyIndices(key).length; }
+
+  // '숙달' 상태에 도달한 문제 수(홈 화면 "총 N문제 중 M문제 숙달" 표시용).
+  function masteredCount(key){
+    const total = (QUIZ[key] || []).length;
+    let count = 0;
+    for(let i=0;i<total;i++){
+      if(getQuestionStatus(key, i) === 'mastered') count++;
+    }
+    return count;
+  }
+
   // M열(NUM) 태그가 붙은 문제만 골라 인덱스 배열로 반환한다("⚡ 조달 수치 뽀개기" 모아풀기용).
   // Cloudflare 모드에서는 문제 내용을 안 받아도 되는 /meta의 nums(챕터별 불리언 배열)로 판단하고,
   // 그 외(구글시트/내장 데이터)에서는 QUIZ[key] 항목에 직접 담긴 numTag로 판단한다.
@@ -1614,7 +1751,9 @@
         const pct = s.total ? Math.round(s.answered/s.total*100) : 0;
         const done = s.answered>=s.total && s.total>0;
         const rc = reviewCount(key);
-        const wc = wrongCount(key);
+        const weakN = weakCount(key);
+        const reviewN = reviewOnlyCount(key);
+        const masteredN = masteredCount(key);
         const hasError = !!state.remoteErrors[key];
         const num = chapterNumber(key); // 전체 순번(1~13)
         const toc = getChapterToc(key);
@@ -1649,7 +1788,11 @@
                 <div class="progress-track"><div class="progress-fill ${done?'done':''}" style="width:${pct}%"></div></div>
                 <div class="pct">${s.answered}/${s.total}</div>
               </div>
-              ${wc>0? `<button class="wrong-btn" data-key="${key}" style="margin-top:7px;font-size:11px;font-weight:700;color:var(--seal);background:var(--seal-tint);border:1px solid #E9C2BC;border-radius:999px;padding:3px 10px;">✕ 틀린문제 ${wc}개 다시풀기</button>` : ''}
+              ${s.total>0? `<div style="margin-top:4px;font-size:10.5px;color:var(--ink-soft);">총 ${s.total}문제 중 ${masteredN}문제 숙달 🟢</div>` : ''}
+              <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px;">
+                ${weakN>0? `<button class="weak-btn" data-key="${key}" style="font-size:11px;font-weight:700;color:var(--seal);background:var(--seal-tint);border:1px solid #E9C2BC;border-radius:999px;padding:3px 10px;">🔴 취약 ${weakN}개 집중공략</button>` : ''}
+                ${reviewN>0? `<button class="review-btn" data-key="${key}" style="font-size:11px;font-weight:700;color:var(--gold-text);background:var(--gold-tint);border:1px solid var(--gold-border);border-radius:999px;padding:3px 10px;">🟡 복습 ${reviewN}개 다시풀기</button>` : ''}
+              </div>
               ${hasError? `<div style="margin-top:7px;font-size:10.5px;color:var(--wrong);">⚠ 시트 연동 실패 — 내장 문제로 표시 중</div>` : ''}
               ${tocInlineHtml}
             </div>
@@ -1744,8 +1887,11 @@
         openChapter(key, true);
       };
     });
-    document.querySelectorAll('.wrong-btn').forEach(el=>{
-      el.onclick = (e)=>{ e.stopPropagation(); startWrongReview(el.dataset.key); };
+    document.querySelectorAll('.weak-btn').forEach(el=>{
+      el.onclick = (e)=>{ e.stopPropagation(); startWeakReview(el.dataset.key); };
+    });
+    document.querySelectorAll('.review-btn').forEach(el=>{
+      el.onclick = (e)=>{ e.stopPropagation(); startReviewOnlyReview(el.dataset.key); };
     });
     document.querySelectorAll('.expand-btn').forEach(el=>{
       el.onclick = (e)=>{
@@ -1795,6 +1941,19 @@
   // 필터링하므로, 여기서 맞히면 그 챕터의 진짜 진행률에 바로 반영되어 다음부터 자동으로 목록에서 빠진다.
   function startWrongReview(key){
     const idxs = wrongIndices(key);
+    if(!idxs.length) return;
+    openChapter(key, true, idxs, 'wrong');
+  }
+
+  // 🔴 취약 집중공략 / 🟡 복습 다시풀기: 둘 다 오답노트와 같은 filterKind('wrong')를 그대로 써서
+  // 제외 버튼·숙달도 표시 등 기존 오답노트 화면 UI를 그대로 재사용한다. 대상 인덱스만 더 좁혀서 넘긴다.
+  function startWeakReview(key){
+    const idxs = weakIndices(key);
+    if(!idxs.length) return;
+    openChapter(key, true, idxs, 'wrong');
+  }
+  function startReviewOnlyReview(key){
+    const idxs = reviewOnlyIndices(key);
     if(!idxs.length) return;
     openChapter(key, true, idxs, 'wrong');
   }
@@ -1904,10 +2063,13 @@
     const globalPos = isNumSession? numPrecedingCount(key) + pos : pos;
     const globalTotal = isNumSession? totalNumCount() : total;
     const streak = masteryStreak(key, idx);
-    // 이 문제를 지금까지 몇 번째 풀고 있는지. 이미 답을 골랐으면 저장된 값 그대로, 아직 안 골랐으면
-    // "이번이 몇 번째 시도가 될지"를 보여주기 위해 +1 해서 표시한다.
+    // 이 문제를 지금까지 몇 번 풀었는지(누적). 해설 시트 하단 통계("총 N회 풀이")에 쓰인다.
     const storedReviewCount = (state.questionReviewCounts[key] && state.questionReviewCounts[key][idx]) || 0;
-    const questionReviewNum = saved ? storedReviewCount : storedReviewCount + 1;
+    // 숙달도 상태 뱃지(⚪미풀이/🔴취약/🟡복습/🟢숙달) - crumb(대분류>세부분류) 영역 바로 위에 표시.
+    const qStatus = getQuestionStatus(key, idx);
+    const qsm = QUESTION_STATUS_META[qStatus];
+    const statusBadgeHtml = `<span style="display:inline-block;font-size:10.5px;font-weight:700;color:${qsm.color};background:${qsm.bg};border-radius:999px;padding:2px 9px;margin-bottom:4px;">${qsm.icon} ${qsm.label}</span><br>`;
+    const isWeakNow = isManualWeak(key, idx);
 
     const letters = ['①','②','③','④'];
     let optionsHtml = '';
@@ -1941,8 +2103,13 @@
           <div class="sheet-body">
             ${justMastered? `<div style="background:var(--correct-tint);color:#204636;border:1px solid #BFDBCB;border-radius:9px;padding:12px 14px;margin-bottom:14px;font-weight:700;font-size:13.5px;">🎉 연속 정답 ${MASTERY_TARGET}회 달성! 이 문제는 오답노트에서 제외됩니다.</div>` : ''}
             ${escapeHtml(q.explanation||'해설이 제공되지 않았습니다.')}${q.source? `<div class="sheet-src">§ 출처: ${escapeHtml(q.source)}</div>` : ''}
-            ${isWrongSession? `<button id="excludeBtn" style="margin-top:14px;width:100%;background:var(--paper-deep);border:1px solid var(--line-strong);border-radius:9px;padding:10px;font-size:12.5px;color:var(--ink-soft);cursor:pointer;">✕ 이 문제는 오답노트에서 그만 보기</button>` : ''}
+            <button id="manualWeakBtn" style="margin-top:14px;width:100%;background:${isWeakNow? 'var(--correct-tint)':'var(--seal-tint)'};border:1px solid ${isWeakNow? '#BFDBCB':'#E9C2BC'};border-radius:9px;padding:10px;font-size:12.5px;color:${isWeakNow? '#204636':'var(--seal)'};font-weight:700;cursor:pointer;">${isWeakNow? '✔ 취약문제 지정 해제' : '🚨 취약문제로 지정하기'}</button>
+            ${isWrongSession? `<button id="excludeBtn" style="margin-top:10px;width:100%;background:var(--paper-deep);border:1px solid var(--line-strong);border-radius:9px;padding:10px;font-size:12.5px;color:var(--ink-soft);cursor:pointer;">✕ 이 문제는 오답노트에서 그만 보기</button>` : ''}
             <button id="reportErrorBtn" style="margin-top:10px;width:100%;background:transparent;border:1px dashed var(--line-strong);border-radius:9px;padding:9px;font-size:12px;color:var(--ink-soft);cursor:pointer;">🚩 문제 오류 신고</button>
+            <div style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--line-strong);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+              <span style="font-size:11.5px;color:var(--ink-soft);">총 ${storedReviewCount}회 풀이 · 정답률 ${questionAccuracy(key, idx) ?? 0}%</span>
+              <span class="mastery-dots">${Array.from({length:MASTERY_TARGET},(_,di)=>`<span class="mastery-dot${di<streak?' filled':''}"></span>`).join('')}</span>
+            </div>
           </div>
           <div class="sheet-foot">
             <button class="nav-btn" id="sheetClose">닫고 보기</button>
@@ -1961,7 +2128,7 @@
       </div>
       <div class="quiz-wrap">
         <div class="quiz-head">
-          <div class="crumb"><b>${escapeHtml(q.category1||'')}</b><br>${escapeHtml(q.category2||'')}</div>
+          <div class="crumb">${statusBadgeHtml}<b>${escapeHtml(q.category1||'')}</b><br>${escapeHtml(q.category2||'')}</div>
           <div class="qno">${globalPos+1} / ${globalTotal}</div>
         </div>
         ${isWrongSession? `
@@ -1972,7 +2139,6 @@
         <div class="quiz-split">
           <div class="qmain">
             <div class="qcard">
-              <div style="font-size:11px;color:var(--ink-soft);margin-bottom:8px;">${questionReviewNum}회째 풀이</div>
               <div class="qtext">${escapeHtml(q.question)}</div>
             </div>
             <div class="options">${optionsHtml}</div>
@@ -1980,7 +2146,7 @@
           </div>
           <div class="qside">
             <div class="sheet-inline-slot">${sheetHtml}</div>
-            ${(!saved || !state.sheetOpen)? `<div class="qside-placeholder">정답을 선택하면<br>여기에 해설이 표시됩니다.<br><span class="tip-line">💡 해설을 누르면 다음 문제로 넘어가요</span></div>` : ''}
+            ${(!saved || !state.sheetOpen)? `<div class="qside-placeholder">정답을 선택하면<br>여기에 해설이 표시됩니다.<br><span class="tip-line">💡 해설을 누르면 다음 문제로 넘어가요</span>${saved? `<button class="nav-btn" id="showSheetBtnSide">📖 해설 다시 보기</button>` : ''}</div>` : ''}
           </div>
           <div class="nav-row">
             <button class="nav-btn" id="prevBtn" ${pos===0?'disabled':''}>← 이전</button>
@@ -2043,6 +2209,8 @@
     const goNext = goToNextUnanswered;
     const showBtn = document.getElementById('showSheetBtn');
     if(showBtn) showBtn.onclick = ()=>{ state.sheetOpen = true; render(true); };
+    const showBtnSide = document.getElementById('showSheetBtnSide');
+    if(showBtnSide) showBtnSide.onclick = ()=>{ state.sheetOpen = true; render(true); };
     const sheetNext = document.getElementById('sheetNext');
     if(sheetNext) sheetNext.onclick = goNext;
     const sheetClose = document.getElementById('sheetClose');
@@ -2063,6 +2231,11 @@
     if(excludeBtn) excludeBtn.onclick = ()=>{
       excludeFromWrong(key, idx);
       goNext(); // 제외 후 바로 다음 문제로 넘어간다
+    };
+    const manualWeakBtn = document.getElementById('manualWeakBtn');
+    if(manualWeakBtn) manualWeakBtn.onclick = ()=>{
+      toggleManualWeak(key, idx);
+      render(true); // 다음 문제로 넘어가지 않고 같은 화면에서 뱃지·버튼 라벨만 갱신
     };
     const reportErrorBtn = document.getElementById('reportErrorBtn');
     if(reportErrorBtn) reportErrorBtn.onclick = ()=>{
@@ -2091,6 +2264,13 @@
     if(!state.questionReviewCounts[key]) state.questionReviewCounts[key] = {};
     state.questionReviewCounts[key][idx] = (state.questionReviewCounts[key][idx] || 0) + 1;
     saveQuestionReviewCounts();
+
+    // 문제별 누적 정답 횟수 - 위 풀이 횟수와 짝을 이뤄 정답률(getQuestionStatus/questionAccuracy) 산출에 쓰인다.
+    if(correct){
+      if(!state.questionCorrectCounts[key]) state.questionCorrectCounts[key] = {};
+      state.questionCorrectCounts[key][idx] = (state.questionCorrectCounts[key][idx] || 0) + 1;
+      saveQuestionCorrectCounts();
+    }
 
     // 오답노트 숙달도 갱신: 틀리면 풀에 등록하고 스트릭 리셋, 이미 풀에 있는 문제를 맞히면 스트릭 +1.
     // (어느 화면에서 풀든 동일하게 적용 — 전체 챕터 풀이 중에 맞혀도 숙달도에 반영된다)
