@@ -1840,7 +1840,7 @@
         <button class="btn btn-primary" id="resumeBtn">${os.answered>0? '이어서 풀기' : '지금 바로 풀어보기'}</button>
         ${totalWeak>0? `<button class="btn btn-review" id="globalWeakBtn">🔁 전체 취약 문제 ${totalWeak}개 복습하기</button>` : ''}
         ${totalNum>0? `<button class="btn btn-num" id="globalNumBtn">⚡ 숫자 뽀개기.zip (${totalNum}문제)</button>` : ''}
-        ${myReportCount()>0? `<button class="btn btn-review" id="myReportsBtn">🚩 내가 신고한 오류 ${myReportCount()}개 보기</button>` : ''}
+        ${syncEnabled() && state.syncCode? `<button class="btn btn-review" id="myReportsBtn">🚩 내가 신고한 오류${myReportCount()>0? ` ${myReportCount()}개` : ''} 모아보기</button>` : ''}
       </div>
       <div class="section-wrap">${chaptersHtml}</div>
     `;
