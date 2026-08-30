@@ -768,6 +768,11 @@
     if(!CF_LOADED[key] || !CF_LOADED[key].has(index)){
       await cfFetchBatch(key, index);
     }
+    // 취약/복습 다시풀기(filterKind==='wrong') 세션은 보는 인덱스가 순서대로가 아니라 띄엄띄엄
+    // 골라져 있어서, "다음 배치"를 미리 받아둬도 실제로 다음에 그 배치를 쓸 확률이 낮다(전혀 다른
+    // 배치나 챕터로 건너뛰는 경우가 많음). 그래서 이 세션에서는 프리페치를 하지 않고, 정말 필요해질
+    // 때(위 cfFetchBatch)만 그때그때 받아와 헛요청을 줄인다.
+    if(state.filterKind === 'wrong') return;
     // 프리페치: 다음 배치를 미리 백그라운드로 받아둔다(실패해도 나중에 필요할 때 다시 시도되므로 무시).
     const meta = CF_META[key];
     if(meta){
