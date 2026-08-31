@@ -161,7 +161,8 @@
   }
   .btn-num:hover{ filter:brightness(.97); }
   /* "⚡ 숫자 뽀개기 전체" / "🔴 취약만"을 세로로 2줄 쌓지 않고 한 줄에 나란히 배치해 공간을 아낀다. */
-  .num-btn-row{ display:flex; gap:8px; margin-top:10px; }
+  .num-title{ margin:14px 0 6px; font-size:12px; font-weight:700; color:var(--gold-text); text-align:center; }
+  .num-btn-row{ display:flex; gap:8px; margin-top:0; }
   .num-btn-row .btn-num{ margin-top:0; flex:1; min-width:0; padding:12px 10px; font-size:12.5px; line-height:1.4; }
   .num-btn-row .btn-num b{ display:block; font-size:13.5px; }
 
@@ -2087,8 +2088,9 @@
         <button class="btn btn-primary" id="resumeBtn">${os.answered>0? '이어서 풀기' : '지금 바로 풀어보기'}</button>
         ${totalWeak>0? `<button class="btn btn-review" id="globalWeakBtn">🔁 전체 취약 문제 ${totalWeak}개 복습하기</button>` : ''}
         ${(totalNum>0 || totalWeakNum>0)? `
+        <p class="num-title">⚡ 숫자 뽀개기.zip</p>
         <div class="num-btn-row">
-          ${totalNum>0? `<button class="btn btn-num" id="globalNumBtn"><b>⚡ 전체</b>${totalNum}문제${numReviewRound>0? ` · ${numReviewRound}회독` : ''}</button>` : ''}
+          ${totalNum>0? `<button class="btn btn-num" id="globalNumBtn"><b>전체</b>${totalNum}문제 · ${numReviewRound}회독</button>` : ''}
           ${totalWeakNum>0? `<button class="btn btn-num" id="globalWeakNumBtn"><b>🔴 취약만</b>${totalWeakNum}문제</button>` : ''}
         </div>` : ''}
         ${syncEnabled() && state.syncCode? `<button class="btn btn-review" id="myReportsBtn">🚩 내가 신고한 오류${myReportCount()>0? ` ${myReportCount()}개` : ''} 모아보기</button>` : ''}
