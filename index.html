@@ -601,8 +601,8 @@
     background:var(--card); border:1.4px solid var(--line-strong); border-radius:13px; padding:13px;
     text-align:left; cursor:pointer; appearance:none; font-family:inherit;
     display:flex; flex-direction:column; gap:3px; box-sizing:border-box;
-    min-height:132px; /* 4장 모두 이 높이로 통일(숫자 뽀개기 카드 내용 기준) - 그리드 auto-height 특성상
-                          fr 트랙으로는 행끼리 높이가 안 맞춰져서 직접 지정하는 방식으로 고정한다. */
+    min-height:148px; /* 4장 모두 이 높이로 통일(숫자 뽀개기 카드에 "N회독" 줄까지 붙는 경우 기준) -
+                          그리드 auto-height 특성상 fr 트랙으로는 행끼리 높이가 안 맞춰져서 직접 지정한다. */
   }
   .home-quick-card:active{ transform:scale(.98); }
   .home-quick-card .qc-icon{ font-size:17px; line-height:1; }
@@ -612,7 +612,7 @@
   .home-quick-card.primary .qc-title, .home-quick-card.primary .qc-sub{ color:#F5F1E7; }
   .home-quick-card.weak{ border-color:#E9C2BC; background:var(--seal-tint); }
   .home-quick-card.weak .qc-title{ color:var(--seal); }
-  .home-quick-card.review{ border-color:var(--gold-border); background:var(--gold-tint); cursor:default; }
+  .home-quick-card.review{ border-color:var(--gold-border); background:var(--gold-tint); }
   .home-quick-card.review .qc-title{ color:var(--gold-text); }
   .home-quick-card.num{ border-color:var(--num-border); background:var(--num-tint); }
   .home-quick-card.num .qc-title{ color:var(--num-text); }
@@ -1118,6 +1118,10 @@
     globalWeakQueue: [],     // 전체 취약 문제 복습을 시작한 시점에 취약 문제가 있던 챕터 목록(일시 상태) - 한 번 정한 순서를 그대로 순회
     globalWeakQueueIndex: 0, // globalWeakQueue 안에서 지금 몇 번째 챕터를 보고 있는지(일시 상태)
     globalWeakCounts: [],    // globalWeakQueue와 짝을 이루는, 시작 시점의 챕터별 취약 문제 개수 스냅샷(일시 상태) - 진행률 "N/전체" 표시용
+    globalReviewOnlyReview: false, // 메인화면 "🟡 복습 다시풀기" 진입 여부(일시 상태, 저장하지 않음) - globalWeakReview와 동일한 패턴
+    globalReviewOnlyQueue: [],      // 복습 문제가 있던 챕터 목록 스냅샷(일시 상태)
+    globalReviewOnlyQueueIndex: 0,  // 위 큐에서 지금 몇 번째 챕터를 보고 있는지(일시 상태)
+    globalReviewOnlyCounts: [],     // 시작 시점의 챕터별 복습 문제 개수 스냅샷(일시 상태)
     globalNumReview: false, // 메인화면 "⚡ 숫자 뽀개기.zip · 전체" 진입 여부(일시 상태, 저장하지 않음) - 챕터를 순차로 이어가는 데 사용
     globalWeakNumReview: false, // 메인화면 "🔴 숫자 뽀개기.zip · 취약만" 진입 여부(일시 상태, 저장하지 않음) - globalWeakReview와 동일한 패턴
     globalWeakNumQueue: [],      // 취약 NUM이 있던 챕터 목록 스냅샷(일시 상태) - globalWeakQueue와 동일한 역할
@@ -2322,14 +2326,14 @@
             <button class="home-quick-card weak" id="globalWeakBtn">
               <span class="qc-icon">🔴</span>
               <span class="qc-title">취약 집중공략</span>
-              <span class="qc-sub">약한 문제 ${totalWeak}개 다시 풀기</span>
+              <span class="qc-sub">자주 틀리는 문제 ${totalWeak}개</span>
             </button>` : ''}
             ${totalReviewOnly>0? `
-            <div class="home-quick-card review">
+            <button class="home-quick-card review" id="globalReviewBtn">
               <span class="qc-icon">🟡</span>
               <span class="qc-title">복습 다시풀기</span>
-              <span class="qc-sub">오답 문제 ${totalReviewOnly}개 복습</span>
-            </div>` : ''}
+              <span class="qc-sub">맞혀가는 중인 문제 ${totalReviewOnly}개</span>
+            </button>` : ''}
             ${(totalNum>0 || totalWeakNum>0)? `
             <div class="home-quick-card num">
               <span class="qc-icon">⚡</span>
@@ -2360,6 +2364,8 @@
     document.getElementById('resumeBtn2').onclick = goResume; // "빠른 학습" 카드 - hero의 이어서 풀기 버튼은 삭제되어 이게 유일한 진입점
     const globalWeakBtn = document.getElementById('globalWeakBtn');
     if(globalWeakBtn) globalWeakBtn.onclick = ()=> startGlobalWeakReview();
+    const globalReviewBtn = document.getElementById('globalReviewBtn');
+    if(globalReviewBtn) globalReviewBtn.onclick = ()=> startGlobalReviewOnlyReview();
     const globalNumBtn = document.getElementById('globalNumBtn');
     if(globalNumBtn) globalNumBtn.onclick = ()=> startGlobalNumReview();
     const globalWeakNumBtn = document.getElementById('globalWeakNumBtn');
@@ -2389,10 +2395,10 @@
       // 챕터별 단독 집중공략이므로, 혹시 이전 "전체 취약 문제 복습"을 중간에 홈으로 나가면서
       // 못 끈 globalWeakReview 플래그가 남아있다면 여기서 확실히 꺼서(챕터 경계 자동 이어가기
       // 로직이 이 단독 세션에 잘못 적용되지 않도록) 이 챕터만 풀고 정상적으로 완료 화면을 보게 한다.
-      el.onclick = (e)=>{ e.stopPropagation(); state.globalWeakReview = false; startWeakReview(el.dataset.key); };
+      el.onclick = (e)=>{ e.stopPropagation(); state.globalWeakReview = false; state.globalReviewOnlyReview = false; startWeakReview(el.dataset.key); };
     });
     document.querySelectorAll('.review-btn').forEach(el=>{
-      el.onclick = (e)=>{ e.stopPropagation(); state.globalWeakReview = false; startReviewOnlyReview(el.dataset.key); };
+      el.onclick = (e)=>{ e.stopPropagation(); state.globalWeakReview = false; state.globalReviewOnlyReview = false; startReviewOnlyReview(el.dataset.key); };
     });
     document.querySelectorAll('.expand-btn').forEach(el=>{
       el.onclick = (e)=>{
@@ -2467,6 +2473,27 @@
   // 로직은 만들지 않는다(챕터별 "🟡 복습 다시풀기" 버튼은 기존 그대로 동작).
   function totalReviewOnlyCount(){
     return allChapterKeys().reduce((sum, k) => sum + reviewOnlyIndices(k).length, 0);
+  }
+
+  // 메인화면 "🟡 복습 다시풀기" 진입점. startGlobalWeakReview()와 동일한 패턴 - 지금 시점에 복습
+  // 문제가 있는 챕터들을 큐에 순서대로 담아두고, 완료 화면에서 다음 챕터로 자동으로 이어간다.
+  function startGlobalReviewOnlyReview(){
+    const queue = allChapterKeys().filter(k => reviewOnlyIndices(k).length > 0);
+    if(!queue.length){ alert('현재 복습할 문제가 없습니다! 🎉'); return; }
+    state.globalReviewOnlyReview = true;
+    state.globalReviewOnlyQueue = queue;
+    state.globalReviewOnlyQueueIndex = 0;
+    state.globalReviewOnlyCounts = queue.map(k => reviewOnlyIndices(k).length);
+    startReviewOnlyReview(queue[0]); // 기존 startReviewOnlyReview 로직 그대로 재사용
+  }
+  // globalWeakPrecedingCount/globalWeakTotalCount와 동일한 역할, "복습 다시풀기" 전용.
+  function globalReviewOnlyPrecedingCount(){
+    let sum = 0;
+    for(let i=0; i<state.globalReviewOnlyQueueIndex; i++) sum += (state.globalReviewOnlyCounts[i] || 0);
+    return sum;
+  }
+  function globalReviewOnlyTotalCount(){
+    return (state.globalReviewOnlyCounts || []).reduce((a, b) => a + b, 0);
   }
 
   // 메인화면에서 "전체 취약 문제 복습"을 눌렀을 때 진입점. 취약 문제가 있는 첫 챕터부터 시작하고,
@@ -2661,19 +2688,22 @@
     // 이어서 보여준다(진행률·회차 표시용). pos/total은 "이 챕터 안에서의" 위치이고,
     // 아래 두 값은 "전체 목록 안에서의" 위치다.
     const isGlobalWrongSession = isWrongSession && state.globalWeakReview;
+    const isGlobalReviewOnlySession = isWrongSession && state.globalReviewOnlyReview;
     const isGlobalWeakNumSession = isWeakNumSession && state.globalWeakNumReview;
     const globalPos = isNumSession? numPrecedingCount(key) + pos
       : (isGlobalWrongSession? globalWeakPrecedingCount() + pos
-      : (isGlobalWeakNumSession? globalWeakNumPrecedingCount() + pos : pos));
+      : (isGlobalReviewOnlySession? globalReviewOnlyPrecedingCount() + pos
+      : (isGlobalWeakNumSession? globalWeakNumPrecedingCount() + pos : pos)));
     const globalTotal = isNumSession? totalNumCount()
       : (isGlobalWrongSession? globalWeakTotalCount()
-      : (isGlobalWeakNumSession? globalWeakNumTotalCount() : total));
+      : (isGlobalReviewOnlySession? globalReviewOnlyTotalCount()
+      : (isGlobalWeakNumSession? globalWeakNumTotalCount() : total)));
     // "학습 완료"/"단원 완료" 버튼은 이 세션 전체의 마지막 문제일 때만 보여야 한다. 일반 세션은 이
     // 챕터 안에서의 마지막(pos===total-1)이 곧 세션의 마지막이지만, "전체 취약 문제 복습"/
-    // "숫자 취약만"은 여러 챕터를 끊김 없이 이어서 보여주므로 챕터별 마지막이 아니라 전체 목록 기준
-    // 마지막(globalPos===globalTotal-1)이어야 한다 - 안 그러면 챕터가 바뀔 때마다 "다음 문제" 대신
-    // 매번 "학습 완료"가 떠버린다.
-    const isLast = (isGlobalWrongSession || isGlobalWeakNumSession) ? (globalPos === globalTotal - 1) : (pos === total - 1);
+    // "복습 다시풀기"/"숫자 취약만"은 여러 챕터를 끊김 없이 이어서 보여주므로 챕터별 마지막이 아니라
+    // 전체 목록 기준 마지막(globalPos===globalTotal-1)이어야 한다 - 안 그러면 챕터가 바뀔 때마다
+    // "다음 문제" 대신 매번 "학습 완료"가 떠버린다.
+    const isLast = (isGlobalWrongSession || isGlobalReviewOnlySession || isGlobalWeakNumSession) ? (globalPos === globalTotal - 1) : (pos === total - 1);
     const streak = masteryStreak(key, idx);
     // 이 문제를 지금까지 몇 번 풀었는지(누적). 해설 시트 하단 통계("총 N회 풀이")에 쓰인다.
     const storedReviewCount = (state.questionReviewCounts[key] && state.questionReviewCounts[key][idx]) || 0;
@@ -2816,7 +2846,7 @@
           render();
           return;
         }
-        if((isWrongSession && state.globalWeakReview) || (isWeakNumSession && state.globalWeakNumReview)){
+        if((isWrongSession && state.globalWeakReview) || (isWrongSession && state.globalReviewOnlyReview) || (isWeakNumSession && state.globalWeakNumReview)){
           // "전체 취약 문제 N개 복습하기" / "숫자 뽀개기.zip · 취약만"은 NUM 모아풀기(⚡ 숫자
           // 뽀개기.zip · 전체)와 마찬가지로 전체를 한 번에 이어서 푸는 게 목적이므로, 챕터
           // 경계마다 "단원 완료" 화면을 보여주고 사용자가 직접 다음으로 넘겨야 하게 만들면
@@ -3115,6 +3145,23 @@
       state.globalWeakNumQueue = [];
       alert('🎉 취약 숫자문제 복습을 모두 마쳤습니다!');
     }
+    if(state.globalReviewOnlyReview){
+      // globalWeakReview 분기와 동일한 패턴: 큐를 한 칸씩 전진하며, 그 사이 이미 복습을 벗어난
+      // (reviewOnlyIndices 0) 챕터는 건너뛰고 다음 챕터를 찾는다.
+      let nextKey = null;
+      while(state.globalReviewOnlyQueueIndex + 1 < state.globalReviewOnlyQueue.length){
+        state.globalReviewOnlyQueueIndex++;
+        const cand = state.globalReviewOnlyQueue[state.globalReviewOnlyQueueIndex];
+        if(reviewOnlyIndices(cand).length > 0){ nextKey = cand; break; }
+      }
+      if(nextKey){
+        startReviewOnlyReview(nextKey); // 기존 startReviewOnlyReview 로직 그대로 재사용
+        return;
+      }
+      state.globalReviewOnlyReview = false;
+      state.globalReviewOnlyQueue = [];
+      alert('🎉 복습 문제를 모두 마쳤습니다!');
+    }
     state.view = 'home';
     render();
   }
@@ -3184,7 +3231,7 @@
           render();
           return;
         }
-        if((isWrongSession && state.globalWeakReview) || (isWeakNumSession && state.globalWeakNumReview)){
+        if((isWrongSession && state.globalWeakReview) || (isWrongSession && state.globalReviewOnlyReview) || (isWeakNumSession && state.globalWeakNumReview)){
           // goToNextUnanswered()와 동일하게, "전체 취약 문제 복습" / "숫자 취약만"은 완료 화면 없이
           // 바로 다음 챕터로 이어간다(마우스 클릭 경로와 동작을 통일).
           goHomeOrContinueGlobalReview();
