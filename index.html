@@ -115,6 +115,11 @@
     padding:8px 16px; margin:0 0 18px; font-size:12.5px; font-weight:700; color:var(--navy);
   }
   .exam-schedule b{ font-weight:900; }
+  .dday-badge{
+    background:var(--navy); color:#F5F1E7; font-weight:900; font-size:13px;
+    border-radius:999px; padding:4px 12px; letter-spacing:.02em;
+  }
+  .dday-badge.urgent{ background:var(--seal-deep); }
   .exam-schedule .divider{ width:1px; height:11px; background:rgba(27,42,71,.22); flex-shrink:0; }
 
   .hero p.sub{ color:var(--ink-soft); font-size:14px; line-height:1.6; margin:0 auto 22px; max-width:340px; }
@@ -673,7 +678,13 @@
     .home-hero-right .big-today{ font-size:11px; color:var(--navy); font-weight:700; margin-top:4px; padding-top:6px; border-top:1px solid var(--line); }
     .home-hero .cover-facts{ display:none; } /* 큰 퍼센트(home-hero-right)로 대체 */
 
-    .home-subjects{ display:grid; grid-template-columns:1fr 1fr; align-items:start; gap:14px; }
+    /* 태블릿 가로 전용: 과목 카드 길이가 서로 크게 다르면(예: 1과목만 유독 김) grid의 "같은 행은
+       무조건 같은 높이" 특성 때문에 옆 칸(2과목)이 강제로 늘어나고, 그 아래 3과목 이하가 전부
+       밀려 내려가면서 오른쪽에 거대한 빈 공간이 생기는 문제가 있었다(신고된 버그).
+       column-count(신문 다단형)로 바꾸면 "행" 개념이 없어져서, 카드는 위→아래로 왼쪽 열부터 채우고
+       짧은 카드는 다음 카드가 바로 그 밑에 붙는다. PC(1280px+)는 아래 블록에서 다시 grid로 되돌린다. */
+    .home-subjects{ display:block; column-count:2; column-gap:14px; }
+    .home-subjects .home-subject-card{ break-inside:avoid; margin-bottom:14px; }
     .home-subjects .subtopic-list{ display:grid; grid-template-columns:1fr 1fr; gap:6px; }
 
     /* 동기화 상태: 헤더 우측에 작은 표시를 추가로 보여주되, 복사/로그아웃 버튼이 있는 sync-bar
@@ -682,9 +693,10 @@
     .sync-bar{ padding:6px 44px; font-size:10.5px; }
   }
 
-  /* ==== 데스크톱(1280px+) : 과목 3열 카드 ==== */
+  /* ==== 데스크톱(1280px+) : 과목 3열 카드 (태블릿 가로의 column-count를 되돌리고 grid로 복원) ==== */
   @media (min-width:1280px){
-    .home-subjects{ grid-template-columns:repeat(3, 1fr); }
+    .home-subjects{ display:grid; grid-template-columns:repeat(3, 1fr); column-count:auto; align-items:start; gap:14px; }
+    .home-subjects .home-subject-card{ break-inside:auto; margin-bottom:0; }
     .home-subjects .subtopic-list{ grid-template-columns:repeat(3, 1fr); }
   }
 
@@ -1287,6 +1299,18 @@
   function todayDateStr(){
     const d = new Date();
     return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+  // 필기시험(2026-10-03)까지 D-day 정보를 만든다. todayDateStr()와 동일하게 로컬 자정 기준으로
+  // 날짜만 비교해서, 시:분:초나 시간대 오차로 하루가 밀리거나 당겨지지 않게 한다.
+  // urgent: D-14 이하(당일 포함)로 가까워지면 true - 배지 색을 바꿔 긴박감을 준다.
+  // passed: 시험 다음날(D+1)부터 true - 이땐 배지를 아예 표시하지 않는다(시험이 이미 끝났으므로).
+  function examDdayInfo(){
+    const today = new Date();
+    const todayMid = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const examMid = new Date(2026, 9, 3); // JS month는 0-based라 10월은 9
+    const diffDays = Math.round((examMid - todayMid) / 86400000);
+    const label = diffDays > 0 ? `D-${diffDays}` : (diffDays === 0 ? 'D-DAY' : `D+${-diffDays}`);
+    return { label, urgent: diffDays <= 14, passed: diffDays < 0 };
   }
   // selectAnswer()에서 답을 고를 때마다 호출한다. 날짜가 바뀌었으면 전부 0부터 다시 센다(다시 풀기
   // 포함, questionReviewCounts와 동일하게 "풀이 행위" 자체를 센다).
@@ -2329,6 +2353,7 @@
               <span>📝 원서접수 <b>9.14~9.17</b></span>
               <span class="divider"></span>
               <span>✏️ 필기시험 <b>10.3</b></span>
+              ${!examDdayInfo().passed? `<span class="dday-badge${examDdayInfo().urgent? ' urgent' : ''}">${examDdayInfo().label}</span>` : ''}
             </div>
           </div>
           <div class="home-hero-right">
