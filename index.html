@@ -435,12 +435,9 @@
     .sheet-body{ font-size:17.5px; }
     .chapter-info .name{ font-size:16px; }
 
-    /* 홈 화면(퀴즈 화면과 별개)은 #app이 넓어져도 모바일과 같은 카드형 폭을 유지한다.
-       버튼이 화면 끝까지 늘어나거나 챕터 카드 1개가 지나치게 넓어지는 것을 방지.
-       topbar도 같은 폭으로 맞춰 상단바-본문 경계가 어긋나 보이지 않게 한다(퀴즈용 topbar-quiz는 제외). */
-    .hero{ max-width:560px; margin:0 auto; }
-    .section-wrap{ max-width:560px; margin:0 auto; }
-    .topbar:not(.topbar-quiz){ max-width:560px; margin:0 auto; }
+    /* 홈 화면 전용 반응형 대시보드 레이아웃은 .home-screen 네임스페이스 CSS 블록(파일 하단)에서
+       별도로 처리한다. 예전에 여기 있던 "홈 화면도 560px로 고정" 규칙은 태블릿 가로/PC에서 넓은
+       대시보드를 쓰기로 하면서 제거했다(문제풀이 화면 레이아웃은 이 블록 그대로 영향 없음). */
 
     /* 해설 카드 위아래 여백 축소 (태블릿/PC 전용 - 모바일 팝업 시트는 그대로 유지) */
     .sheet .sheet-head{ padding:10px 20px; }
@@ -567,6 +564,116 @@
     .nav-row .nav-btn.primary:hover:not(:disabled){ background:var(--paper-deep); }
     .btn-review:hover{ background:#F0D3CE; }
     .expand-btn:hover{ border-color:var(--navy); color:var(--navy); }
+  }
+
+  /* ================================================================
+     홈 화면 전용 대시보드 레이아웃 (.home- 네임스페이스)
+     이 블록의 클래스는 renderHome()에서만 쓰이므로 문제풀이 화면에는 영향이 없다.
+     기존 .hero/.cover-facts/.chapter-card/.section-wrap 등 기존 클래스는 그대로 재사용하고,
+     레이아웃 배치(순서·열 구성)만 이 네임스페이스로 감싸서 반응형으로 제어한다.
+     ================================================================ */
+  .home-screen{ padding-bottom:90px; }
+  .home-sync-indicator{ display:none; }
+
+  /* ---- Hero: 기본(모바일)은 기존 .hero 세로형 그대로, hero-right는 숨김(대신 cover-facts 노출) ---- */
+  .home-hero-right{ display:none; }
+  .home-hero-caption{ text-align:center; font-size:11.5px; color:var(--ink-soft); margin:6px 0 0; }
+
+  /* ---- 오늘 학습 ---- */
+  .home-today{ padding:0 18px 14px; }
+  .home-today-card{
+    background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px 18px;
+    box-shadow:var(--shadow);
+  }
+  .home-today-title{ font-size:12px; font-weight:700; color:var(--ink-soft); margin:0 0 10px; }
+  .home-today-row{ display:flex; gap:14px; }
+  .home-today-row .stat{ flex:1; text-align:center; }
+  .home-today-row .stat b{ display:block; font-family:'Noto Serif KR',serif; font-size:21px; font-weight:900; color:var(--navy); line-height:1; }
+  .home-today-row .stat span{ font-size:10px; color:var(--ink-soft); display:block; margin-top:4px; }
+  .home-today-row .stat.weak b{ color:var(--seal); }
+  .home-today-row .stat.review b{ color:var(--gold-text); }
+
+  /* ---- 빠른 학습 ---- */
+  .home-quick{ padding:0 18px 14px; }
+  .home-quick-title{ font-size:12px; font-weight:700; color:var(--ink-soft); margin:0 0 10px; }
+  .home-quick-grid{ display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+  .home-quick-card{
+    background:var(--card); border:1.4px solid var(--line-strong); border-radius:13px; padding:13px;
+    text-align:left; cursor:pointer; appearance:none; font-family:inherit;
+    display:flex; flex-direction:column; gap:3px;
+  }
+  .home-quick-card:active{ transform:scale(.98); }
+  .home-quick-card .qc-icon{ font-size:17px; line-height:1; }
+  .home-quick-card .qc-title{ font-size:13px; font-weight:700; color:var(--ink); }
+  .home-quick-card .qc-sub{ font-size:10px; color:var(--ink-soft); }
+  .home-quick-card.primary{ background:var(--navy); border-color:var(--navy); }
+  .home-quick-card.primary .qc-title, .home-quick-card.primary .qc-sub{ color:#F5F1E7; }
+  .home-quick-card.weak{ border-color:#E9C2BC; background:var(--seal-tint); }
+  .home-quick-card.weak .qc-title{ color:var(--seal); }
+  .home-quick-card.review{ border-color:var(--gold-border); background:var(--gold-tint); cursor:default; }
+  .home-quick-card.review .qc-title{ color:var(--gold-text); }
+  .home-quick-card.num{ border-color:var(--num-border); background:var(--num-tint); }
+  .home-quick-card.num .qc-title{ color:var(--num-text); }
+  .home-quick-card .qc-split{ display:flex; gap:6px; margin-top:5px; }
+  .home-quick-card .qc-split button{
+    flex:1; appearance:none; border:1px solid var(--num-border); background:var(--card); color:var(--num-text);
+    border-radius:8px; font-size:10.5px; font-weight:700; padding:6px 4px; cursor:pointer; font-family:inherit;
+  }
+
+  /* ---- 과목별 학습 ---- */
+  .home-subjects{ padding:0 18px; display:flex; flex-direction:column; gap:12px; }
+  .home-subject-card{
+    background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px 16px; box-shadow:var(--shadow);
+  }
+  .home-subject-head{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; margin-bottom:8px; }
+  .home-subject-head .title{ font-weight:800; font-size:13px; color:var(--navy); font-family:'Noto Serif KR',serif; min-width:0; }
+  .home-subject-head .cnt{ font-size:11px; color:var(--ink-soft); font-weight:500; flex-shrink:0; }
+  .home-subject-progress{ height:5px; border-radius:3px; background:var(--paper-deep); overflow:hidden; margin-bottom:10px; }
+  .home-subject-progress > div{ height:100%; background:linear-gradient(90deg, var(--gold), var(--seal)); border-radius:3px; }
+  .home-subject-chapters{ display:flex; flex-direction:column; gap:8px; }
+
+  /* ==== 태블릿 세로(768px~) : 여백/카드 확대 ==== */
+  @media (min-width:768px){
+    .home-hero{ padding:36px 40px 22px; }
+    .home-today{ padding:0 40px 18px; }
+    .home-quick{ padding:0 40px 18px; }
+    .home-subjects{ padding:0 40px; }
+    .home-quick-grid{ grid-template-columns:repeat(4, 1fr); }
+  }
+
+  /* ==== 태블릿 가로 / 작은 데스크톱(1024px~) : 가로형 대시보드로 전환 ==== */
+  @media (min-width:1024px){
+    #app{ max-width:min(1400px, 92vw); } /* 퀴즈 화면과 동일한 폭 상한(820px 규칙 재사용) */
+    .home-hero{
+      display:grid; grid-template-columns:1fr auto; align-items:center; gap:28px;
+      padding:34px 44px;
+    }
+    .home-hero-left{ text-align:left; }
+    .home-hero-left h1{ font-size:27px; }
+    .home-hero-left .exam-schedule{ justify-content:flex-start; margin-left:0; }
+    .home-hero-left .btn-primary{ width:auto; padding:15px 34px; }
+    .home-hero-caption{ text-align:left; }
+    .home-hero-right{
+      display:flex; flex-direction:column; align-items:flex-end; gap:2px; flex-shrink:0;
+    }
+    .home-hero-right .big-pct{ font-family:'Noto Serif KR',serif; font-size:42px; font-weight:900; color:var(--navy); line-height:1; }
+    .home-hero-right .big-pct-label{ font-size:11.5px; color:var(--ink-soft); font-weight:700; }
+    .home-hero-right .big-total{ font-size:12.5px; color:var(--ink-soft); margin-top:6px; }
+    .home-hero .cover-facts{ display:none; } /* 큰 퍼센트(home-hero-right)로 대체 */
+
+    .home-subjects{ display:grid; grid-template-columns:1fr 1fr; align-items:start; gap:14px; }
+    .home-subjects .subtopic-list{ display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+
+    /* 동기화 상태: 헤더 우측에 작은 표시를 추가로 보여주되, 복사/로그아웃 버튼이 있는 sync-bar
+       자체는 숨기지 않고(기능 접근성 유지) 크기만 줄여 시각적 비중을 낮춘다. */
+    .home-sync-indicator{ display:inline-flex; align-items:center; gap:4px; font-size:11.5px; color:var(--correct); font-weight:700; }
+    .sync-bar{ padding:6px 44px; font-size:10.5px; }
+  }
+
+  /* ==== 데스크톱(1280px+) : 과목 3열 카드 ==== */
+  @media (min-width:1280px){
+    .home-subjects{ grid-template-columns:repeat(3, 1fr); }
+    .home-subjects .subtopic-list{ grid-template-columns:repeat(3, 1fr); }
   }
 
   /* ---------- 다크모드: 기기 설정을 따라감 (야간 학습 시 눈부심 완화) ---------- */
@@ -2050,16 +2157,23 @@
 
   function renderHome(){
     const os = overallStats();
+    const overallPct = os.total? Math.round(os.answered/os.total*100) : 0;
     const totalWeak = totalWeakCount();
     const totalReviewOnly = totalReviewOnlyCount();
     const totalNum = totalNumCount();
     const totalWeakNum = totalWeakNumCount();
     const numReviewRound = state.numReviewRound || 0;
-    let chaptersHtml = '';
+    const todayN = todayStudiedCount();
+
+    // 과목(subject) 단위로 챕터 카드를 묶어 "과목별 학습" 카드 목록을 만든다. 챕터 카드 자체의
+    // 내부 구조(회독/진행률/숙달도/취약·복습 버튼/목차 펼치기)는 기존 그대로이며, 클릭 바인딩용
+    // 클래스명(chapter-card/weak-btn/review-btn/expand-btn/subtopic-item/toc-group-title)도 그대로 유지한다.
+    let subjectsHtml = '';
     META.subjects.forEach(subj=>{
       const subjTotal = subj.chapters.reduce((a,k)=>a+QUIZ[k].length,0);
       const subjAnswered = subj.chapters.reduce((a,k)=>a+chapterStats(k).answered,0);
-      chaptersHtml += `<div class="section-title"><span>${escapeHtml(subj.title)}</span><span class="cnt">${subjAnswered}/${subjTotal}</span></div>`;
+      const subjPct = subjTotal? Math.round(subjAnswered/subjTotal*100) : 0;
+      let chaptersInSubj = '';
       subj.chapters.forEach(key=>{
         const s = chapterStats(key);
         const pct = s.total ? Math.round(s.answered/s.total*100) : 0;
@@ -2090,7 +2204,7 @@
               </div>
             </div>`).join('');
         }
-        chaptersHtml += `
+        chaptersInSubj += `
           <div class="chapter-card" data-key="${key}">
             <div class="chapter-num">${toRoman(num)}</div>
             <div class="chapter-info">
@@ -2116,12 +2230,22 @@
             </div>
           </div>`;
       });
+      subjectsHtml += `
+        <div class="home-subject-card">
+          <div class="home-subject-head">
+            <span class="title">${escapeHtml(subj.title)}</span>
+            <span class="cnt">${subjAnswered}/${subjTotal}</span>
+          </div>
+          <div class="home-subject-progress"><div style="width:${subjPct}%"></div></div>
+          <div class="home-subject-chapters">${chaptersInSubj}</div>
+        </div>`;
     });
 
     app.innerHTML = `
       <div class="topbar">
         <div class="brand"><span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="#F5F1E7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v4h4"/><path d="M9 13l2 2 4-4"/></svg></span>공공조달관리사</div>
-        <div style="display:flex; align-items:center; gap:6px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          ${syncEnabled() && state.syncCode? `<span class="home-sync-indicator">● 동기화됨</span>` : ''}
           <button id="manualRefreshBtn" title="문제/앱 새로고침" style="background:var(--card); border:1px solid var(--line-strong); border-radius:999px; width:28px; height:28px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:13px; color:var(--ink-soft); flex-shrink:0;">🔄</button>
           <div class="stats-chip">전체 ${os.answered}/${os.total}</div>
         </div>
@@ -2147,40 +2271,82 @@
         <button id="syncCopyBtn" class="sync-mini-btn">복사</button>
         <button id="syncLogoutBtn" class="sync-mini-btn ghost">로그아웃</button>
       </div>` : ''}
-      <div class="hero">
-        <div class="kicker">14일 · ${formatNum(os.total)}문제 완주 플랜</div>
-        <h1>공공조달관리사<br>2주 완성</h1>
-        <div class="exam-schedule">
-          <span>📝 원서접수 <b>9.14~9.17</b></span>
-          <span class="divider"></span>
-          <span>✏️ 필기시험 <b>10.3</b></span>
+      <div class="home-screen">
+        <div class="hero home-hero">
+          <div class="home-hero-left">
+            <div class="kicker">14일 · ${formatNum(os.total)}문제 완주 플랜</div>
+            <h1>공공조달관리사<br>2주 완성</h1>
+            <div class="exam-schedule">
+              <span>📝 원서접수 <b>9.14~9.17</b></span>
+              <span class="divider"></span>
+              <span>✏️ 필기시험 <b>10.3</b></span>
+            </div>
+            <button class="btn btn-primary" id="resumeBtn">${os.answered>0? '이어서 풀기' : '지금 바로 풀어보기'}</button>
+            ${(os.answered>0 && state.chapter && META.names[state.chapter])? `<p class="home-hero-caption">📍 ${escapeHtml(chapterNameWithSubject(state.chapter))} · ${chapterStats(state.chapter).answered}/${chapterStats(state.chapter).total}</p>` : ''}
+          </div>
+          <div class="home-hero-right">
+            <div class="big-pct">${overallPct}%</div>
+            <div class="big-pct-label">전체 학습률</div>
+            <div class="big-total">${formatNum(os.total)}문제</div>
+          </div>
+          <div class="cover-facts">
+            <div><b>${formatNum(os.total)}</b><span>전체 문제</span></div>
+            <div><b>${formatNum(os.answered)}</b><span>풀이 완료</span></div>
+            <div><b>${formatNum(todayN)}</b><span>오늘 학습</span></div>
+          </div>
         </div>
-        <button class="btn btn-primary" id="resumeBtn">${os.answered>0? '이어서 풀기' : '지금 바로 풀어보기'}</button>
-        ${(os.answered>0 && state.chapter && META.names[state.chapter])? `<p style="text-align:center;font-size:11.5px;color:var(--ink-soft);margin:6px 0 0;">📍 ${escapeHtml(chapterNameWithSubject(state.chapter))} · ${chapterStats(state.chapter).answered}/${chapterStats(state.chapter).total}</p>` : ''}
-        ${(totalWeak>0 || totalReviewOnly>0)? `
-        <p class="num-title">오늘 바로 복습</p>
-        <div class="review-today-row">
-          ${totalWeak>0? `<button class="review-today-tile weak" id="globalWeakBtn"><span class="rt-icon">🔴</span><span class="rt-label">취약 문제</span><span class="rt-count">${totalWeak}개</span></button>` : ''}
-          ${totalReviewOnly>0? `<div class="review-today-tile review-info"><span class="rt-icon">🟡</span><span class="rt-label">복습 문제</span><span class="rt-count">${totalReviewOnly}개</span></div>` : ''}
-        </div>` : ''}
-        <div class="cover-facts">
-          <div><b>${formatNum(os.total)}</b><span>전체 문제</span></div>
-          <div><b>${formatNum(os.answered)}</b><span>풀이 완료</span></div>
-          <div><b>${formatNum(todayStudiedCount())}</b><span>오늘 학습</span></div>
+
+        <div class="home-today">
+          <div class="home-today-card">
+            <div class="home-today-title">오늘 학습</div>
+            <div class="home-today-row">
+              <div class="stat"><b>${formatNum(todayN)}</b><span>문제</span></div>
+              <div class="stat review"><b>${formatNum(totalReviewOnly)}</b><span>복습</span></div>
+              <div class="stat weak"><b>${formatNum(totalWeak)}</b><span>취약</span></div>
+            </div>
+          </div>
         </div>
-        ${(totalNum>0 || totalWeakNum>0)? `
-        <p class="num-title num-accent">⚡ 숫자 뽀개기.zip</p>
-        <p class="num-sub">숫자 문제만 골라서 풀기</p>
-        <div class="num-btn-row">
-          ${totalNum>0? `<button class="btn btn-num" id="globalNumBtn"><b>전체</b>${totalNum}문제 · ${numReviewRound}회독</button>` : ''}
-          ${totalWeakNum>0? `<button class="btn btn-num" id="globalWeakNumBtn"><b>🔴 취약만</b>${totalWeakNum}문제</button>` : ''}
-        </div>` : ''}
+
+        <div class="home-quick">
+          <p class="home-quick-title">빠른 학습</p>
+          <div class="home-quick-grid">
+            <button class="home-quick-card primary" id="resumeBtn2">
+              <span class="qc-icon">▶</span>
+              <span class="qc-title">이어서 학습</span>
+              <span class="qc-sub">마지막 학습부터 계속</span>
+            </button>
+            ${totalWeak>0? `
+            <button class="home-quick-card weak" id="globalWeakBtn">
+              <span class="qc-icon">🔴</span>
+              <span class="qc-title">취약 집중공략</span>
+              <span class="qc-sub">약한 문제 ${totalWeak}개 다시 풀기</span>
+            </button>` : ''}
+            ${totalReviewOnly>0? `
+            <div class="home-quick-card review">
+              <span class="qc-icon">🟡</span>
+              <span class="qc-title">복습 다시풀기</span>
+              <span class="qc-sub">오답 문제 ${totalReviewOnly}개 복습</span>
+            </div>` : ''}
+            ${(totalNum>0 || totalWeakNum>0)? `
+            <div class="home-quick-card num">
+              <span class="qc-icon">⚡</span>
+              <span class="qc-title">숫자 뽀개기</span>
+              <span class="qc-sub">숫자문제만 집중 훈련</span>
+              <div class="qc-split">
+                ${totalNum>0? `<button id="globalNumBtn">전체 ${totalNum}${numReviewRound>0? ` · ${numReviewRound}회독` : ''}</button>` : ''}
+                ${totalWeakNum>0? `<button id="globalWeakNumBtn">취약만 ${totalWeakNum}</button>` : ''}
+              </div>
+            </div>` : ''}
+          </div>
+        </div>
+
+        <div class="home-subjects">${subjectsHtml}</div>
+
         ${syncEnabled() && state.syncCode? `<div style="text-align:center;margin-top:14px;"><button id="myReportsBtn" style="background:none;border:none;color:var(--ink-soft);font-size:12px;text-decoration:underline;cursor:pointer;padding:6px;">🚩 내가 신고한 오류${myReportCount()>0? ` ${myReportCount()}개` : ''} 모아보기</button></div>` : ''}
       </div>
-      <div class="section-wrap">${chaptersHtml}</div>
     `;
 
-    document.getElementById('resumeBtn').onclick = ()=>{
+    const goResume = ()=>{
       let key = state.chapter;
       if(!key || !QUIZ[key] || !QUIZ[key].length){
         key = allChapterKeys().find(k => QUIZ[k] && QUIZ[k].length) || null;
@@ -2188,6 +2354,9 @@
       if(!key){ alert('아직 불러온 문제가 없습니다. 인터넷 연결을 확인한 뒤 새로고침해주세요.'); return; }
       openChapter(key, true);
     };
+    document.getElementById('resumeBtn').onclick = goResume;
+    const resumeBtn2 = document.getElementById('resumeBtn2');
+    if(resumeBtn2) resumeBtn2.onclick = goResume; // "빠른 학습" 카드용 - hero의 resumeBtn과 동일 동작
     const globalWeakBtn = document.getElementById('globalWeakBtn');
     if(globalWeakBtn) globalWeakBtn.onclick = ()=> startGlobalWeakReview();
     const globalNumBtn = document.getElementById('globalNumBtn');
