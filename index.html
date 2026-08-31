@@ -160,6 +160,10 @@
     border:1.4px solid var(--gold-border); margin-top:10px; letter-spacing:.01em;
   }
   .btn-num:hover{ filter:brightness(.97); }
+  /* "⚡ 숫자 뽀개기 전체" / "🔴 취약만"을 세로로 2줄 쌓지 않고 한 줄에 나란히 배치해 공간을 아낀다. */
+  .num-btn-row{ display:flex; gap:8px; margin-top:10px; }
+  .num-btn-row .btn-num{ margin-top:0; flex:1; min-width:0; padding:12px 10px; font-size:12.5px; line-height:1.4; }
+  .num-btn-row .btn-num b{ display:block; font-size:13.5px; }
 
   /* ---------- 동기화(로그인/로그아웃) 상태 바 - 홈 화면 상단 상시 노출 ---------- */
   .sync-bar{
@@ -954,6 +958,8 @@
     index: 0,
     progress: {},   // { chapterKey: { qIndexAsStr: {selected, correct} } }
     reviewCounts: {}, // { chapterKey: number } - 단원별 완주(회독) 횟수. progress와 별개로 영구 보존.
+    numReviewRound: 0, // "⚡ 숫자 뽀개기.zip · 전체"를 1번~마지막 번호까지 완주한 횟수(영구 저장).
+                        // 🔴 취약만 모드는 이 값을 증가시키지 않는다(전체를 다 훑었을 때만 +1).
     sheetOpen: false, // 해설 시트 표시 여부(일시 상태, 저장하지 않음)
     reviewAnswered: false, // 🔴 취약 집중공략/🟡 복습 다시풀기 화면에서 "이번 방문에서 다시 답을 골랐는지"(일시 상태, 저장하지 않음) - 예전 정답 기록 때문에 옵션이 다시 못 고르게 굳는 것을 막는 데 사용
     remoteErrors: {},  // { chapterKey: true } - 구글시트 URL은 설정됐지만 로드도/캐시도 실패한 챕터(진단용, 저장하지 않음)
@@ -1042,6 +1048,10 @@
       if(rc && rc.value){ state.reviewCounts = JSON.parse(rc.value) || {}; }
     }catch(e){ /* no saved review counts yet */ }
     try{
+      const nrr = await window.storage.get('num-review-round');
+      if(nrr && nrr.value){ state.numReviewRound = Number(nrr.value) || 0; }
+    }catch(e){ /* no saved num review round yet */ }
+    try{
       const ba = await window.storage.get('best-answered');
       if(ba && ba.value){ state.bestAnswered = JSON.parse(ba.value) || {}; }
     }catch(e){ /* no saved best-answered yet */ }
@@ -1099,6 +1109,11 @@
   async function saveReviewCounts(){
     try{
       await window.storage.set('review-counts', JSON.stringify(state.reviewCounts));
+    }catch(e){ /* best effort */ }
+  }
+  async function saveNumReviewRound(){
+    try{
+      await window.storage.set('num-review-round', String(state.numReviewRound));
     }catch(e){ /* best effort */ }
   }
   async function saveBestAnswered(){
@@ -1218,6 +1233,7 @@
     return {
       progress: state.progress,
       reviewCounts: state.reviewCounts,
+      numReviewRound: state.numReviewRound,
       excluded: state.excluded,
       wrongMastery: state.wrongMastery,
       myReports: state.myReports,
@@ -1234,6 +1250,7 @@
   function applyCloudData(data){
     state.progress = data.progress || {};
     state.reviewCounts = data.reviewCounts || {};
+    state.numReviewRound = data.numReviewRound || 0;
     state.excluded = data.excluded || {};
     state.wrongMastery = data.wrongMastery || { pool:{}, streak:{} };
     state.myReports = data.myReports || {};
@@ -1242,7 +1259,7 @@
     state.questionReviewCounts = data.questionReviewCounts || {};
     state.questionCorrectCounts = data.questionCorrectCounts || {};
     state.manualWeak = data.manualWeak || {};
-    saveProgress(); saveReviewCounts(); saveExcluded(); saveWrongMastery(); saveBestAnswered(); saveRoundArmed(); saveQuestionReviewCounts(); saveQuestionCorrectCounts(); saveManualWeak();
+    saveProgress(); saveReviewCounts(); saveNumReviewRound(); saveExcluded(); saveWrongMastery(); saveBestAnswered(); saveRoundArmed(); saveQuestionReviewCounts(); saveQuestionCorrectCounts(); saveManualWeak();
   }
 
   // 두 기록을 문제 단위로 합친다(데이터 손실 방지). 같은 문제를 양쪽 다 풀었으면 로컬(이 기기) 것을 우선한다.
@@ -1260,6 +1277,8 @@
     rcKeys.forEach(key=>{
       merged.reviewCounts[key] = Math.max((local.reviewCounts||{})[key]||0, (cloud.reviewCounts||{})[key]||0);
     });
+    // 숫자 뽀개기 전체 회독수는 챕터별이 아닌 단일 값이라 그냥 더 큰 쪽을 채택한다.
+    merged.numReviewRound = Math.max(local.numReviewRound||0, cloud.numReviewRound||0);
     const baKeys = new Set([...Object.keys(local.bestAnswered||{}), ...Object.keys(cloud.bestAnswered||{})]);
     baKeys.forEach(key=>{
       merged.bestAnswered[key] = Math.max((local.bestAnswered||{})[key]||0, (cloud.bestAnswered||{})[key]||0);
@@ -1958,6 +1977,7 @@
     const totalWeak = totalWeakCount();
     const totalNum = totalNumCount();
     const totalWeakNum = totalWeakNumCount();
+    const numReviewRound = state.numReviewRound || 0;
     let chaptersHtml = '';
     META.subjects.forEach(subj=>{
       const subjTotal = subj.chapters.reduce((a,k)=>a+QUIZ[k].length,0);
@@ -2066,8 +2086,11 @@
         </div>
         <button class="btn btn-primary" id="resumeBtn">${os.answered>0? '이어서 풀기' : '지금 바로 풀어보기'}</button>
         ${totalWeak>0? `<button class="btn btn-review" id="globalWeakBtn">🔁 전체 취약 문제 ${totalWeak}개 복습하기</button>` : ''}
-        ${totalNum>0? `<button class="btn btn-num" id="globalNumBtn">⚡ 숫자 뽀개기.zip · 전체 (${totalNum}문제)</button>` : ''}
-        ${totalWeakNum>0? `<button class="btn btn-num" id="globalWeakNumBtn">🔴 숫자 뽀개기.zip · 취약만 (${totalWeakNum}문제)</button>` : ''}
+        ${(totalNum>0 || totalWeakNum>0)? `
+        <div class="num-btn-row">
+          ${totalNum>0? `<button class="btn btn-num" id="globalNumBtn"><b>⚡ 전체</b>${totalNum}문제${numReviewRound>0? ` · ${numReviewRound}회독` : ''}</button>` : ''}
+          ${totalWeakNum>0? `<button class="btn btn-num" id="globalWeakNumBtn"><b>🔴 취약만</b>${totalWeakNum}문제</button>` : ''}
+        </div>` : ''}
         ${syncEnabled() && state.syncCode? `<button class="btn btn-review" id="myReportsBtn">🚩 내가 신고한 오류${myReportCount()>0? ` ${myReportCount()}개` : ''} 모아보기</button>` : ''}
       </div>
       <div class="section-wrap">${chaptersHtml}</div>
@@ -2240,6 +2263,14 @@
       if(numCount(keys[p]) > 0) return keys[p];
     }
     return null;
+  }
+
+  // "⚡ 숫자 뽀개기.zip · 전체" 모드로 1번~마지막 번호까지 완주했을 때 호출한다(회독수 +1, 영구 저장).
+  // 🔴 취약만 모드에서는 절대 호출하지 않는다 - 두 완료 전환 지점(goToNextUnanswered, keydown 핸들러)
+  // 모두 filterKind==='num'(전체 모드 전용) 분기 안에서만 호출된다.
+  function incrementNumReviewRound(){
+    state.numReviewRound = (state.numReviewRound || 0) + 1;
+    saveNumReviewRound();
   }
 
   // 메인화면 "⚡ 숫자 뽀개기.zip" 진입점. 안 푼 NUM 문제가 있는 첫 챕터부터 시작하고,
@@ -2520,6 +2551,7 @@
           // 챕터 완료 화면(renderComplete)처럼 통계와 "처음부터 다시 풀기" 버튼이 있는 전용
           // 완료 화면(renderNumComplete)을 보여준다.
           state.globalNumReview = false;
+          incrementNumReviewRound(); // "전체" 모드로 1~마지막 번호까지 완주했을 때만 +1회독(취약만 모드는 호출 안 함)
           state.view = 'numComplete';
           render();
           return;
@@ -2749,6 +2781,7 @@
       <div class="complete-wrap">
         <div class="stamp"><b>${pct}%</b><span>정답률</span></div>
         <h2>⚡ 숫자 뽀개기.zip 완료</h2>
+        <p style="color:var(--seal);font-weight:700;font-size:13px;margin-top:-14px;">🔁 전체 누적 ${state.numReviewRound || 0}회독</p>
         <p>총 ${total}문항 중 ${answered}문항을 풀었습니다.</p>
         <div class="score-row">
           <div class="correct-num"><b>${correct}</b><span>정답</span></div>
@@ -2885,6 +2918,7 @@
           // 전체 NUM 문제를 다 풀었을 때도 nextBtn/sheetNext와 동일하게 "처음부터 다시 풀기"가
           // 가능한 전용 완료 화면(numComplete)을 보여준다(마우스 클릭 경로와 동작을 통일).
           state.globalNumReview = false;
+          incrementNumReviewRound(); // "전체" 모드로 1~마지막 번호까지 완주했을 때만 +1회독(취약만 모드는 호출 안 함)
           state.view = 'numComplete';
           render();
           return;
