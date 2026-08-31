@@ -1109,8 +1109,10 @@
     reviewCounts: {}, // { chapterKey: number } - 단원별 완주(회독) 횟수. progress와 별개로 영구 보존.
     numReviewRound: 0, // "⚡ 숫자 뽀개기.zip · 전체"를 1번~마지막 번호까지 완주한 횟수(영구 저장).
                         // 🔴 취약만 모드는 이 값을 증가시키지 않는다(전체를 다 훑었을 때만 +1).
-    todayCount: { date: null, count: 0 }, // 오늘(로컬 날짜 기준) 답을 고른 횟수(영구 저장). 날짜가
-                        // 바뀌면 0부터 다시 센다. 홈 화면 "오늘 학습" 표시용 - selectAnswer마다 +1.
+    todayCount: { date: null, total: 0, num: 0, weak: 0, review: 0 }, // 오늘(로컬 날짜 기준) 답을
+                        // 고른 횟수를 카테고리별로 센다(영구 저장). total=전체, num=숫자문제,
+                        // weak=답을 고르던 시점 상태가 '취약'이었던 것, review=그 시점 '복습'이었던 것.
+                        // 날짜가 바뀌면 전부 0부터 다시 센다. 홈 화면 "오늘 학습" 표시용.
     sheetOpen: false, // 해설 시트 표시 여부(일시 상태, 저장하지 않음)
     reviewAnswered: false, // 🔴 취약 집중공략/🟡 복습 다시풀기 화면에서 "이번 방문에서 다시 답을 골랐는지"(일시 상태, 저장하지 않음) - 예전 정답 기록 때문에 옵션이 다시 못 고르게 굳는 것을 막는 데 사용
     remoteErrors: {},  // { chapterKey: true } - 구글시트 URL은 설정됐지만 로드도/캐시도 실패한 챕터(진단용, 저장하지 않음)
@@ -1208,7 +1210,7 @@
     }catch(e){ /* no saved num review round yet */ }
     try{
       const tc = await window.storage.get('today-count');
-      if(tc && tc.value){ state.todayCount = JSON.parse(tc.value) || { date: null, count: 0 }; }
+      if(tc && tc.value){ state.todayCount = JSON.parse(tc.value) || { date: null, total: 0, num: 0, weak: 0, review: 0 }; }
     }catch(e){ /* no saved today count yet */ }
     try{
       const ba = await window.storage.get('best-answered');
@@ -1285,18 +1287,40 @@
     const d = new Date();
     return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
   }
-  // selectAnswer()에서 답을 고를 때마다 호출한다. 날짜가 바뀌었으면 0부터 다시 센다(다시 풀기 포함,
-  // questionReviewCounts와 동일하게 "풀이 행위" 자체를 센다).
-  function bumpTodayCount(){
+  // selectAnswer()에서 답을 고를 때마다 호출한다. 날짜가 바뀌었으면 전부 0부터 다시 센다(다시 풀기
+  // 포함, questionReviewCounts와 동일하게 "풀이 행위" 자체를 센다).
+  // opts.isNum: 이 문제가 숫자(NUM) 태그 문제인지. opts.statusBefore: 답을 고르기 "직전" 이 문제의
+  // getQuestionStatus 값('weak'|'review'|'mastered'|'none') - 답을 고른 뒤가 아니라 고르기 전 상태를
+  // 기준으로 삼아야 "오늘 취약 문제를 몇 개 다시 풀었는지"를 정확히 셀 수 있다(고른 직후엔 스트릭이
+  // 바뀌어 상태가 달라져 있을 수 있음).
+  function bumpTodayCount(opts){
     const today = todayDateStr();
-    if(!state.todayCount || state.todayCount.date !== today){ state.todayCount = { date: today, count: 0 }; }
-    state.todayCount.count = (state.todayCount.count || 0) + 1;
+    if(!state.todayCount || state.todayCount.date !== today){
+      state.todayCount = { date: today, total: 0, num: 0, weak: 0, review: 0 };
+    }
+    const tc = state.todayCount;
+    tc.total = (tc.total || 0) + 1;
+    if(opts && opts.isNum) tc.num = (tc.num || 0) + 1;
+    if(opts && opts.statusBefore === 'weak') tc.weak = (tc.weak || 0) + 1;
+    if(opts && opts.statusBefore === 'review') tc.review = (tc.review || 0) + 1;
     saveTodayCount();
   }
-  // 홈 화면 "오늘 학습" 표시용. 날짜가 바뀌었으면(예: 자정 넘기고 다시 켬) 0을 보여준다.
+  // 홈 화면 "오늘 학습" 표시용. 날짜가 바뀌었으면(예: 자정 넘기고 다시 켬) 전부 0을 보여준다.
   function todayStudiedCount(){
     if(!state.todayCount || state.todayCount.date !== todayDateStr()) return 0;
-    return state.todayCount.count || 0;
+    return state.todayCount.total || 0;
+  }
+  function todayNumCount(){
+    if(!state.todayCount || state.todayCount.date !== todayDateStr()) return 0;
+    return state.todayCount.num || 0;
+  }
+  function todayWeakCount(){
+    if(!state.todayCount || state.todayCount.date !== todayDateStr()) return 0;
+    return state.todayCount.weak || 0;
+  }
+  function todayReviewCount(){
+    if(!state.todayCount || state.todayCount.date !== todayDateStr()) return 0;
+    return state.todayCount.review || 0;
   }
   async function saveBestAnswered(){
     try{
@@ -1434,7 +1458,7 @@
     state.progress = data.progress || {};
     state.reviewCounts = data.reviewCounts || {};
     state.numReviewRound = data.numReviewRound || 0;
-    state.todayCount = data.todayCount || { date: null, count: 0 };
+    state.todayCount = data.todayCount || { date: null, total: 0, num: 0, weak: 0, review: 0 };
     state.excluded = data.excluded || {};
     state.wrongMastery = data.wrongMastery || { pool:{}, streak:{} };
     state.myReports = data.myReports || {};
@@ -1448,11 +1472,20 @@
 
   // 두 기록을 문제 단위로 합친다(데이터 손실 방지). 같은 문제를 양쪽 다 풀었으면 로컬(이 기기) 것을 우선한다.
   // - 앱을 열 때마다 자동으로 실행되는 "조용한" 동기화라, 사용자에게 매번 물어보지 않고 안전하게 합치는 방식을 쓴다.
-  // todayCount({date, count}) 병합 전용 헬퍼. 같은 날짜면 더 큰 count, 다르면 더 최근 날짜를 채택한다.
+  // todayCount({date,total,num,weak,review}) 병합 전용 헬퍼. 같은 날짜면 필드별로 더 큰 값을,
+  // 다르면 더 최근 날짜의 기록 전체를 채택한다(다른 날짜 값끼리 필드별로 섞으면 의미가 없으므로).
   function mergeTodayCount(a, b){
-    a = a || { date: null, count: 0 };
-    b = b || { date: null, count: 0 };
-    if(a.date === b.date) return { date: a.date, count: Math.max(a.count||0, b.count||0) };
+    const empty = { date: null, total: 0, num: 0, weak: 0, review: 0 };
+    a = a || empty; b = b || empty;
+    if(a.date === b.date){
+      return {
+        date: a.date,
+        total: Math.max(a.total||0, b.total||0),
+        num: Math.max(a.num||0, b.num||0),
+        weak: Math.max(a.weak||0, b.weak||0),
+        review: Math.max(a.review||0, b.review||0),
+      };
+    }
     if(!a.date) return b;
     if(!b.date) return a;
     return (a.date > b.date) ? a : b;
@@ -2314,9 +2347,9 @@
             <div class="home-today-title">오늘 학습</div>
             <div class="home-today-row">
               <div class="stat"><b>${formatNum(todayN)}</b><span>문제</span></div>
-              <div class="stat num"><b>${formatNum(totalNum)}</b><span>숫자</span></div>
-              <div class="stat weak"><b>${formatNum(totalWeak)}</b><span>취약</span></div>
-              <div class="stat review"><b>${formatNum(totalReviewOnly)}</b><span>복습</span></div>
+              <div class="stat num"><b>${formatNum(todayNumCount())}</b><span>숫자</span></div>
+              <div class="stat weak"><b>${formatNum(todayWeakCount())}</b><span>취약</span></div>
+              <div class="stat review"><b>${formatNum(todayReviewCount())}</b><span>복습</span></div>
             </div>
           </div>
         </div>
@@ -2956,6 +2989,11 @@
   function selectAnswer(i){
     const key = state.chapter, idx = state.index;
     const q = QUIZ[key][idx];
+    // 오늘 학습 카운트용: 이 답을 반영하기 "직전"의 상태를 먼저 캡처해둔다. state.progress 등을
+    // 먼저 바꿔버리면 getQuestionStatus가 이미 이번 답이 반영된 이후 상태를 돌려주게 되어,
+    // "오늘 취약/복습 문제를 몇 개 다시 풀었는지"를 정확히 셀 수 없다.
+    const statusBeforeAnswer = getQuestionStatus(key, idx);
+    const isNumQuestion = numIndicesOf(key).includes(idx);
     const correct = (i === q.answer-1);
     if(!state.progress[key]) state.progress[key] = {};
     state.progress[key][idx] = {selected:i, correct, rev: q.rev || null};
@@ -2963,7 +3001,8 @@
     // renderQuiz()가 isWrongSession일 때 saved 여부를 이 값으로 판단해, 예전 기록 때문에
     // 옵션이 클릭 불가능한 상태로 굳어있지 않고 실제로 다시 풀 수 있게 한다.
     state.reviewAnswered = true;
-    bumpTodayCount(); // 홈 화면 "오늘 학습" 표시용 - 답을 고를 때마다(재도전 포함) +1
+    // 홈 화면 "오늘 학습" 표시용 - 답을 고를 때마다(재도전 포함) 전체/숫자/취약/복습 카테고리별로 +1
+    bumpTodayCount({ isNum: isNumQuestion, statusBefore: statusBeforeAnswer });
 
     // 문제별 누적 풀이 횟수 - "다시 풀기"를 해도 안 지워지는 별도 카운터
     if(!state.questionReviewCounts[key]) state.questionReviewCounts[key] = {};
