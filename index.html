@@ -1115,6 +1115,10 @@
   function reviewCount(key){
     return state.reviewCounts[key] || 0;
   }
+  // 전체 13개 챕터의 회독수 합계(홈 화면 "총 회독" 표시용). 챕터별 reviewCount()를 그대로 합산한다.
+  function totalReviewCount(){
+    return allChapterKeys().reduce((sum, k) => sum + reviewCount(k), 0);
+  }
   async function saveRoundArmed(){
     try{
       await window.storage.set('round-armed', JSON.stringify(state.roundArmed));
@@ -2045,6 +2049,7 @@
         <div class="cover-facts">
           <div><b>${os.total}</b><span>총 문항</span></div>
           <div><b>${os.answered}</b><span>학습 완료</span></div>
+          <div><b>${totalReviewCount()}</b><span>총 회독</span></div>
         </div>
         <button class="btn btn-primary" id="resumeBtn">${os.answered>0? '이어서 풀기' : '지금 바로 풀어보기'}</button>
         ${totalWeak>0? `<button class="btn btn-review" id="globalWeakBtn">🔁 전체 취약 문제 ${totalWeak}개 복습하기</button>` : ''}
