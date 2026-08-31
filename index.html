@@ -638,7 +638,7 @@
     .home-today{ padding:0 40px 18px; }
     .home-quick{ padding:0 40px 18px; }
     .home-subjects{ padding:0 40px; }
-    .home-quick-grid{ grid-template-columns:repeat(4, 1fr); }
+    .home-quick-grid{ grid-template-columns:repeat(3, 1fr); }
   }
 
   /* ==== 태블릿 가로 / 작은 데스크톱(1024px~) : 가로형 대시보드로 전환 ==== */
@@ -2310,11 +2310,6 @@
         <div class="home-quick">
           <p class="home-quick-title">빠른 학습</p>
           <div class="home-quick-grid">
-            <button class="home-quick-card primary" id="resumeBtn2">
-              <span class="qc-icon">▶</span>
-              <span class="qc-title">이어서 학습</span>
-              <span class="qc-sub">마지막 학습부터 계속</span>
-            </button>
             ${totalWeak>0? `
             <button class="home-quick-card weak" id="globalWeakBtn">
               <span class="qc-icon">🔴</span>
@@ -2355,8 +2350,6 @@
       openChapter(key, true);
     };
     document.getElementById('resumeBtn').onclick = goResume;
-    const resumeBtn2 = document.getElementById('resumeBtn2');
-    if(resumeBtn2) resumeBtn2.onclick = goResume; // "빠른 학습" 카드용 - hero의 resumeBtn과 동일 동작
     const globalWeakBtn = document.getElementById('globalWeakBtn');
     if(globalWeakBtn) globalWeakBtn.onclick = ()=> startGlobalWeakReview();
     const globalNumBtn = document.getElementById('globalNumBtn');
