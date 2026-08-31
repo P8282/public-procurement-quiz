@@ -2766,7 +2766,12 @@
     const indices = state.filterIndices || allIndicesOf(key);
     const pos = indices.indexOf(idx);
     const total = indices.length;
-    const saved = state.progress[key] && state.progress[key][idx];
+    const isWrongSession = state.filterKind === 'wrong';
+    // 🔴 취약 집중공략 / 🟡 복습 다시풀기 화면은 renderQuiz()와 동일하게, 예전 정답 기록이 아니라
+    // "이번 방문에서 다시 답을 골랐는지"(state.reviewAnswered)를 기준으로 saved를 판단해야 한다.
+    // 이 처리가 없으면 옛날 정답 기록 때문에 숫자키(1~4)로 답을 다시 고를 수 없게 굳어버린다.
+    const rawAnswered = state.progress[key] && state.progress[key][idx];
+    const saved = isWrongSession ? (state.reviewAnswered ? rawAnswered : null) : rawAnswered;
     if(['1','2','3','4'].includes(e.key) && !saved){
       selectAnswer(Number(e.key)-1);
     } else if(e.key==='Escape' && state.sheetOpen){
@@ -2778,12 +2783,17 @@
       e.preventDefault();
       state.sheetOpen = false;
       // 이미 푼 문제는 건너뛰고 처음 만나는 안 푼 문제로 이동 (nextBtn 등과 동일한 규칙).
+      // 단, 🔴 취약 집중공략 / 🟡 복습 다시풀기(isWrongSession)는 goToNextUnanswered()와 동일하게
+      // 목록 전체가 이미 예전에 풀렸던 문제라서 이 건너뛰기를 적용하면 곧장 맨 끝(완료 화면)까지
+      // 건너뛰어버린다. 그래서 이 세션만은 건너뛰지 않고 바로 다음 한 문제로만 이동한다.
       let p = pos + 1;
-      while(p < total){
-        const realIdx = indices[p];
-        const answered = state.progress[key] && state.progress[key][realIdx];
-        if(!answered) break;
-        p++;
+      if(!isWrongSession){
+        while(p < total){
+          const realIdx = indices[p];
+          const answered = state.progress[key] && state.progress[key][realIdx];
+          if(!answered) break;
+          p++;
+        }
       }
       if(p >= total){
         if(state.filterKind === 'num'){
@@ -2795,6 +2805,12 @@
           state.globalNumReview = false;
           state.view = 'numComplete';
           render();
+          return;
+        }
+        if(isWrongSession && state.globalWeakReview){
+          // goToNextUnanswered()와 동일하게, "전체 취약 문제 복습"은 완료 화면 없이 바로
+          // 다음 챕터의 취약 문제로 이어간다(마우스 클릭 경로와 동작을 통일).
+          goHomeOrContinueGlobalReview();
           return;
         }
         if(!state.filterIndices) markChapterCompleted(key);
