@@ -669,6 +669,8 @@
     .home-hero-left h1{ font-size:27px; }
     .home-hero-left .exam-schedule{ justify-content:flex-start; margin-left:0; }
     .home-hero-left .btn-primary{ width:auto; padding:15px 34px; }
+    /* 아이패드 가로/PC는 화면이 넓어 모바일과 같은 크기면 상대적으로 작아 보이므로 한 단계 더 키운다. */
+    .dday-badge{ font-size:15px; padding:5px 14px; }
     .home-hero-right{
       display:flex; flex-direction:column; align-items:flex-end; gap:2px; flex-shrink:0;
     }
@@ -1117,6 +1119,11 @@
   let state = {
     view: 'home', // home | quiz | complete
     chapter: null,
+    lastNormalChapter: null, // "이어서 학습"이 기준으로 삼는 값. state.chapter와 달리 🔴 취약 집중공략/
+                              // 🟡 복습 다시풀기/⚡ 숫자 뽀개기 세션 중에는 갱신되지 않고, 챕터를 직접
+                              // 눌러 들어가거나 "이어서 학습"으로 들어간 "일반 학습"일 때만 갱신된다.
+                              // 그래야 방금 취약 문제만 풀었어도 "이어서 학습"이 그 챕터로 안 끌려간다.
+                              // (영구 저장 - progress와 함께 저장/로드)
     index: 0,
     progress: {},   // { chapterKey: { qIndexAsStr: {selected, correct} } }
     reviewCounts: {}, // { chapterKey: number } - 단원별 완주(회독) 횟수. progress와 별개로 영구 보존.
@@ -1211,6 +1218,9 @@
         const parsed = JSON.parse(res.value);
         state.progress = parsed.progress || {};
         if(parsed.lastChapter) state.chapter = parsed.lastChapter;
+        // 마이그레이션: 이 필드가 생기기 전에 저장된 기존 사용자는 lastNormalChapter가 아직 없으므로,
+        // 옛 lastChapter 값으로 1회 초기화한다(안 하면 업데이트 직후 "이어서 학습" 위치가 비어 보임).
+        state.lastNormalChapter = parsed.lastNormalChapter || parsed.lastChapter || null;
       }
     }catch(e){ /* no saved progress yet */ }
     try{
@@ -1277,7 +1287,7 @@
   }
   async function saveProgress(){
     try{
-      await window.storage.set('progress', JSON.stringify({progress: state.progress, lastChapter: state.chapter}));
+      await window.storage.set('progress', JSON.stringify({progress: state.progress, lastChapter: state.chapter, lastNormalChapter: state.lastNormalChapter}));
     }catch(e){ /* best effort */ }
   }
   async function saveReviewCounts(){
@@ -2388,7 +2398,7 @@
               <span class="qc-icon">▶</span>
               <span class="qc-title">이어서 학습</span>
               <span class="qc-sub">마지막 학습부터 계속</span>
-              ${(os.answered>0 && state.chapter && META.names[state.chapter])? `<span class="qc-position">📍 ${escapeHtml(chapterNameWithSubject(state.chapter))} · ${chapterStats(state.chapter).answered}/${chapterStats(state.chapter).total}</span>` : ''}
+              ${(os.answered>0 && state.lastNormalChapter && META.names[state.lastNormalChapter])? `<span class="qc-position">📍 ${escapeHtml(chapterNameWithSubject(state.lastNormalChapter))} · ${chapterStats(state.lastNormalChapter).answered}/${chapterStats(state.lastNormalChapter).total}</span>` : ''}
             </button>
             ${(totalNum>0 || totalWeakNum>0)? `
             <div class="home-quick-card num">
@@ -2422,7 +2432,7 @@
     `;
 
     const goResume = ()=>{
-      let key = state.chapter;
+      let key = state.lastNormalChapter;
       if(!key || !QUIZ[key] || !QUIZ[key].length){
         key = allChapterKeys().find(k => QUIZ[k] && QUIZ[k].length) || null;
       }
@@ -2494,6 +2504,9 @@
     state.chapter = key;
     state.filterIndices = filterIndices || null;
     state.filterKind = state.filterIndices ? (filterKind || null) : null;
+    // 🔴 취약 집중공략 / 🟡 복습 다시풀기 / ⚡ 숫자 뽀개기(filterKind가 있는 세션)는 "이어서 학습"이
+    // 끌려가면 안 되므로 여기서 갱신하지 않는다. filterKind가 없는 진짜 "일반 학습"일 때만 갱신한다.
+    if(!state.filterKind) state.lastNormalChapter = key;
     const indices = state.filterIndices || allIndicesOf(key);
     // 🔴 취약 집중공략 / 🟡 복습 다시풀기(filterKind==='wrong')는 대상 문제 전부가 "이미 한 번은
     // 정식으로 풀렸던(오답노트에 등록된)" 문제들이다. 아래 "이미 푼 문제는 건너뛰고 이어서 시작" 로직을
