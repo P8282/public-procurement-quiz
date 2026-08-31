@@ -1871,6 +1871,7 @@
     else if(state.view==='home') renderHome();
     else if(state.view==='quiz') renderQuiz();
     else if(state.view==='complete') renderComplete();
+    else if(state.view==='numComplete') renderNumComplete();
     if(keepScroll) window.scrollTo(0, y);
     else window.scrollTo(0,0);
   }
@@ -2220,11 +2221,21 @@
   // 완료 화면에서 다음 챕터로 자동으로 이어간다(goHomeOrContinueGlobalReview 참고).
   // 전부 이미 풀었으면(안 푼 게 없으면) NUM 문제가 하나라도 있는 챕터를 처음부터 다시 보여준다.
   function startGlobalNumReview(){
-    let key = nextNumChapterKey();
-    if(!key) key = allChapterKeys().find(k => numCount(k) > 0);
-    if(!key){ alert('아직 등록된 숫자문제(NUM)가 없습니다.'); return; }
+    const key = nextNumChapterKey();
+    if(key){
+      state.globalNumReview = true;
+      startNumReview(key);
+      return;
+    }
+    // 안 푼 NUM 문제가 하나도 없다(=이미 한 번 다 풀었다). 이 경우 startNumReview(=openChapter의
+    // resume 로직)에 맡기면 "안 푼 문제를 찾다가 끝까지 못 찾음 → 마지막 문제로 이동"으로 해석되어
+    // 첫 문제가 아니라 마지막(이미 푼) 문제부터 보여주는 어색한 상태가 된다. 그래서 이땐 resume 없이
+    // NUM 문제가 있는 첫 챕터의 맨 처음부터 다시 보여준다(진짜 초기화는 완료 화면의 "처음부터 다시
+    // 풀기"로 하고, 여기는 단지 "이미 다 푼 걸 다시 훑어보기 시작 위치"만 정상화하는 것).
+    const fallbackKey = allChapterKeys().find(k => numCount(k) > 0);
+    if(!fallbackKey){ alert('아직 등록된 숫자문제(NUM)가 없습니다.'); return; }
     state.globalNumReview = true;
-    startNumReview(key);
+    openChapter(fallbackKey, false, numIndicesOf(fallbackKey), 'num');
   }
 
   // 챕터 안에서 특정 세부항목(category1) 또는 세세항목(category2)에 해당하는 문제만 골라 이어서 풀도록 연다.
@@ -2440,9 +2451,12 @@
           // 이 챕터의 NUM 문제를 다 풀었다고 완료 화면을 보여주지 않고 다음 챕터로 바로 넘어간다.
           const nextKey = nextNumChapterKey();
           if(nextKey){ startNumReview(nextKey); return; }
+          // 전체 NUM 문제를 다 풀었다. 예전엔 여기서 알림만 띄우고 곧장 홈으로 보내버려서, 다
+          // 풀고 나서 처음부터 다시 연습하고 싶어도 초기화할 방법이 없었다(신고된 버그). 일반
+          // 챕터 완료 화면(renderComplete)처럼 통계와 "처음부터 다시 풀기" 버튼이 있는 전용
+          // 완료 화면(renderNumComplete)을 보여준다.
           state.globalNumReview = false;
-          alert('🎉 숫자문제(NUM) 복습을 모두 마쳤습니다!');
-          state.view = 'home';
+          state.view = 'numComplete';
           render();
           return;
         }
@@ -2644,6 +2658,55 @@
     };
   }
 
+  // "⚡ 숫자 뽀개기.zip" 전체를 다 풀었을 때 보여주는 전용 완료 화면. renderComplete는 챕터 하나
+  // 기준이라 그대로 못 쓰고(NUM 문제는 여러 챕터에 흩어져 있음), 전체 NUM 문제 범위를 기준으로
+  // 통계를 내고 "처음부터 다시 풀기"도 그 전체 범위(모든 챕터의 NUM 문제)를 초기화한다.
+  function renderNumComplete(){
+    const map = {}; // { chapterKey: [NUM 인덱스, ...] }
+    allChapterKeys().forEach(k=>{
+      const idxs = numIndicesOf(k);
+      if(idxs.length) map[k] = idxs;
+    });
+    let total=0, answered=0, correct=0;
+    Object.keys(map).forEach(k=>{
+      map[k].forEach(i=>{
+        total++;
+        const a = state.progress[k] && state.progress[k][i];
+        if(a){ answered++; if(a.correct) correct++; }
+      });
+    });
+    const pct = answered? Math.round(correct/answered*100) : 0;
+    app.innerHTML = `
+      <div class="topbar">
+        <div class="brand" id="homeBtn2"><span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="#F5F1E7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v4h4"/><path d="M9 13l2 2 4-4"/></svg></span>공공조달관리사</div>
+        <div class="stats-chip">⚡ 숫자 뽀개기.zip</div>
+      </div>
+      <div class="complete-wrap">
+        <div class="stamp"><b>${pct}%</b><span>정답률</span></div>
+        <h2>⚡ 숫자 뽀개기.zip 완료</h2>
+        <p>총 ${total}문항 중 ${answered}문항을 풀었습니다.</p>
+        <div class="score-row">
+          <div class="correct-num"><b>${correct}</b><span>정답</span></div>
+          <div class="wrong-num"><b>${answered-correct}</b><span>오답</span></div>
+          <div><b>${total}</b><span>총 문항</span></div>
+        </div>
+        <button class="btn btn-primary" id="retryBtn">처음부터 다시 풀기</button>
+        <div style="height:10px"></div>
+        <button class="btn btn-ghost" id="backHomeBtn">단원 목록으로</button>
+      </div>
+    `;
+    document.getElementById('homeBtn2').onclick = ()=>{ state.view='home'; render(); };
+    document.getElementById('backHomeBtn').onclick = ()=>{ state.view='home'; render(); };
+    document.getElementById('retryBtn').onclick = ()=>{
+      // 모든 챕터의 NUM 문제 기록만 지운다(같은 챕터 안의 NUM 아닌 문제 기록은 안 건드림).
+      Object.keys(map).forEach(k=>{
+        map[k].forEach(i=>{ if(state.progress[k]) delete state.progress[k][i]; });
+      });
+      saveProgress();
+      startGlobalNumReview();
+    };
+  }
+
   // 전체 취약 문제 복습(state.globalWeakReview) 중일 때만 다음 챕터의 취약 문제로 자동 이어간다.
   // 일반 완료 화면(단일 챕터/세세항목)에서는 기존 그대로 홈으로 이동한다.
   function goHomeOrContinueGlobalReview(){
@@ -2723,9 +2786,10 @@
           // 키보드 단축키로 넘길 때도 nextBtn/sheetNext와 동일하게 챕터 경계에서 끊지 않고 이어간다.
           const nextKey = nextNumChapterKey();
           if(nextKey){ startNumReview(nextKey); return; }
+          // 전체 NUM 문제를 다 풀었을 때도 nextBtn/sheetNext와 동일하게 "처음부터 다시 풀기"가
+          // 가능한 전용 완료 화면(numComplete)을 보여준다(마우스 클릭 경로와 동작을 통일).
           state.globalNumReview = false;
-          alert('🎉 숫자문제(NUM) 복습을 모두 마쳤습니다!');
-          state.view = 'home';
+          state.view = 'numComplete';
           render();
           return;
         }
