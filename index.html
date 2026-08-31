@@ -111,11 +111,11 @@
 
   .exam-schedule{
     display:inline-flex; align-items:center; gap:9px; flex-wrap:wrap; justify-content:center;
-    background:var(--correct-tint); border:1.4px solid #BFDBCB; border-radius:999px;
-    padding:8px 16px; margin:0 0 18px; font-size:12.5px; font-weight:700; color:var(--correct);
+    background:rgba(27,42,71,.07); border:1.4px solid rgba(27,42,71,.18); border-radius:999px;
+    padding:8px 16px; margin:0 0 18px; font-size:12.5px; font-weight:700; color:var(--navy);
   }
   .exam-schedule b{ font-weight:900; }
-  .exam-schedule .divider{ width:1px; height:11px; background:#BFDBCB; flex-shrink:0; }
+  .exam-schedule .divider{ width:1px; height:11px; background:rgba(27,42,71,.22); flex-shrink:0; }
 
   .hero p.sub{ color:var(--ink-soft); font-size:14px; line-height:1.6; margin:0 auto 22px; max-width:340px; }
 
@@ -598,9 +598,10 @@
   .home-quick-title{ font-size:12px; font-weight:700; color:var(--ink-soft); margin:0 0 10px; }
   .home-quick-grid{ display:grid; grid-template-columns:1fr 1fr; gap:9px; }
   .home-quick-card{
-    background:var(--card); border:1.4px solid var(--line-strong); border-radius:13px; padding:13px;
+    background:var(--card); border:1.4px solid var(--line); border-radius:13px; padding:13px;
     text-align:left; cursor:pointer; appearance:none; font-family:inherit;
     display:flex; flex-direction:column; gap:3px; box-sizing:border-box;
+    box-shadow:var(--shadow);
     min-height:138px; /* 4장 모두 이 높이로 통일 - 숫자 뽀개기 카드(버튼 2개짜리 줄이 추가로 붙음)의
                           실제 필요 높이 기준(재계산). 다른 카드는 이 높이만큼 하단에 여백이 생기는
                           대신 4장이 정확히 동일한 높이가 된다(A안). 그리드 auto-height 특성상 fr
@@ -610,21 +611,20 @@
   .home-quick-card .qc-icon{ font-size:17px; line-height:1; }
   .home-quick-card .qc-title{ font-size:13px; font-weight:700; color:var(--ink); }
   .home-quick-card .qc-sub{ font-size:10px; color:var(--ink-soft); }
-  .home-quick-card.primary{ background:var(--navy); border-color:var(--navy); }
-  .home-quick-card.primary .qc-title, .home-quick-card.primary .qc-sub{ color:#F5F1E7; }
-  .home-quick-card.weak{ border-color:#E9C2BC; background:var(--seal-tint); }
-  .home-quick-card.weak .qc-title{ color:var(--seal); }
-  .home-quick-card.review{ border-color:var(--gold-border); background:var(--gold-tint); }
-  .home-quick-card.review .qc-title{ color:var(--gold-text); }
-  .home-quick-card.num{ border-color:var(--num-border); background:var(--num-tint); }
-  .home-quick-card.num .qc-title{ color:var(--num-text); }
+  /* 팔레트 단순화: 네이비(기본/CTA) + 버건디(취약·경고) 2가지로 제한. 복습/숫자뽀개기는 옐로우/블루
+     계열을 없애고 네이비 텍스트로 통일해 "지금 해야 할 행동"이라는 같은 성격을 같은 색으로 표현한다. */
+  .home-quick-card.primary{ border-color:var(--navy); border-width:1.8px; }
+  .home-quick-card.primary .qc-icon, .home-quick-card.primary .qc-title{ color:var(--navy); }
+  .home-quick-card.weak .qc-icon, .home-quick-card.weak .qc-title{ color:var(--seal-deep); }
+  .home-quick-card.review .qc-icon, .home-quick-card.review .qc-title{ color:var(--navy); }
+  .home-quick-card.num .qc-icon, .home-quick-card.num .qc-title{ color:var(--navy); }
   /* margin-top:auto였던 걸 고정 padding-top으로 바꿈 - auto는 카드가 min-height로 인해 실제
      콘텐츠보다 커지면 그 남는 공간이 전부 이 버튼 줄 "위쪽"으로 몰려서 간격이 벌어져 보이는
      부작용이 있었다. 고정값으로 바꾸면 카드 높이가 얼마든 이 버튼 줄 위 간격은 항상 8px로 일정하고,
      남는 여백은 카드 맨 아래로 자연스럽게 내려간다. */
   .home-quick-card .qc-split{ display:flex; gap:6px; margin-top:8px; }
   .home-quick-card .qc-split button{
-    flex:1; appearance:none; border:1px solid var(--num-border); background:var(--card); color:var(--num-text);
+    flex:1; appearance:none; border:1px solid var(--line-strong); background:var(--paper); color:var(--navy);
     border-radius:8px; font-size:10.5px; font-weight:700; padding:6px 3px; cursor:pointer; font-family:inherit;
     line-height:1.15; white-space:normal; word-break:keep-all;
   }
