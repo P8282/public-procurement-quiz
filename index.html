@@ -961,14 +961,18 @@
     storageOk: null,   // true/false/null(테스트 전) - 저장소(window.storage) 실제 동작 여부 자체진단 결과
     expandedChapter: null, // 홈 화면에서 목차(대분류>세세항목)를 카드 안에 펼쳐놓은 챕터키(일시 상태, 저장하지 않음)
     filterIndices: null, // 세세항목 등 부분 학습 세션에서 사용할 QUIZ[key] 안의 인덱스 목록(일시 상태, 저장하지 않음)
-    filterKind: null,    // 'wrong' | 'subtopic' | 'num' | null - 현재 부분 학습 세션의 종류(일시 상태, 저장하지 않음)
+    filterKind: null,    // 'wrong' | 'subtopic' | 'num' | 'weaknum' | null - 현재 부분 학습 세션의 종류(일시 상태, 저장하지 않음)
     excluded: {},          // { chapterKey: { idx: true } } - 오답노트 대상에서 수동으로 뺀 문제 목록(영구 저장)
     wrongMastery: { pool: {}, streak: {} }, // pool: 한 번이라도 틀려서 오답노트 대상에 들어간 문제, streak: 그 문제의 현재 연속 정답 횟수(둘 다 영구 저장)
     globalWeakReview: false, // 메인화면 "전체 취약 문제 복습" 진입 여부(일시 상태, 저장하지 않음) - 챕터를 순차로 이어가는 데 사용
     globalWeakQueue: [],     // 전체 취약 문제 복습을 시작한 시점에 취약 문제가 있던 챕터 목록(일시 상태) - 한 번 정한 순서를 그대로 순회
     globalWeakQueueIndex: 0, // globalWeakQueue 안에서 지금 몇 번째 챕터를 보고 있는지(일시 상태)
     globalWeakCounts: [],    // globalWeakQueue와 짝을 이루는, 시작 시점의 챕터별 취약 문제 개수 스냅샷(일시 상태) - 진행률 "N/전체" 표시용
-    globalNumReview: false, // 메인화면 "⚡ 숫자 뽀개기.zip" 진입 여부(일시 상태, 저장하지 않음) - 챕터를 순차로 이어가는 데 사용
+    globalNumReview: false, // 메인화면 "⚡ 숫자 뽀개기.zip · 전체" 진입 여부(일시 상태, 저장하지 않음) - 챕터를 순차로 이어가는 데 사용
+    globalWeakNumReview: false, // 메인화면 "🔴 숫자 뽀개기.zip · 취약만" 진입 여부(일시 상태, 저장하지 않음) - globalWeakReview와 동일한 패턴
+    globalWeakNumQueue: [],      // 취약 NUM이 있던 챕터 목록 스냅샷(일시 상태) - globalWeakQueue와 동일한 역할
+    globalWeakNumQueueIndex: 0,  // 위 큐에서 지금 몇 번째 챕터를 보고 있는지(일시 상태)
+    globalWeakNumCounts: [],     // 시작 시점의 챕터별 취약 NUM 개수 스냅샷(일시 상태) - globalWeakCounts와 동일한 역할
     updateAvailable: false, // 앱 코드(GitHub 배포본) 새 버전이 감지됐는지 여부(일시 상태, 저장하지 않음)
     syncCode: null,     // 클라우드 동기화 코드(예: "A7K9-2XQP"). 연결돼 있으면 값이 있고, 아니면 null (영구 저장)
     syncing: false,     // 지금 동기화 요청이 진행 중인지(중복 클릭 방지용, 일시 상태)
@@ -1703,6 +1707,14 @@
   }
   function numCount(key){ return numIndicesOf(key).length; }
   function totalNumCount(){ return allChapterKeys().reduce((sum,k)=> sum + numCount(k), 0); }
+  // NUM 문제 중 현재 🔴 취약 상태(getQuestionStatus==='weak')인 것만 골라낸다
+  // ("🔴 숫자 뽀개기.zip · 취약만" 모아풀기용). weakIndices()와 동일하게 수동 제외("그만 보기")된
+  // 문제는 제외한다(안 그러면 제외한 문제가 계속 취약으로 남아 큐가 정상적으로 끝나지 않는다).
+  function weakNumIndicesOf(key){
+    return numIndicesOf(key).filter(i => getQuestionStatus(key, i) === 'weak' && !isExcludedFromWrong(key, i));
+  }
+  function weakNumCount(key){ return weakNumIndicesOf(key).length; }
+  function totalWeakNumCount(){ return allChapterKeys().reduce((sum,k)=> sum + weakNumCount(k), 0); }
   // 이 챕터에 아직 안 푼 NUM 문제가 남아있는지(전체 NUM 복습을 챕터별로 이어갈 때 종료 조건 판단용).
   function hasUnansweredNum(key){
     return numIndicesOf(key).some(i => !(state.progress[key] && state.progress[key][i]));
@@ -1945,6 +1957,7 @@
     const os = overallStats();
     const totalWeak = totalWeakCount();
     const totalNum = totalNumCount();
+    const totalWeakNum = totalWeakNumCount();
     let chaptersHtml = '';
     META.subjects.forEach(subj=>{
       const subjTotal = subj.chapters.reduce((a,k)=>a+QUIZ[k].length,0);
@@ -2053,7 +2066,8 @@
         </div>
         <button class="btn btn-primary" id="resumeBtn">${os.answered>0? '이어서 풀기' : '지금 바로 풀어보기'}</button>
         ${totalWeak>0? `<button class="btn btn-review" id="globalWeakBtn">🔁 전체 취약 문제 ${totalWeak}개 복습하기</button>` : ''}
-        ${totalNum>0? `<button class="btn btn-num" id="globalNumBtn">⚡ 숫자 뽀개기.zip (${totalNum}문제)</button>` : ''}
+        ${totalNum>0? `<button class="btn btn-num" id="globalNumBtn">⚡ 숫자 뽀개기.zip · 전체 (${totalNum}문제)</button>` : ''}
+        ${totalWeakNum>0? `<button class="btn btn-num" id="globalWeakNumBtn">🔴 숫자 뽀개기.zip · 취약만 (${totalWeakNum}문제)</button>` : ''}
         ${syncEnabled() && state.syncCode? `<button class="btn btn-review" id="myReportsBtn">🚩 내가 신고한 오류${myReportCount()>0? ` ${myReportCount()}개` : ''} 모아보기</button>` : ''}
       </div>
       <div class="section-wrap">${chaptersHtml}</div>
@@ -2071,6 +2085,8 @@
     if(globalWeakBtn) globalWeakBtn.onclick = ()=> startGlobalWeakReview();
     const globalNumBtn = document.getElementById('globalNumBtn');
     if(globalNumBtn) globalNumBtn.onclick = ()=> startGlobalNumReview();
+    const globalWeakNumBtn = document.getElementById('globalWeakNumBtn');
+    if(globalWeakNumBtn) globalWeakNumBtn.onclick = ()=> startGlobalWeakNumReview();
     const myReportsBtn = document.getElementById('myReportsBtn');
     if(myReportsBtn) myReportsBtn.onclick = ()=> openMyReportsModal();
 
@@ -2247,6 +2263,37 @@
     openChapter(fallbackKey, false, numIndicesOf(fallbackKey), 'num');
   }
 
+  // 🔴 숫자 취약만 다시풀기: NUM 태그가 붙은 문제 중 취약한 것만 모아 푼다. filterKind를 'weaknum'으로
+  // 넘겨, 🔴 취약 집중공략 / 🟡 복습 다시풀기와 동일한 "건너뛰지 않기·숙달도 표시·제외 버튼" UX를
+  // 그대로 재사용한다(renderQuiz의 isWeakLikeSession 참고).
+  function startWeakNumReview(key){
+    const idxs = weakNumIndicesOf(key);
+    if(!idxs.length) return;
+    openChapter(key, true, idxs, 'weaknum');
+  }
+
+  // 메인화면 "🔴 숫자 뽀개기.zip · 취약만" 진입점. startGlobalWeakReview()와 동일한 패턴 - 지금
+  // 시점에 취약 NUM이 있는 챕터들을 큐에 순서대로 담아두고, 완료 화면에서 다음 챕터로 자동으로
+  // 이어간다(goHomeOrContinueGlobalReview 참고). 이미 취약을 벗어난 챕터는 건너뛴다.
+  function startGlobalWeakNumReview(){
+    const queue = allChapterKeys().filter(k => weakNumCount(k) > 0);
+    if(!queue.length){ alert('현재 취약 숫자문제가 없습니다! 🎉'); return; }
+    state.globalWeakNumReview = true;
+    state.globalWeakNumQueue = queue;
+    state.globalWeakNumQueueIndex = 0;
+    state.globalWeakNumCounts = queue.map(k => weakNumCount(k));
+    startWeakNumReview(queue[0]);
+  }
+  // globalWeakPrecedingCount/globalWeakTotalCount와 동일한 역할, "숫자 취약만" 전용.
+  function globalWeakNumPrecedingCount(){
+    let sum = 0;
+    for(let i=0; i<state.globalWeakNumQueueIndex; i++) sum += (state.globalWeakNumCounts[i] || 0);
+    return sum;
+  }
+  function globalWeakNumTotalCount(){
+    return (state.globalWeakNumCounts || []).reduce((a, b) => a + b, 0);
+  }
+
   // 챕터 안에서 특정 세부항목(category1) 또는 세세항목(category2)에 해당하는 문제만 골라 이어서 풀도록 연다.
   // level: 'sub'(세세항목, 기존 방식) | 'group'(세부항목 - 그 아래 세세항목 전부 포함)
   // 번호("1. " 등) 접두사는 무시하고 순수 이름으로 매칭한다(출제기준 청사진과 표기 방식이 다를 수 있어서).
@@ -2309,25 +2356,33 @@
     const isFiltered = !!state.filterIndices;
     const isWrongSession = state.filterKind === 'wrong';
     const isNumSession = state.filterKind === 'num';
-    // 🔴 취약 집중공략 / 🟡 복습 다시풀기(isWrongSession)의 모든 문제는 예전에 이미 한 번은
-    // 정식으로 풀렸던 문제라서, state.progress의 "옛날 기록"을 그대로 saved로 취급하면 옵션이
-    // 처음부터 "이미 정답 표시된" 상태로 굳어버려 다시 답을 고를 수 없게 된다(재풀이 비활성화
-    // 버그). 그래서 이 세션에서는 "이번 방문에서 실제로 다시 답을 골랐는지"(state.reviewAnswered)를
-    // 기준으로 삼아, 아직 다시 안 골랐다면 옛날 기록이 있어도 "안 푼 문제"처럼 보여준다.
+    const isWeakNumSession = state.filterKind === 'weaknum';
+    // 🔴 취약 집중공략 / 🟡 복습 다시풀기 / 🔴 숫자 취약만(모두 filterKind가 'wrong' 또는 'weaknum')은
+    // 대상 문제 전부가 예전에 이미 한 번은 정식으로 풀렸던 문제라서, state.progress의 "옛날 기록"을
+    // 그대로 saved로 취급하면 옵션이 처음부터 "이미 정답 표시된" 상태로 굳어버려 다시 답을 고를 수
+    // 없게 된다(재풀이 비활성화 버그). 그래서 이 세션들은 "이번 방문에서 실제로 다시 답을 골랐는지"
+    // (state.reviewAnswered)를 기준으로 삼아, 아직 다시 안 골랐다면 옛날 기록이 있어도 "안 푼 문제"
+    // 처럼 보여준다.
+    const isWeakLikeSession = isWrongSession || isWeakNumSession;
     const rawAnswered = state.progress[key] && state.progress[key][idx];
-    const saved = isWrongSession ? (state.reviewAnswered ? rawAnswered : null) : rawAnswered;
-    // NUM 모아풀기는 챕터가 바뀌어도 118문제 전체를 하나로 이어서 보여준다(진행률·회차 표시용).
-    // "전체 취약 문제 복습" 역시 여러 챕터를 하나로 이어서 보여주므로 같은 방식으로 처리한다.
-    // pos/total은 "이 챕터 안에서의" 위치이고, 아래 두 값은 "전체 목록 안에서의" 위치다.
+    const saved = isWeakLikeSession ? (state.reviewAnswered ? rawAnswered : null) : rawAnswered;
+    // NUM 모아풀기 / "전체 취약 문제 복습" / "숫자 취약만"은 모두 챕터가 바뀌어도 전체를 하나로
+    // 이어서 보여준다(진행률·회차 표시용). pos/total은 "이 챕터 안에서의" 위치이고,
+    // 아래 두 값은 "전체 목록 안에서의" 위치다.
     const isGlobalWrongSession = isWrongSession && state.globalWeakReview;
-    const globalPos = isNumSession? numPrecedingCount(key) + pos : (isGlobalWrongSession? globalWeakPrecedingCount() + pos : pos);
-    const globalTotal = isNumSession? totalNumCount() : (isGlobalWrongSession? globalWeakTotalCount() : total);
+    const isGlobalWeakNumSession = isWeakNumSession && state.globalWeakNumReview;
+    const globalPos = isNumSession? numPrecedingCount(key) + pos
+      : (isGlobalWrongSession? globalWeakPrecedingCount() + pos
+      : (isGlobalWeakNumSession? globalWeakNumPrecedingCount() + pos : pos));
+    const globalTotal = isNumSession? totalNumCount()
+      : (isGlobalWrongSession? globalWeakTotalCount()
+      : (isGlobalWeakNumSession? globalWeakNumTotalCount() : total));
     // "학습 완료"/"단원 완료" 버튼은 이 세션 전체의 마지막 문제일 때만 보여야 한다. 일반 세션은 이
-    // 챕터 안에서의 마지막(pos===total-1)이 곧 세션의 마지막이지만, "전체 취약 문제 복습"은 여러
-    // 챕터를 끊김 없이 이어서 보여주므로 챕터별 마지막이 아니라 전체 목록 기준 마지막
-    // (globalPos===globalTotal-1)이어야 한다 - 안 그러면 챕터가 바뀔 때마다 "다음 문제" 대신
+    // 챕터 안에서의 마지막(pos===total-1)이 곧 세션의 마지막이지만, "전체 취약 문제 복습"/
+    // "숫자 취약만"은 여러 챕터를 끊김 없이 이어서 보여주므로 챕터별 마지막이 아니라 전체 목록 기준
+    // 마지막(globalPos===globalTotal-1)이어야 한다 - 안 그러면 챕터가 바뀔 때마다 "다음 문제" 대신
     // 매번 "학습 완료"가 떠버린다.
-    const isLast = isGlobalWrongSession ? (globalPos === globalTotal - 1) : (pos === total - 1);
+    const isLast = (isGlobalWrongSession || isGlobalWeakNumSession) ? (globalPos === globalTotal - 1) : (pos === total - 1);
     const streak = masteryStreak(key, idx);
     // 이 문제를 지금까지 몇 번 풀었는지(누적). 해설 시트 하단 통계("총 N회 풀이")에 쓰인다.
     const storedReviewCount = (state.questionReviewCounts[key] && state.questionReviewCounts[key][idx]) || 0;
@@ -2359,7 +2414,7 @@
     let sheetHtml = '';
     if(saved && state.sheetOpen){
       const ok = saved.correct;
-      const justMastered = isWrongSession && ok && streak>=MASTERY_TARGET;
+      const justMastered = isWeakLikeSession && ok && streak>=MASTERY_TARGET;
       sheetHtml = `
         <div class="sheet-dim" id="sheetDim"></div>
         <div class="sheet" id="sheetPanel" role="dialog" aria-modal="true">
@@ -2373,7 +2428,7 @@
             ${justMastered? `<div style="background:var(--correct-tint);color:#204636;border:1px solid #BFDBCB;border-radius:9px;padding:12px 14px;margin-bottom:14px;font-weight:700;font-size:13.5px;">🎉 연속 정답 ${MASTERY_TARGET}회 달성! 이 문제는 취약문제에서 제외됩니다.</div>` : ''}
             ${escapeHtml(q.explanation||'해설이 제공되지 않았습니다.')}${q.source? `<div class="sheet-src">§ 출처: ${escapeHtml(q.source)}</div>` : ''}
             ${(isWeakNow || !alreadyWeakStatus)? `<button id="manualWeakBtn" style="margin-top:14px;width:100%;background:${isWeakNow? 'var(--correct-tint)':'var(--seal-tint)'};border:1px solid ${isWeakNow? '#BFDBCB':'#E9C2BC'};border-radius:9px;padding:10px;font-size:12.5px;color:${isWeakNow? '#204636':'var(--seal)'};font-weight:700;cursor:pointer;">${isWeakNow? '✔ 취약문제 지정 해제' : '🚨 취약문제로 지정하기'}</button>` : ''}
-            ${isWrongSession? `<button id="excludeBtn" style="margin-top:10px;width:100%;background:var(--paper-deep);border:1px solid var(--line-strong);border-radius:9px;padding:10px;font-size:12.5px;color:var(--ink-soft);cursor:pointer;">✕ 이 문제는 취약문제에서 그만 보기</button>` : ''}
+            ${isWeakLikeSession? `<button id="excludeBtn" style="margin-top:10px;width:100%;background:var(--paper-deep);border:1px solid var(--line-strong);border-radius:9px;padding:10px;font-size:12.5px;color:var(--ink-soft);cursor:pointer;">✕ 이 문제는 취약문제에서 그만 보기</button>` : ''}
             <button id="reportErrorBtn" style="margin-top:10px;width:100%;background:transparent;border:1px dashed var(--line-strong);border-radius:9px;padding:9px;font-size:12px;color:var(--ink-soft);cursor:pointer;">🚩 문제 오류 신고</button>
             <div style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--line-strong);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
               <span style="font-size:11.5px;color:var(--ink-soft);">총 ${storedReviewCount}회 풀이 · 정답률 ${questionAccuracy(key, idx) ?? 0}%</span>
@@ -2400,7 +2455,7 @@
           <div class="crumb">${statusBadgeHtml}<b>${escapeHtml(tocLabels.group)}</b><br>${escapeHtml(tocLabels.sub)}</div>
           <div class="qno">${globalPos+1} / ${globalTotal}</div>
         </div>
-        ${isWrongSession? `
+        ${isWeakLikeSession? `
         <div class="mastery-row">
           <span class="mastery-label">🔥 숙달도 ${streak}/${MASTERY_TARGET}${streak>=MASTERY_TARGET? ' · 완료!' : ''}</span>
           <span class="mastery-dots">${Array.from({length:MASTERY_TARGET},(_,di)=>`<span class="mastery-dot${di<streak?' filled':''}"></span>`).join('')}</span>
@@ -2442,11 +2497,11 @@
       state.sheetOpen = false;
       state.reviewAnswered = false;
       let p = pos + 1;
-      // 🔴 취약 집중공략 / 🟡 복습 다시풀기(isWrongSession)는 목록의 모든 문제가 이미 예전에
-      // 정식으로 풀렸던 문제라서, 아래 "이미 푼 문제는 건너뛰기" 로직을 적용하면 다음 문제도
-      // 전부 "이미 풀림"으로 판정돼 곧장 맨 끝(완료 화면)까지 건너뛰어버린다. 그래서 이 세션은
-      // 건너뛰지 않고 목록 순서 그대로 바로 다음 한 문제로만 이동한다.
-      if(!isWrongSession){
+      // 🔴 취약 집중공략 / 🟡 복습 다시풀기 / 🔴 숫자 취약만(isWeakLikeSession)은 목록의 모든 문제가
+      // 이미 예전에 정식으로 풀렸던 문제라서, 아래 "이미 푼 문제는 건너뛰기" 로직을 적용하면 다음
+      // 문제도 전부 "이미 풀림"으로 판정돼 곧장 맨 끝(완료 화면)까지 건너뛰어버린다. 그래서 이
+      // 세션들은 건너뛰지 않고 목록 순서 그대로 바로 다음 한 문제로만 이동한다.
+      if(!isWeakLikeSession){
         while(p < total){
           const realIdx = indices[p];
           const answered = state.progress[key] && state.progress[key][realIdx];
@@ -2469,12 +2524,13 @@
           render();
           return;
         }
-        if(isWrongSession && state.globalWeakReview){
-          // "전체 취약 문제 N개 복습하기"는 NUM 모아풀기(⚡ 숫자 뽀개기.zip)와 마찬가지로
-          // 전체를 한 번에 이어서 푸는 게 목적이므로, 챕터 경계마다 "단원 완료" 화면을 보여주고
-          // 사용자가 직접 다음으로 넘겨야 하게 만들면 "챕터별로 끊겨서 불러온다"고 느끼게 된다.
-          // 완료 화면 없이 goHomeOrContinueGlobalReview()가 바로 다음 챕터로 이어가도록 한다
-          // (더 이상 넘어갈 챕터가 없으면 그 안에서 알아서 안내 문구를 띄우고 홈으로 보낸다).
+        if((isWrongSession && state.globalWeakReview) || (isWeakNumSession && state.globalWeakNumReview)){
+          // "전체 취약 문제 N개 복습하기" / "숫자 뽀개기.zip · 취약만"은 NUM 모아풀기(⚡ 숫자
+          // 뽀개기.zip · 전체)와 마찬가지로 전체를 한 번에 이어서 푸는 게 목적이므로, 챕터
+          // 경계마다 "단원 완료" 화면을 보여주고 사용자가 직접 다음으로 넘겨야 하게 만들면
+          // "챕터별로 끊겨서 불러온다"고 느끼게 된다. 완료 화면 없이 goHomeOrContinueGlobalReview()가
+          // 바로 다음 챕터로 이어가도록 한다(더 이상 넘어갈 챕터가 없으면 그 안에서 알아서 안내
+          // 문구를 띄우고 홈으로 보낸다).
           goHomeOrContinueGlobalReview();
           return;
         }
@@ -2748,6 +2804,23 @@
       state.globalNumReview = false;
       alert('🎉 숫자문제(NUM) 복습을 모두 마쳤습니다!');
     }
+    if(state.globalWeakNumReview){
+      // globalWeakReview 분기와 동일한 패턴: 큐를 한 칸씩 전진하며, 그 사이 이미 취약을 벗어난
+      // (weakNumCount 0) 챕터는 건너뛰고 다음 챕터를 찾는다.
+      let nextKey = null;
+      while(state.globalWeakNumQueueIndex + 1 < state.globalWeakNumQueue.length){
+        state.globalWeakNumQueueIndex++;
+        const cand = state.globalWeakNumQueue[state.globalWeakNumQueueIndex];
+        if(weakNumCount(cand) > 0){ nextKey = cand; break; }
+      }
+      if(nextKey){
+        startWeakNumReview(nextKey); // 기존 startWeakNumReview 로직 그대로 재사용
+        return;
+      }
+      state.globalWeakNumReview = false;
+      state.globalWeakNumQueue = [];
+      alert('🎉 취약 숫자문제 복습을 모두 마쳤습니다!');
+    }
     state.view = 'home';
     render();
   }
@@ -2772,11 +2845,14 @@
     const pos = indices.indexOf(idx);
     const total = indices.length;
     const isWrongSession = state.filterKind === 'wrong';
-    // 🔴 취약 집중공략 / 🟡 복습 다시풀기 화면은 renderQuiz()와 동일하게, 예전 정답 기록이 아니라
-    // "이번 방문에서 다시 답을 골랐는지"(state.reviewAnswered)를 기준으로 saved를 판단해야 한다.
-    // 이 처리가 없으면 옛날 정답 기록 때문에 숫자키(1~4)로 답을 다시 고를 수 없게 굳어버린다.
+    const isWeakNumSession = state.filterKind === 'weaknum';
+    const isWeakLikeSession = isWrongSession || isWeakNumSession;
+    // 🔴 취약 집중공략 / 🟡 복습 다시풀기 / 🔴 숫자 취약만 화면은 renderQuiz()와 동일하게, 예전 정답
+    // 기록이 아니라 "이번 방문에서 다시 답을 골랐는지"(state.reviewAnswered)를 기준으로 saved를
+    // 판단해야 한다. 이 처리가 없으면 옛날 정답 기록 때문에 숫자키(1~4)로 답을 다시 고를 수 없게
+    // 굳어버린다.
     const rawAnswered = state.progress[key] && state.progress[key][idx];
-    const saved = isWrongSession ? (state.reviewAnswered ? rawAnswered : null) : rawAnswered;
+    const saved = isWeakLikeSession ? (state.reviewAnswered ? rawAnswered : null) : rawAnswered;
     if(['1','2','3','4'].includes(e.key) && !saved){
       selectAnswer(Number(e.key)-1);
     } else if(e.key==='Escape' && state.sheetOpen){
@@ -2788,11 +2864,12 @@
       e.preventDefault();
       state.sheetOpen = false;
       // 이미 푼 문제는 건너뛰고 처음 만나는 안 푼 문제로 이동 (nextBtn 등과 동일한 규칙).
-      // 단, 🔴 취약 집중공략 / 🟡 복습 다시풀기(isWrongSession)는 goToNextUnanswered()와 동일하게
-      // 목록 전체가 이미 예전에 풀렸던 문제라서 이 건너뛰기를 적용하면 곧장 맨 끝(완료 화면)까지
-      // 건너뛰어버린다. 그래서 이 세션만은 건너뛰지 않고 바로 다음 한 문제로만 이동한다.
+      // 단, 🔴 취약 집중공략 / 🟡 복습 다시풀기 / 🔴 숫자 취약만(isWeakLikeSession)은
+      // goToNextUnanswered()와 동일하게 목록 전체가 이미 예전에 풀렸던 문제라서 이 건너뛰기를
+      // 적용하면 곧장 맨 끝(완료 화면)까지 건너뛰어버린다. 그래서 이 세션들만은 건너뛰지 않고
+      // 바로 다음 한 문제로만 이동한다.
       let p = pos + 1;
-      if(!isWrongSession){
+      if(!isWeakLikeSession){
         while(p < total){
           const realIdx = indices[p];
           const answered = state.progress[key] && state.progress[key][realIdx];
@@ -2812,9 +2889,9 @@
           render();
           return;
         }
-        if(isWrongSession && state.globalWeakReview){
-          // goToNextUnanswered()와 동일하게, "전체 취약 문제 복습"은 완료 화면 없이 바로
-          // 다음 챕터의 취약 문제로 이어간다(마우스 클릭 경로와 동작을 통일).
+        if((isWrongSession && state.globalWeakReview) || (isWeakNumSession && state.globalWeakNumReview)){
+          // goToNextUnanswered()와 동일하게, "전체 취약 문제 복습" / "숫자 취약만"은 완료 화면 없이
+          // 바로 다음 챕터로 이어간다(마우스 클릭 경로와 동작을 통일).
           goHomeOrContinueGlobalReview();
           return;
         }
