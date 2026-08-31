@@ -670,6 +670,7 @@
     .home-hero-right .big-pct{ font-family:'Noto Serif KR',serif; font-size:42px; font-weight:900; color:var(--navy); line-height:1; }
     .home-hero-right .big-pct-label{ font-size:11.5px; color:var(--ink-soft); font-weight:700; }
     .home-hero-right .big-total{ font-size:12.5px; color:var(--ink-soft); margin-top:6px; }
+    .home-hero-right .big-today{ font-size:11px; color:var(--navy); font-weight:700; margin-top:4px; padding-top:6px; border-top:1px solid var(--line); }
     .home-hero .cover-facts{ display:none; } /* 큰 퍼센트(home-hero-right)로 대체 */
 
     .home-subjects{ display:grid; grid-template-columns:1fr 1fr; align-items:start; gap:14px; }
@@ -2334,6 +2335,7 @@
             <div class="big-pct">${overallPct}%</div>
             <div class="big-pct-label">전체 학습률</div>
             <div class="big-total">${formatNum(os.total)}문제</div>
+            <div class="big-today">오늘 ${formatNum(todayN)}문제 학습</div>
           </div>
           <div class="cover-facts">
             <div><b>${formatNum(os.total)}</b><span>전체 문제</span></div>
