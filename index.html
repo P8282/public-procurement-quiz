@@ -32,6 +32,9 @@
     --gold-tint:#F6EEDA;
     --gold-text:#8A6216;
     --gold-border:#E6D3A0;
+    --num-tint:#E9F1FB;
+    --num-text:#2C5C99;
+    --num-border:#C7D9F0;
     --correct:#2E6B4F;
     --correct-tint:#E1EDE5;
     --wrong:#AE342A;
@@ -151,7 +154,7 @@
   }
   .btn-ghost:hover{ border-color:var(--navy); }
   .btn-review{
-    background:var(--seal-tint); color:var(--seal); font-size:13.5px; padding:12px 18px; width:100%;
+    background:var(--seal-tint); color:var(--seal); font-size:12.5px; padding:10px 16px; width:100%;
     border:1.4px solid #E9C2BC; margin-top:10px; letter-spacing:.01em;
   }
   .btn-review:hover{ background:#F0D3CE; }
@@ -161,10 +164,10 @@
   }
   .btn-num:hover{ filter:brightness(.97); }
   /* "⚡ 숫자 뽀개기 전체" / "🔴 취약만"을 세로로 2줄 쌓지 않고 한 줄에 나란히 배치해 공간을 아낀다. */
-  .num-title{ margin:14px 0 6px; font-size:12px; font-weight:700; color:var(--gold-text); text-align:center; }
+  .num-title{ margin:14px 0 6px; font-size:12px; font-weight:700; color:var(--num-text); text-align:center; }
   .num-btn-row{ display:flex; gap:8px; margin-top:0; }
-  .num-btn-row .btn-num{ margin-top:0; flex:1; min-width:0; padding:12px 10px; font-size:12.5px; line-height:1.4; }
-  .num-btn-row .btn-num b{ display:block; font-size:13.5px; }
+  .num-btn-row .btn-num{ margin-top:0; flex:1; min-width:0; padding:10px; font-size:12px; line-height:1.4; background:var(--num-tint); color:var(--num-text); border-color:var(--num-border); }
+  .num-btn-row .btn-num b{ display:block; font-size:12.5px; }
 
   /* ---------- 동기화(로그인/로그아웃) 상태 바 - 홈 화면 상단 상시 노출 ---------- */
   .sync-bar{
@@ -558,6 +561,9 @@
       --gold-tint:#332B1A;
       --gold-text:#E3C583;
       --gold-border:#5C4C2A;
+      --num-tint:#1B2A3D;
+      --num-text:#8FC1F2;
+      --num-border:#3A5578;
       --correct:#6FCB9A;
       --correct-tint:#1E3329;
       --wrong:#E0857A;
@@ -2047,7 +2053,7 @@
         <div class="brand"><span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="#F5F1E7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v4h4"/><path d="M9 13l2 2 4-4"/></svg></span>공공조달관리사</div>
         <div style="display:flex; align-items:center; gap:6px;">
           <button id="manualRefreshBtn" title="문제/앱 새로고침" style="background:var(--card); border:1px solid var(--line-strong); border-radius:999px; width:28px; height:28px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:13px; color:var(--ink-soft); flex-shrink:0;">🔄</button>
-          <div class="stats-chip">전체 ${os.answered}/${os.total}</div>
+          <div class="stats-chip">전체 ${os.answered}/${os.total} · ${totalReviewCount()}회독</div>
         </div>
       </div>
       ${state.updateAvailable? `
@@ -2079,12 +2085,6 @@
           <span class="divider"></span>
           <span>✏️ 필기시험 <b>10.3</b></span>
         </div>
-        <p class="sub">실전 문제 ${os.total}개로 꿰뚫는 공공조달 실무.<br>출퇴근길에도, 화장실에서도 — 끝없이 도는 회독 머신.</p>
-        <div class="cover-facts">
-          <div><b>${os.total}</b><span>총 문항</span></div>
-          <div><b>${os.answered}</b><span>학습 완료</span></div>
-          <div><b>${totalReviewCount()}</b><span>총 회독</span></div>
-        </div>
         <button class="btn btn-primary" id="resumeBtn">${os.answered>0? '이어서 풀기' : '지금 바로 풀어보기'}</button>
         ${totalWeak>0? `<button class="btn btn-review" id="globalWeakBtn">🔁 전체 취약 문제 ${totalWeak}개 복습하기</button>` : ''}
         ${(totalNum>0 || totalWeakNum>0)? `
@@ -2093,7 +2093,7 @@
           ${totalNum>0? `<button class="btn btn-num" id="globalNumBtn"><b>전체</b>${totalNum}문제 · ${numReviewRound}회독</button>` : ''}
           ${totalWeakNum>0? `<button class="btn btn-num" id="globalWeakNumBtn"><b>🔴 취약만</b>${totalWeakNum}문제</button>` : ''}
         </div>` : ''}
-        ${syncEnabled() && state.syncCode? `<button class="btn btn-review" id="myReportsBtn">🚩 내가 신고한 오류${myReportCount()>0? ` ${myReportCount()}개` : ''} 모아보기</button>` : ''}
+        ${syncEnabled() && state.syncCode? `<div style="text-align:center;margin-top:14px;"><button id="myReportsBtn" style="background:none;border:none;color:var(--ink-soft);font-size:12px;text-decoration:underline;cursor:pointer;padding:6px;">🚩 내가 신고한 오류${myReportCount()>0? ` ${myReportCount()}개` : ''} 모아보기</button></div>` : ''}
       </div>
       <div class="section-wrap">${chaptersHtml}</div>
     `;
