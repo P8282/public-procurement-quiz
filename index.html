@@ -601,8 +601,10 @@
     background:var(--card); border:1.4px solid var(--line-strong); border-radius:13px; padding:13px;
     text-align:left; cursor:pointer; appearance:none; font-family:inherit;
     display:flex; flex-direction:column; gap:3px; box-sizing:border-box;
-    min-height:148px; /* 4장 모두 이 높이로 통일(숫자 뽀개기 카드에 "N회독" 줄까지 붙는 경우 기준) -
-                          그리드 auto-height 특성상 fr 트랙으로는 행끼리 높이가 안 맞춰져서 직접 지정한다. */
+    min-height:172px; /* 4장 모두 이 높이로 통일 - 숫자 뽀개기 카드(버튼 2개짜리 줄이 추가로 붙음)의
+                          실제 필요 높이 기준. 다른 카드는 이 높이만큼 하단에 여백이 생기는 대신 4장이
+                          정확히 동일한 높이가 된다(A안). 그리드 auto-height 특성상 fr 트랙으로는 행끼리
+                          높이가 안 맞춰져서 직접 지정한다. */
   }
   .home-quick-card:active{ transform:scale(.98); }
   .home-quick-card .qc-icon{ font-size:17px; line-height:1; }
@@ -620,9 +622,10 @@
   .home-quick-card .qc-split button{
     flex:1; appearance:none; border:1px solid var(--num-border); background:var(--card); color:var(--num-text);
     border-radius:8px; font-size:10.5px; font-weight:700; padding:6px 3px; cursor:pointer; font-family:inherit;
-    line-height:1.35; white-space:normal; word-break:keep-all;
+    line-height:1.15; white-space:normal; word-break:keep-all;
   }
   .home-quick-card .qc-split button b{ display:block; font-size:10.5px; }
+  .home-quick-card .qc-split button .qc-split-sub{ display:block; font-size:9px; opacity:.8; font-weight:600; margin-top:1px; line-height:1.15; }
 
   /* ---- 과목별 학습 ---- */
   .home-subjects{ padding:0 18px; display:flex; flex-direction:column; gap:12px; }
@@ -2322,6 +2325,16 @@
               <span class="qc-title">이어서 학습</span>
               <span class="qc-sub">마지막 학습부터 계속</span>
             </button>
+            ${(totalNum>0 || totalWeakNum>0)? `
+            <div class="home-quick-card num">
+              <span class="qc-icon">⚡</span>
+              <span class="qc-title">숫자 뽀개기</span>
+              <span class="qc-sub">숫자문제만 집중 훈련</span>
+              <div class="qc-split">
+                ${totalNum>0? `<button id="globalNumBtn"><b>전체 ${totalNum}</b>${numReviewRound>0? `<span class="qc-split-sub">${numReviewRound}회독</span>` : ''}</button>` : ''}
+                ${totalWeakNum>0? `<button id="globalWeakNumBtn">취약만 ${totalWeakNum}</button>` : ''}
+              </div>
+            </div>` : ''}
             ${totalWeak>0? `
             <button class="home-quick-card weak" id="globalWeakBtn">
               <span class="qc-icon">🔴</span>
@@ -2334,16 +2347,6 @@
               <span class="qc-title">복습 다시풀기</span>
               <span class="qc-sub">맞혀가는 중인 문제 ${totalReviewOnly}개</span>
             </button>` : ''}
-            ${(totalNum>0 || totalWeakNum>0)? `
-            <div class="home-quick-card num">
-              <span class="qc-icon">⚡</span>
-              <span class="qc-title">숫자 뽀개기</span>
-              <span class="qc-sub">숫자문제만 집중 훈련</span>
-              <div class="qc-split">
-                ${totalNum>0? `<button id="globalNumBtn"><b>전체 ${totalNum}</b>${numReviewRound>0? `<br><span style="font-size:9px;opacity:.8;font-weight:600;">${numReviewRound}회독</span>` : ''}</button>` : ''}
-                ${totalWeakNum>0? `<button id="globalWeakNumBtn">취약만 ${totalWeakNum}</button>` : ''}
-              </div>
-            </div>` : ''}
           </div>
         </div>
 
