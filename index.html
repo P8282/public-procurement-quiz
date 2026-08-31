@@ -601,10 +601,10 @@
     background:var(--card); border:1.4px solid var(--line-strong); border-radius:13px; padding:13px;
     text-align:left; cursor:pointer; appearance:none; font-family:inherit;
     display:flex; flex-direction:column; gap:3px; box-sizing:border-box;
-    min-height:172px; /* 4장 모두 이 높이로 통일 - 숫자 뽀개기 카드(버튼 2개짜리 줄이 추가로 붙음)의
-                          실제 필요 높이 기준. 다른 카드는 이 높이만큼 하단에 여백이 생기는 대신 4장이
-                          정확히 동일한 높이가 된다(A안). 그리드 auto-height 특성상 fr 트랙으로는 행끼리
-                          높이가 안 맞춰져서 직접 지정한다. */
+    min-height:138px; /* 4장 모두 이 높이로 통일 - 숫자 뽀개기 카드(버튼 2개짜리 줄이 추가로 붙음)의
+                          실제 필요 높이 기준(재계산). 다른 카드는 이 높이만큼 하단에 여백이 생기는
+                          대신 4장이 정확히 동일한 높이가 된다(A안). 그리드 auto-height 특성상 fr
+                          트랙으로는 행끼리 높이가 안 맞춰져서 직접 지정한다. */
   }
   .home-quick-card:active{ transform:scale(.98); }
   .home-quick-card .qc-icon{ font-size:17px; line-height:1; }
@@ -618,7 +618,11 @@
   .home-quick-card.review .qc-title{ color:var(--gold-text); }
   .home-quick-card.num{ border-color:var(--num-border); background:var(--num-tint); }
   .home-quick-card.num .qc-title{ color:var(--num-text); }
-  .home-quick-card .qc-split{ display:flex; gap:6px; margin-top:auto; padding-top:5px; }
+  /* margin-top:auto였던 걸 고정 padding-top으로 바꿈 - auto는 카드가 min-height로 인해 실제
+     콘텐츠보다 커지면 그 남는 공간이 전부 이 버튼 줄 "위쪽"으로 몰려서 간격이 벌어져 보이는
+     부작용이 있었다. 고정값으로 바꾸면 카드 높이가 얼마든 이 버튼 줄 위 간격은 항상 8px로 일정하고,
+     남는 여백은 카드 맨 아래로 자연스럽게 내려간다. */
+  .home-quick-card .qc-split{ display:flex; gap:6px; margin-top:8px; }
   .home-quick-card .qc-split button{
     flex:1; appearance:none; border:1px solid var(--num-border); background:var(--card); color:var(--num-text);
     border-radius:8px; font-size:10.5px; font-weight:700; padding:6px 3px; cursor:pointer; font-family:inherit;
