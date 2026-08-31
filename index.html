@@ -617,8 +617,10 @@
   .home-quick-card .qc-split{ display:flex; gap:6px; margin-top:5px; }
   .home-quick-card .qc-split button{
     flex:1; appearance:none; border:1px solid var(--num-border); background:var(--card); color:var(--num-text);
-    border-radius:8px; font-size:10.5px; font-weight:700; padding:6px 4px; cursor:pointer; font-family:inherit;
+    border-radius:8px; font-size:10.5px; font-weight:700; padding:6px 3px; cursor:pointer; font-family:inherit;
+    line-height:1.35; white-space:normal; word-break:keep-all;
   }
+  .home-quick-card .qc-split button b{ display:block; font-size:10.5px; }
 
   /* ---- 과목별 학습 ---- */
   .home-subjects{ padding:0 18px; display:flex; flex-direction:column; gap:12px; }
@@ -2281,7 +2283,6 @@
               <span class="divider"></span>
               <span>✏️ 필기시험 <b>10.3</b></span>
             </div>
-            <button class="btn btn-primary" id="resumeBtn">${os.answered>0? '이어서 풀기' : '지금 바로 풀어보기'}</button>
             ${(os.answered>0 && state.chapter && META.names[state.chapter])? `<p class="home-hero-caption">📍 ${escapeHtml(chapterNameWithSubject(state.chapter))} · ${chapterStats(state.chapter).answered}/${chapterStats(state.chapter).total}</p>` : ''}
           </div>
           <div class="home-hero-right">
@@ -2310,6 +2311,11 @@
         <div class="home-quick">
           <p class="home-quick-title">빠른 학습</p>
           <div class="home-quick-grid">
+            <button class="home-quick-card primary" id="resumeBtn2">
+              <span class="qc-icon">▶</span>
+              <span class="qc-title">이어서 학습</span>
+              <span class="qc-sub">마지막 학습부터 계속</span>
+            </button>
             ${totalWeak>0? `
             <button class="home-quick-card weak" id="globalWeakBtn">
               <span class="qc-icon">🔴</span>
@@ -2328,7 +2334,7 @@
               <span class="qc-title">숫자 뽀개기</span>
               <span class="qc-sub">숫자문제만 집중 훈련</span>
               <div class="qc-split">
-                ${totalNum>0? `<button id="globalNumBtn">전체 ${totalNum}${numReviewRound>0? ` · ${numReviewRound}회독` : ''}</button>` : ''}
+                ${totalNum>0? `<button id="globalNumBtn"><b>전체 ${totalNum}</b>${numReviewRound>0? `<br><span style="font-size:9px;opacity:.8;font-weight:600;">${numReviewRound}회독</span>` : ''}</button>` : ''}
                 ${totalWeakNum>0? `<button id="globalWeakNumBtn">취약만 ${totalWeakNum}</button>` : ''}
               </div>
             </div>` : ''}
@@ -2349,7 +2355,7 @@
       if(!key){ alert('아직 불러온 문제가 없습니다. 인터넷 연결을 확인한 뒤 새로고침해주세요.'); return; }
       openChapter(key, true);
     };
-    document.getElementById('resumeBtn').onclick = goResume;
+    document.getElementById('resumeBtn2').onclick = goResume; // "빠른 학습" 카드 - hero의 이어서 풀기 버튼은 삭제되어 이게 유일한 진입점
     const globalWeakBtn = document.getElementById('globalWeakBtn');
     if(globalWeakBtn) globalWeakBtn.onclick = ()=> startGlobalWeakReview();
     const globalNumBtn = document.getElementById('globalNumBtn');
