@@ -592,6 +592,7 @@
   .home-today-row .stat span{ font-size:10px; color:var(--ink-soft); display:block; margin-top:4px; }
   .home-today-row .stat.weak b{ color:var(--seal); }
   .home-today-row .stat.review b{ color:var(--gold-text); }
+  .home-today-row .stat.num b{ color:var(--navy); }
 
   /* ---- 빠른 학습 ---- */
   .home-quick{ padding:0 18px 14px; }
@@ -2313,6 +2314,7 @@
             <div class="home-today-title">오늘 학습</div>
             <div class="home-today-row">
               <div class="stat"><b>${formatNum(todayN)}</b><span>문제</span></div>
+              <div class="stat num"><b>${formatNum(totalNum)}</b><span>숫자</span></div>
               <div class="stat weak"><b>${formatNum(totalWeak)}</b><span>취약</span></div>
               <div class="stat review"><b>${formatNum(totalReviewOnly)}</b><span>복습</span></div>
             </div>
