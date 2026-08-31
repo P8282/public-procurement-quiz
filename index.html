@@ -164,10 +164,25 @@
   }
   .btn-num:hover{ filter:brightness(.97); }
   /* "⚡ 숫자 뽀개기 전체" / "🔴 취약만"을 세로로 2줄 쌓지 않고 한 줄에 나란히 배치해 공간을 아낀다. */
-  .num-title{ margin:14px 0 6px; font-size:12px; font-weight:700; color:var(--num-text); text-align:center; }
+  .num-title{ margin:14px 0 6px; font-size:12px; font-weight:700; color:var(--ink-soft); text-align:center; }
+  .num-title.num-accent{ color:var(--num-text); }
+  .num-sub{ margin:-4px 0 8px; font-size:10.5px; color:var(--ink-soft); text-align:center; }
   .num-btn-row{ display:flex; gap:8px; margin-top:0; }
   .num-btn-row .btn-num{ margin-top:0; flex:1; min-width:0; padding:10px; font-size:12px; line-height:1.4; background:var(--num-tint); color:var(--num-text); border-color:var(--num-border); }
   .num-btn-row .btn-num b{ display:block; font-size:12.5px; }
+  .review-today-row{ display:flex; gap:8px; }
+  .review-today-tile{
+    flex:1; border-radius:10px; padding:10px; text-align:center; border:1.4px solid var(--line-strong);
+    display:flex; flex-direction:column; gap:2px; appearance:none; font-family:inherit; cursor:default;
+  }
+  .review-today-tile.weak{ background:var(--seal-tint); border-color:#E9C2BC; cursor:pointer; }
+  .review-today-tile.weak:active{ transform:scale(.98); }
+  .review-today-tile.review-info{ background:var(--gold-tint); border-color:var(--gold-border); }
+  .review-today-tile .rt-icon{ font-size:15px; }
+  .review-today-tile .rt-label{ font-size:11px; font-weight:700; color:var(--ink-soft); }
+  .review-today-tile.weak .rt-label{ color:var(--seal); }
+  .review-today-tile.review-info .rt-label{ color:var(--gold-text); }
+  .review-today-tile .rt-count{ font-size:15px; font-weight:900; color:var(--ink); }
 
   /* ---------- 동기화(로그인/로그아웃) 상태 바 - 홈 화면 상단 상시 노출 ---------- */
   .sync-bar{
@@ -199,22 +214,22 @@
 
   .chapter-card{
     background:var(--card); border:1px solid var(--line); border-radius:12px;
-    padding:14px 16px; margin-bottom:9px; box-shadow:var(--shadow); cursor:pointer;
-    display:flex; align-items:flex-start; gap:12px; text-align:left;
+    padding:12px 14px; margin-bottom:8px; box-shadow:var(--shadow); cursor:pointer;
+    display:flex; align-items:flex-start; gap:10px; text-align:left;
   }
   .chapter-card:active{ transform:scale(.99); }
   .chapter-num{
     font-family:'Noto Serif KR', serif; font-weight:900; font-size:12px; color:var(--navy);
-    background:var(--paper-deep); border-radius:8px; min-width:40px; height:40px;
+    background:var(--paper-deep); border-radius:8px; min-width:36px; height:36px;
     padding:0 6px; display:flex; align-items:center; justify-content:center; flex-shrink:0; text-align:center;
     letter-spacing:.3px;
   }
   .chapter-info{ flex:1; min-width:0; }
-  .chapter-info .name-row{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:6px; }
-  .chapter-info .name{ font-weight:700; font-size:15px; color:var(--ink); letter-spacing:-.1px; min-width:0; }
+  .chapter-info .name-row{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:5px; }
+  .chapter-info .name{ font-weight:700; font-size:14.5px; color:var(--ink); letter-spacing:-.1px; min-width:0; }
   .expand-btn{
-    flex-shrink:0; width:22px; height:22px; border-radius:50%; border:1.4px solid var(--line-strong);
-    background:var(--card); color:var(--navy); font-size:14px; font-weight:900; line-height:1;
+    flex-shrink:0; width:20px; height:20px; border-radius:50%; border:1.4px solid var(--line-strong);
+    background:var(--card); color:var(--navy); font-size:13px; font-weight:900; line-height:1;
     display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0;
   }
   .expand-btn:active{ transform:scale(.9); }
@@ -225,8 +240,10 @@
   .chapter-info .pct{ font-size:10.5px; color:var(--ink-soft); font-variant-numeric:tabular-nums; white-space:nowrap; }
   .chapter-badge{
     font-size:9.5px; font-weight:700; color:var(--correct); background:var(--correct-tint);
-    border-radius:999px; padding:3px 8px; flex-shrink:0;
+    border-radius:999px; padding:3px 8px; flex-shrink:0; white-space:nowrap;
   }
+  .mastery-summary-row{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:6px; }
+  .mastery-mini{ font-size:10.5px; color:var(--ink-soft); font-weight:600; white-space:nowrap; }
   .subtopic-list{ margin-top:10px; display:flex; flex-direction:column; gap:6px; }
   .subtopic-item{
     display:flex; align-items:center; justify-content:space-between; gap:9px;
@@ -1908,6 +1925,8 @@
     if(str===null || str===undefined) return '';
     return String(str).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   }
+  // 숫자를 천단위 콤마로 표기한다(예: 1611 → "1,611"). 표시 형식만 바꿀 뿐 실제 값은 그대로다.
+  function formatNum(n){ return (n||0).toLocaleString('ko-KR'); }
 
   // ---------- render router ----------
   // keepScroll이 true면 현재 스크롤 위치를 유지한다(해설 시트 토글 등 화면 전환이 아닌 경우).
@@ -1982,6 +2001,7 @@
   function renderHome(){
     const os = overallStats();
     const totalWeak = totalWeakCount();
+    const totalReviewOnly = totalReviewOnlyCount();
     const totalNum = totalNumCount();
     const totalWeakNum = totalWeakNumCount();
     const numReviewRound = state.numReviewRound || 0;
@@ -2026,23 +2046,23 @@
             <div class="chapter-info">
               <div class="name-row">
                 <div class="name">${escapeHtml(stripLeadingNumber(META.names[key]))}</div>
-                ${subCount>1? `<button class="expand-btn" data-key="${key}">${expanded?'−':'+'}</button>` : ''}
+                <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+                  <span class="chapter-badge" style="background:var(--paper-deep);color:var(--navy);">${rc}회독</span>
+                  ${subCount>1? `<button class="expand-btn" data-key="${key}">${expanded?'−':'+'}</button>` : ''}
+                </div>
               </div>
               <div class="progress-row">
                 <div class="progress-track"><div class="progress-fill ${done?'done':''}" style="width:${pct}%"></div></div>
                 <div class="pct">${s.answered}/${s.total}</div>
               </div>
-              ${s.total>0? `<div style="margin-top:4px;font-size:10.5px;color:var(--ink-soft);">총 ${s.total}문제 중 ${masteredN}문제 숙달 🟢</div>` : ''}
-              <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px;">
-                ${weakN>0? `<button class="weak-btn" data-key="${key}" style="font-size:11px;font-weight:700;color:var(--seal);background:var(--seal-tint);border:1px solid #E9C2BC;border-radius:999px;padding:3px 10px;">🔴 취약 ${weakN}개 집중공략</button>` : ''}
-                ${reviewN>0? `<button class="review-btn" data-key="${key}" style="font-size:11px;font-weight:700;color:var(--gold-text);background:var(--gold-tint);border:1px solid var(--gold-border);border-radius:999px;padding:3px 10px;">🟡 복습 ${reviewN}개 다시풀기</button>` : ''}
+              <div class="mastery-summary-row">
+                ${s.total>0? `<span class="mastery-mini">숙달 ${masteredN}/${s.total} 🟢</span>` : ''}
+                ${done? `<span class="chapter-badge">✓ 완료</span>` : ''}
+                ${weakN>0? `<button class="weak-btn" data-key="${key}" style="font-size:10.5px;font-weight:700;color:var(--seal);background:var(--seal-tint);border:1px solid #E9C2BC;border-radius:999px;padding:3px 9px;">🔴 취약 ${weakN}</button>` : ''}
+                ${reviewN>0? `<button class="review-btn" data-key="${key}" style="font-size:10.5px;font-weight:700;color:var(--gold-text);background:var(--gold-tint);border:1px solid var(--gold-border);border-radius:999px;padding:3px 9px;">🟡 복습 ${reviewN}</button>` : ''}
               </div>
               ${hasError? `<div style="margin-top:7px;font-size:10.5px;color:var(--wrong);">⚠ 시트 연동 실패 — 내장 문제로 표시 중</div>` : ''}
               ${tocInlineHtml}
-            </div>
-            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">
-              <div class="chapter-badge" style="background:var(--paper-deep);color:var(--navy);">${rc}회독</div>
-              ${done?'<div class="chapter-badge">완료</div>':''}
             </div>
           </div>`;
       });
@@ -2053,7 +2073,7 @@
         <div class="brand"><span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="#F5F1E7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v4h4"/><path d="M9 13l2 2 4-4"/></svg></span>공공조달관리사</div>
         <div style="display:flex; align-items:center; gap:6px;">
           <button id="manualRefreshBtn" title="문제/앱 새로고침" style="background:var(--card); border:1px solid var(--line-strong); border-radius:999px; width:28px; height:28px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:13px; color:var(--ink-soft); flex-shrink:0;">🔄</button>
-          <div class="stats-chip">전체 ${os.answered}/${os.total} · ${totalReviewCount()}회독</div>
+          <div class="stats-chip">전체 ${os.answered}/${os.total}</div>
         </div>
       </div>
       ${state.updateAvailable? `
@@ -2078,17 +2098,29 @@
         <button id="syncLogoutBtn" class="sync-mini-btn ghost">로그아웃</button>
       </div>` : ''}
       <div class="hero">
-        <div class="kicker">14일이면 확실하게 끝낸다</div>
-        <h1>공공조달관리사<br><em>${os.total}제</em> 2주 완성</h1>
+        <div class="kicker">14일 · ${formatNum(os.total)}문제 완주 플랜</div>
+        <h1>공공조달관리사<br>2주 완성</h1>
         <div class="exam-schedule">
           <span>📝 원서접수 <b>9.14~9.17</b></span>
           <span class="divider"></span>
           <span>✏️ 필기시험 <b>10.3</b></span>
         </div>
         <button class="btn btn-primary" id="resumeBtn">${os.answered>0? '이어서 풀기' : '지금 바로 풀어보기'}</button>
-        ${totalWeak>0? `<button class="btn btn-review" id="globalWeakBtn">🔁 전체 취약 문제 ${totalWeak}개 복습하기</button>` : ''}
+        ${(os.answered>0 && state.chapter && META.names[state.chapter])? `<p style="text-align:center;font-size:11.5px;color:var(--ink-soft);margin:6px 0 0;">📍 ${escapeHtml(chapterNameWithSubject(state.chapter))} · ${chapterStats(state.chapter).answered}/${chapterStats(state.chapter).total}</p>` : ''}
+        ${(totalWeak>0 || totalReviewOnly>0)? `
+        <p class="num-title">오늘 바로 복습</p>
+        <div class="review-today-row">
+          ${totalWeak>0? `<button class="review-today-tile weak" id="globalWeakBtn"><span class="rt-icon">🔴</span><span class="rt-label">취약 문제</span><span class="rt-count">${totalWeak}개</span></button>` : ''}
+          ${totalReviewOnly>0? `<div class="review-today-tile review-info"><span class="rt-icon">🟡</span><span class="rt-label">복습 문제</span><span class="rt-count">${totalReviewOnly}개</span></div>` : ''}
+        </div>` : ''}
+        <div class="cover-facts">
+          <div><b>${formatNum(os.total)}</b><span>전체 문제</span></div>
+          <div><b>${formatNum(os.answered)}</b><span>풀이 완료</span></div>
+          <div><b>${formatNum(totalReviewCount())}</b><span>총 회독</span></div>
+        </div>
         ${(totalNum>0 || totalWeakNum>0)? `
-        <p class="num-title">⚡ 숫자 뽀개기.zip</p>
+        <p class="num-title num-accent">⚡ 숫자 뽀개기.zip</p>
+        <p class="num-sub">숫자 문제만 골라서 풀기</p>
         <div class="num-btn-row">
           ${totalNum>0? `<button class="btn btn-num" id="globalNumBtn"><b>전체</b>${totalNum}문제 · ${numReviewRound}회독</button>` : ''}
           ${totalWeakNum>0? `<button class="btn btn-num" id="globalWeakNumBtn"><b>🔴 취약만</b>${totalWeakNum}문제</button>` : ''}
@@ -2209,6 +2241,12 @@
   // 전체 13개 챕터에 걸친 취약 문제 총 개수(메인화면 "전체 취약 문제 복습" UI에 표시).
   function totalWeakCount(){
     return allChapterKeys().reduce((sum, k) => sum + weakCount(k), 0);
+  }
+  // 전체 13개 챕터에 걸친 복습(🟡) 문제 총 개수 - 메인화면 "오늘 바로 복습" 정보 표시용.
+  // 기존 reviewOnlyIndices(key)를 그대로 재사용하는 읽기 전용 집계이며, 새로운 전체 복습 세션/클릭
+  // 로직은 만들지 않는다(챕터별 "🟡 복습 다시풀기" 버튼은 기존 그대로 동작).
+  function totalReviewOnlyCount(){
+    return allChapterKeys().reduce((sum, k) => sum + reviewOnlyIndices(k).length, 0);
   }
 
   // 메인화면에서 "전체 취약 문제 복습"을 눌렀을 때 진입점. 취약 문제가 있는 첫 챕터부터 시작하고,
