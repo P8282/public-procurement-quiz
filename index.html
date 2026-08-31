@@ -600,7 +600,9 @@
   .home-quick-card{
     background:var(--card); border:1.4px solid var(--line-strong); border-radius:13px; padding:13px;
     text-align:left; cursor:pointer; appearance:none; font-family:inherit;
-    display:flex; flex-direction:column; gap:3px;
+    display:flex; flex-direction:column; gap:3px; box-sizing:border-box;
+    min-height:132px; /* 4장 모두 이 높이로 통일(숫자 뽀개기 카드 내용 기준) - 그리드 auto-height 특성상
+                          fr 트랙으로는 행끼리 높이가 안 맞춰져서 직접 지정하는 방식으로 고정한다. */
   }
   .home-quick-card:active{ transform:scale(.98); }
   .home-quick-card .qc-icon{ font-size:17px; line-height:1; }
@@ -614,7 +616,7 @@
   .home-quick-card.review .qc-title{ color:var(--gold-text); }
   .home-quick-card.num{ border-color:var(--num-border); background:var(--num-tint); }
   .home-quick-card.num .qc-title{ color:var(--num-text); }
-  .home-quick-card .qc-split{ display:flex; gap:6px; margin-top:5px; }
+  .home-quick-card .qc-split{ display:flex; gap:6px; margin-top:auto; padding-top:5px; }
   .home-quick-card .qc-split button{
     flex:1; appearance:none; border:1px solid var(--num-border); background:var(--card); color:var(--num-text);
     border-radius:8px; font-size:10.5px; font-weight:700; padding:6px 3px; cursor:pointer; font-family:inherit;
@@ -640,7 +642,7 @@
     .home-today{ padding:0 40px 18px; }
     .home-quick{ padding:0 40px 18px; }
     .home-subjects{ padding:0 40px; }
-    .home-quick-grid{ grid-template-columns:repeat(3, 1fr); }
+    .home-quick-grid{ grid-template-columns:repeat(4, 1fr); }
   }
 
   /* ==== 태블릿 가로 / 작은 데스크톱(1024px~) : 가로형 대시보드로 전환 ==== */
