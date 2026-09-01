@@ -2919,7 +2919,7 @@
           <span>전체 진행 ${os.answered}/${os.total}</span>
           <span>${isNumSession? 'NUM 정답률' : '이 단원 정답률'} ${(()=>{const s=isNumSession? numStats() : chapterStats(key); return s.answered? Math.round(s.correct/s.answered*100):0;})()}%</span>
         </div>
-        <div class="kbd-hint"><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd> 답 선택 &nbsp; <kbd>Enter</kbd>/<kbd>Space</kbd> 다음 &nbsp; <kbd>←</kbd>/<kbd>→</kbd> 이동</div>
+        <div class="kbd-hint"><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd> 답 선택 &nbsp; <kbd>Enter</kbd>/<kbd>Space</kbd> 다음 &nbsp; <kbd>←</kbd>/<kbd>→</kbd> 이동 &nbsp; <kbd>↑</kbd> 해설</div>
       </div>
     `;
 
@@ -3035,11 +3035,13 @@
     state.index = targetIdx;
     // 🔴 취약 집중공략 / 🟡 복습 다시풀기 / 🔴 숫자 취약만은 "이번 방문에서 다시 답을 골라야" saved로
     // 치는 재도전 설계라, 여기서 자동으로 열어버리면 다시 못 풀게 막아버린다. 그 외(일반 학습, ⚡ 숫자
-    // 뽀개기.zip · 전체)는 ← 이전 / → 한 단계 이동으로 이미 답변한 문제에 다시 왔을 때, PC 7:3
-    // 레이아웃(quiz-split)에서 매번 "해설 다시 보기"를 눌러야 하는 게 불편하다는 신고가 있어,
-    // 이미 답변 기록이 있으면 해설을 자동으로 펼쳐서 보여준다.
+    // 뽀개기.zip · 전체)는 ← 이전 / → 한 단계 이동으로 이미 답변한 문제에 다시 왔을 때, PC/태블릿
+    // 7:3 레이아웃(quiz-split, 820px+)에서 매번 "해설 다시 보기"를 눌러야 하는 게 불편하다는 신고가
+    // 있어 해설을 자동으로 펼쳐서 보여준다. 모바일(820px 미만)은 7:3 분할이 아니라 해설이 하단
+    // 시트로 문제/보기를 가리며 올라오는 구조라, 자동으로 열리면 오히려 방해가 되므로 제외한다.
     const isWeakLikeSession = state.filterKind === 'wrong' || state.filterKind === 'weaknum';
-    const alreadyAnswered = !isWeakLikeSession && !!(state.progress[key] && state.progress[key][targetIdx]);
+    const isDesktopSplit = window.innerWidth >= 820;
+    const alreadyAnswered = isDesktopSplit && !isWeakLikeSession && !!(state.progress[key] && state.progress[key][targetIdx]);
     state.sheetOpen = alreadyAnswered;
     state.reviewAnswered = false; // 다음 문제로 넘어가는 것이므로 "이번에 다시 답함" 표시도 초기화한다.
     render();
@@ -3064,7 +3066,7 @@
       state.filterKind = 'num';
       const lastIdx = prevIdxs[prevIdxs.length - 1];
       state.index = lastIdx;
-      state.sheetOpen = !!(state.progress[prevKey] && state.progress[prevKey][lastIdx]); // 이미 답변한 문제면 해설 자동 표시
+      state.sheetOpen = window.innerWidth >= 820 && !!(state.progress[prevKey] && state.progress[prevKey][lastIdx]); // 이미 답변한 문제면 PC/태블릿에서만 해설 자동 표시
       saveProgress();
       render();
       return;
@@ -3459,6 +3461,12 @@
       }
     } else if(e.key==='ArrowLeft'){
       goPrev();
+    } else if(e.key==='ArrowUp' && saved){
+      // 해설 보기/가리기 토글. 답을 아직 안 고른 문제는 애초에 해설이 없으므로(showBtn과 동일하게)
+      // saved일 때만 동작한다.
+      e.preventDefault();
+      state.sheetOpen = !state.sheetOpen;
+      render(true);
     }
   });
 
