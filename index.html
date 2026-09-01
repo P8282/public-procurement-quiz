@@ -2111,6 +2111,23 @@
     return Array.from({length: (QUIZ[key]||[]).length}, (_,i)=>i);
   }
 
+  // "이어서 학습" 카드 위치 캡션 계산용. openChapter()의 "일반 학습" 재개 로직(처음 만나는 안 푼
+  // 문제를 찾는 방식)과 정확히 똑같이 계산해서, 카드에 적힌 숫자와 실제로 눌러서 들어갔을 때
+  // 퀴즈 화면 우측 상단에 뜨는 숫자가 항상 일치하게 한다(전에는 "답변한 개수"를 보여줘서 순서를
+  // 건너뛰며 풀었을 때 두 숫자가 달라 보이는 문제가 있었다).
+  function resumePositionOf(key){
+    const indices = allIndicesOf(key);
+    const total = indices.length;
+    if(!total) return { pos: 0, total: 0 };
+    let pos = 0;
+    for(let p=0; p<indices.length; p++){
+      const answered = state.progress[key] && state.progress[key][indices[p]];
+      if(!answered){ pos = p; break; }
+      if(p === indices.length-1) pos = indices.length-1;
+    }
+    return { pos: pos+1, total };
+  }
+
   // 챕터키의 "과목 안에서의" 순번(1부터 시작). 과목이 바뀌면 다시 1부터 매긴다.
   function chapterNumber(key){
     for(const subj of META.subjects){
@@ -2247,6 +2264,7 @@
     const totalWeakNum = totalWeakNumCount();
     const numReviewRound = state.numReviewRound || 0;
     const todayN = todayStudiedCount();
+    const resumePos = state.lastNormalChapter ? resumePositionOf(state.lastNormalChapter) : null;
 
     // 과목(subject) 단위로 챕터 카드를 묶어 "과목별 학습" 카드 목록을 만든다. 챕터 카드 자체의
     // 내부 구조(회독/진행률/숙달도/취약·복습 버튼/목차 펼치기)는 기존 그대로이며, 클릭 바인딩용
@@ -2398,7 +2416,7 @@
               <span class="qc-icon">▶</span>
               <span class="qc-title">이어서 학습</span>
               <span class="qc-sub">마지막 학습부터 계속</span>
-              ${(os.answered>0 && state.lastNormalChapter && META.names[state.lastNormalChapter])? `<span class="qc-position">📍 ${escapeHtml(chapterNameWithSubject(state.lastNormalChapter))} · ${chapterStats(state.lastNormalChapter).answered}/${chapterStats(state.lastNormalChapter).total}</span>` : ''}
+              ${(os.answered>0 && state.lastNormalChapter && META.names[state.lastNormalChapter])? `<span class="qc-position">📍 ${escapeHtml(chapterNameWithSubject(state.lastNormalChapter))} · ${resumePos.pos}/${resumePos.total}</span>` : ''}
             </button>
             ${(totalNum>0 || totalWeakNum>0)? `
             <div class="home-quick-card num">
