@@ -2561,6 +2561,10 @@
   function startGlobalReviewOnlyReview(){
     const queue = allChapterKeys().filter(k => reviewOnlyIndices(k).length > 0);
     if(!queue.length){ alert('현재 복습할 문제가 없습니다! 🎉'); return; }
+    // 다른 전체 세션 도중에 이걸 시작하면 두 플래그가 동시에 true로 남아 goPrev()의 챕터 간
+    // 이동이 엉뚱한 큐를 참조할 수 있으므로, 시작할 때 서로 정리한다.
+    state.globalWeakReview = false;
+    state.globalWeakNumReview = false;
     state.globalReviewOnlyReview = true;
     state.globalReviewOnlyQueue = queue;
     state.globalReviewOnlyQueueIndex = 0;
@@ -2587,6 +2591,10 @@
     //  못하는 문제가 있었다 - "16개 복습하기가 안 됨" 버그의 원인)
     const queue = allChapterKeys().filter(k => weakCount(k) > 0);
     if(!queue.length){ alert('현재 취약 문제가 없습니다! 🎉'); return; }
+    // 다른 전체 세션 도중에 이걸 시작하면 두 플래그가 동시에 true로 남아 goPrev()의 챕터 간
+    // 이동이 엉뚱한 큐를 참조할 수 있으므로, 시작할 때 서로 정리한다.
+    state.globalReviewOnlyReview = false;
+    state.globalWeakNumReview = false;
     state.globalWeakReview = true;
     state.globalWeakQueue = queue;
     state.globalWeakQueueIndex = 0;
@@ -2677,6 +2685,10 @@
   function startGlobalWeakNumReview(){
     const queue = allChapterKeys().filter(k => weakNumCount(k) > 0);
     if(!queue.length){ alert('현재 취약 숫자문제가 없습니다! 🎉'); return; }
+    // 다른 전체 세션 도중에 이걸 시작하면 두 플래그가 동시에 true로 남아 goPrev()의 챕터 간
+    // 이동이 엉뚱한 큐를 참조할 수 있으므로, 시작할 때 서로 정리한다.
+    state.globalWeakReview = false;
+    state.globalReviewOnlyReview = false;
     state.globalWeakNumReview = true;
     state.globalWeakNumQueue = queue;
     state.globalWeakNumQueueIndex = 0;
@@ -2785,6 +2797,12 @@
     // 전체 목록 기준 마지막(globalPos===globalTotal-1)이어야 한다 - 안 그러면 챕터가 바뀔 때마다
     // "다음 문제" 대신 매번 "학습 완료"가 떠버린다.
     const isLast = (isGlobalWrongSession || isGlobalReviewOnlySession || isGlobalWeakNumSession) ? (globalPos === globalTotal - 1) : (pos === total - 1);
+    // "이전" 버튼 비활성화 여부 계산용 - 지금 챕터의 첫 문제(pos===0)라도, "전체" 세션에서 이전
+    // 챕터로 넘어갈 수 있으면(goPrev 참고) 비활성화하면 안 된다.
+    const hasPrevChapter = (isNumSession && !!prevNumChapterKey(key))
+      || (isGlobalWrongSession && state.globalWeakQueueIndex > 0)
+      || (isGlobalReviewOnlySession && state.globalReviewOnlyQueueIndex > 0)
+      || (isGlobalWeakNumSession && state.globalWeakNumQueueIndex > 0);
     const streak = masteryStreak(key, idx);
     // 이 문제를 지금까지 몇 번 풀었는지(누적). 해설 시트 하단 통계("총 N회 풀이")에 쓰인다.
     const storedReviewCount = (state.questionReviewCounts[key] && state.questionReviewCounts[key][idx]) || 0;
@@ -2875,7 +2893,7 @@
             ${(!saved || !state.sheetOpen)? `<div class="qside-placeholder">정답을 선택하면<br>여기에 해설이 표시됩니다.<br><span class="tip-line">💡 해설을 누르면 다음 문제로 넘어가요</span>${saved? `<button class="nav-btn" id="showSheetBtnSide">📖 해설 다시 보기</button>` : ''}</div>` : ''}
           </div>
           <div class="nav-row">
-            <button class="nav-btn" id="prevBtn" ${(pos===0 && !(isNumSession && prevNumChapterKey(key)))?'disabled':''}>← 이전</button>
+            <button class="nav-btn" id="prevBtn" ${(pos===0 && !hasPrevChapter)?'disabled':''}>← 이전</button>
             <button class="nav-btn primary" id="nextBtn" ${saved? '' : 'disabled'}>${(isLast && !isNumSession)? (isFiltered? '학습 완료 →' : '단원 완료 →') : '다음 →'}</button>
           </div>
         </div>
@@ -3001,11 +3019,12 @@
     render();
   }
 
-  // "← 이전" 이동 전용. 보통은 goto(pos-1)과 같지만, "⚡ 숫자 뽀개기.zip"(NUM 모아풀기)는
-  // 13개 챕터를 하나로 이어서 보여주는 세션이라, 지금 챕터의 첫 NUM 문제(pos===0)에서
-  // 더 뒤로 가려 하면 goto가 범위를 벗어나 아무 동작도 안 하는 문제가 있었다.
+  // "← 이전" 이동 전용. 보통은 goto(pos-1)과 같지만, 여러 챕터를 하나로 이어서 보여주는 "전체" 세션
+  // (⚡ 숫자 뽀개기.zip · 전체, 🔴 전체 취약 문제 복습, 🟡 복습 다시풀기, 🔴 숫자 취약만)은 지금
+  // 챕터의 첫 문제(pos===0)에서 더 뒤로 가려 하면 goto가 범위를 벗어나 아무 동작도 안 하는 문제가
+  // 있었다("이전 버튼이 되다 안 되다 함" - 챕터 경계에서만 막히는 게 원인, 신고된 버그).
   // "다음"이 챕터 경계에서 다음 챕터로 자동으로 넘어가는 것과 대칭되게, 여기서도
-  // 이전 챕터(NUM 문제가 있는 가장 가까운 챕터)의 마지막 NUM 문제로 건너간다.
+  // 이전 챕터(해당 세션 큐 기준)의 마지막 문제로 건너간다.
   function goPrev(){
     const key = state.chapter;
     const indices = state.filterIndices || allIndicesOf(key);
@@ -3022,6 +3041,63 @@
       saveProgress();
       render();
       return;
+    }
+    if(state.filterKind === 'wrong' && state.globalWeakReview && pos <= 0){
+      if(state.globalWeakQueueIndex > 0){
+        const prevKey = state.globalWeakQueue[state.globalWeakQueueIndex - 1];
+        const prevIdxs = weakIndices(prevKey);
+        if(prevIdxs.length){
+          state.globalWeakQueueIndex--;
+          state.chapter = prevKey;
+          state.filterIndices = prevIdxs;
+          state.filterKind = 'wrong';
+          state.index = prevIdxs[prevIdxs.length - 1];
+          state.sheetOpen = false;
+          state.reviewAnswered = false;
+          saveProgress();
+          render();
+          return;
+        }
+      }
+      return; // 전체 취약 문제 목록의 첫 문제 - 더 갈 곳 없음
+    }
+    if(state.filterKind === 'wrong' && state.globalReviewOnlyReview && pos <= 0){
+      if(state.globalReviewOnlyQueueIndex > 0){
+        const prevKey = state.globalReviewOnlyQueue[state.globalReviewOnlyQueueIndex - 1];
+        const prevIdxs = reviewOnlyIndices(prevKey);
+        if(prevIdxs.length){
+          state.globalReviewOnlyQueueIndex--;
+          state.chapter = prevKey;
+          state.filterIndices = prevIdxs;
+          state.filterKind = 'wrong';
+          state.index = prevIdxs[prevIdxs.length - 1];
+          state.sheetOpen = false;
+          state.reviewAnswered = false;
+          saveProgress();
+          render();
+          return;
+        }
+      }
+      return; // 전체 복습 목록의 첫 문제 - 더 갈 곳 없음
+    }
+    if(state.filterKind === 'weaknum' && state.globalWeakNumReview && pos <= 0){
+      if(state.globalWeakNumQueueIndex > 0){
+        const prevKey = state.globalWeakNumQueue[state.globalWeakNumQueueIndex - 1];
+        const prevIdxs = weakNumIndicesOf(prevKey);
+        if(prevIdxs.length){
+          state.globalWeakNumQueueIndex--;
+          state.chapter = prevKey;
+          state.filterIndices = prevIdxs;
+          state.filterKind = 'weaknum';
+          state.index = prevIdxs[prevIdxs.length - 1];
+          state.sheetOpen = false;
+          state.reviewAnswered = false;
+          saveProgress();
+          render();
+          return;
+        }
+      }
+      return; // 전체 숫자 취약만 목록의 첫 문제 - 더 갈 곳 없음
     }
     goto(pos - 1);
   }
@@ -3285,7 +3361,32 @@
       selectAnswer(Number(e.key)-1);
     } else if(e.key==='Escape' && state.sheetOpen){
       state.sheetOpen = false; render(true);
-    } else if((e.key==='Enter' || e.key==='ArrowRight' || e.key===' ') && saved){
+    } else if(e.key==='ArrowRight' && saved){
+      // ←(goPrev)와 대칭 - 안 푼 문제를 찾는 건너뛰기 없이 항상 딱 한 문제만 이동한다.
+      // Enter/Space는 "안 푼 문제로 건너뛰기"를 유지하고, 방향키만 1단계 이동으로 분리한다.
+      e.preventDefault();
+      state.sheetOpen = false;
+      let p = pos + 1;
+      if(p >= total){
+        if(state.filterKind === 'num'){
+          const nextKey = nextNumChapterKey();
+          if(nextKey){ startNumReview(nextKey); return; }
+          state.globalNumReview = false;
+          incrementNumReviewRound();
+          state.view = 'numComplete';
+          render();
+          return;
+        }
+        if((isWrongSession && state.globalWeakReview) || (isWrongSession && state.globalReviewOnlyReview) || (isWeakNumSession && state.globalWeakNumReview)){
+          goHomeOrContinueGlobalReview();
+          return;
+        }
+        if(!state.filterIndices) markChapterCompleted(key);
+        state.view='complete'; render();
+      } else {
+        goto(p);
+      }
+    } else if((e.key==='Enter' || e.key===' ') && saved){
       // 포커스가 버튼(다음/다음 문제 등)에 남아있으면 브라우저가 Enter/Space를 "버튼 클릭"으로도
       // 자동 처리해서, 아래 로직과 중복으로 두 번 실행(예: 회독수 2씩 증가)되는 문제가 있었다.
       // preventDefault로 그 기본 동작을 막아 여기 로직만 정확히 한 번 실행되게 한다.
