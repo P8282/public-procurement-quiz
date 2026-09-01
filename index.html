@@ -382,10 +382,10 @@
   @keyframes sheetUp{ from{transform:translateY(100%);} to{transform:translateY(0);} }
   .sheet .grip{
     width:38px; height:4px; border-radius:3px; background:var(--line-strong);
-    margin:9px auto 4px; flex-shrink:0;
+    margin:7px auto 3px; flex-shrink:0;
   }
   .sheet .sheet-head{
-    display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 14px 12px 20px;
+    display:flex; align-items:center; justify-content:space-between; gap:8px; padding:6px 14px 10px 20px;
     font-weight:800; font-size:18px; flex-shrink:0;
     border-bottom:1px solid var(--line);
   }
@@ -400,14 +400,14 @@
   }
   .sheet-close-x:active{ transform:scale(.9); }
   .sheet .sheet-body{
-    padding:16px 20px 6px; overflow-y:auto; -webkit-overflow-scrolling:touch;
-    font-size:17px; line-height:1.9; color:var(--ink);
+    padding:12px 20px 4px; overflow-y:auto; -webkit-overflow-scrolling:touch;
+    font-size:17px; line-height:1.75; color:var(--ink);
     white-space:pre-wrap; word-break:keep-all; letter-spacing:-.1px;
     flex:1; min-height:0; /* flex 자식은 기본적으로 내용보다 안 작아지려 해서, 이게 없으면 overflow-y:auto가
                               카드 안에서 스크롤되는 대신 카드 자체가 늘어나 페이지 전체가 길어진다 */
   }
   .sheet .sheet-src{
-    margin-top:12px; padding-top:10px; font-size:13.5px; color:var(--ink-soft);
+    margin-top:8px; padding-top:8px; font-size:13.5px; color:var(--ink-soft);
     border-top:1px dashed var(--line-strong);
   }
   .sheet .sheet-foot{
@@ -2874,10 +2874,10 @@
           <div class="sheet-body">
             ${justMastered? `<div style="background:var(--correct-tint);color:#204636;border:1px solid #BFDBCB;border-radius:9px;padding:12px 14px;margin-bottom:14px;font-weight:700;font-size:13.5px;">🎉 연속 정답 ${MASTERY_TARGET}회 달성! 이 문제는 취약문제에서 제외됩니다.</div>` : ''}
             ${escapeHtml(q.explanation||'해설이 제공되지 않았습니다.')}${q.source? `<div class="sheet-src">§ 출처: ${escapeHtml(q.source)}</div>` : ''}
-            ${(isWeakNow || !alreadyWeakStatus)? `<button id="manualWeakBtn" style="margin-top:14px;width:100%;background:${isWeakNow? 'var(--correct-tint)':'var(--seal-tint)'};border:1px solid ${isWeakNow? '#BFDBCB':'#E9C2BC'};border-radius:9px;padding:10px;font-size:12.5px;color:${isWeakNow? '#204636':'var(--seal)'};font-weight:700;cursor:pointer;">${isWeakNow? '✔ 취약문제 지정 해제' : '🚨 취약문제로 지정하기'}</button>` : ''}
-            ${isWeakLikeSession? `<button id="excludeBtn" style="margin-top:10px;width:100%;background:var(--paper-deep);border:1px solid var(--line-strong);border-radius:9px;padding:10px;font-size:12.5px;color:var(--ink-soft);cursor:pointer;">✕ 이 문제는 취약문제에서 그만 보기</button>` : ''}
-            <button id="reportErrorBtn" style="margin-top:10px;width:100%;background:transparent;border:1px dashed var(--line-strong);border-radius:9px;padding:9px;font-size:12px;color:var(--ink-soft);cursor:pointer;">🚩 문제 오류 신고</button>
-            <div class="sheet-stats-row" style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--line-strong);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+            ${(isWeakNow || !alreadyWeakStatus)? `<button id="manualWeakBtn" style="margin-top:10px;width:100%;background:${isWeakNow? 'var(--correct-tint)':'var(--seal-tint)'};border:1px solid ${isWeakNow? '#BFDBCB':'#E9C2BC'};border-radius:9px;padding:9px;font-size:12.5px;color:${isWeakNow? '#204636':'var(--seal)'};font-weight:700;cursor:pointer;">${isWeakNow? '✔ 취약문제 지정 해제' : '🚨 취약문제로 지정하기'}</button>` : ''}
+            ${isWeakLikeSession? `<button id="excludeBtn" style="margin-top:8px;width:100%;background:var(--paper-deep);border:1px solid var(--line-strong);border-radius:9px;padding:9px;font-size:12.5px;color:var(--ink-soft);cursor:pointer;">✕ 이 문제는 취약문제에서 그만 보기</button>` : ''}
+            <button id="reportErrorBtn" style="margin-top:8px;width:100%;background:transparent;border:1px dashed var(--line-strong);border-radius:9px;padding:8px;font-size:12px;color:var(--ink-soft);cursor:pointer;">🚩 문제 오류 신고</button>
+            <div class="sheet-stats-row" style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--line-strong);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
               <span style="font-size:11.5px;color:var(--ink-soft);">총 ${storedReviewCount}회 풀이 · 정답률 ${questionAccuracy(key, idx) ?? 0}%</span>
               <span class="mastery-dots">${Array.from({length:MASTERY_TARGET},(_,di)=>`<span class="mastery-dot${di<streak?' filled':''}"></span>`).join('')}</span>
             </div>
