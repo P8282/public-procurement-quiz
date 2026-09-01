@@ -1815,7 +1815,7 @@
         <div class="sheet-inline-slot">
           <div class="sheet" style="position:static;max-width:none;width:100%;margin:14px 0 0;animation:none;box-shadow:var(--shadow);">
             <div class="sheet-head ok"><span>💡 해설</span></div>
-            <div class="sheet-body">${escapeHtml(q.explanation || '해설이 제공되지 않았습니다.')}${q.source? `<div class="sheet-src">§ 출처: ${escapeHtml(q.source)}</div>` : ''}</div>
+            <div class="sheet-body">${escapeHtml((q.explanation || '해설이 제공되지 않았습니다.').trim())}${q.source? `<div class="sheet-src">§ 출처: ${escapeHtml(q.source)}</div>` : ''}</div>
           </div>
         </div>
       `;
@@ -2249,7 +2249,7 @@
             <div class="sheet-inline-slot">
               <div class="sheet" style="position:static;max-width:none;width:100%;margin:0;animation:none;box-shadow:var(--shadow);">
                 <div class="sheet-head ok"><span>정답: ${q.answer}번</span></div>
-                <div class="sheet-body">${escapeHtml(q.explanation||'해설 없음')}</div>
+                <div class="sheet-body">${escapeHtml((q.explanation||'해설 없음').trim())}</div>
               </div>
             </div>
           </div>
@@ -2873,7 +2873,7 @@
           <div class="sheet-tip">💡 이 패널을 누르면 다음 문제로 넘어가요</div>
           <div class="sheet-body">
             ${justMastered? `<div style="background:var(--correct-tint);color:#204636;border:1px solid #BFDBCB;border-radius:9px;padding:12px 14px;margin-bottom:14px;font-weight:700;font-size:13.5px;">🎉 연속 정답 ${MASTERY_TARGET}회 달성! 이 문제는 취약문제에서 제외됩니다.</div>` : ''}
-            ${escapeHtml(q.explanation||'해설이 제공되지 않았습니다.')}${q.source? `<div class="sheet-src">§ 출처: ${escapeHtml(q.source)}</div>` : ''}
+            ${escapeHtml((q.explanation||'해설이 제공되지 않았습니다.').trim())}${q.source? `<div class="sheet-src">§ 출처: ${escapeHtml(q.source)}</div>` : ''}
             ${(isWeakNow || !alreadyWeakStatus)? `<button id="manualWeakBtn" style="margin-top:10px;width:100%;background:${isWeakNow? 'var(--correct-tint)':'var(--seal-tint)'};border:1px solid ${isWeakNow? '#BFDBCB':'#E9C2BC'};border-radius:9px;padding:9px;font-size:12.5px;color:${isWeakNow? '#204636':'var(--seal)'};font-weight:700;cursor:pointer;">${isWeakNow? '✔ 취약문제 지정 해제' : '🚨 취약문제로 지정하기'}</button>` : ''}
             ${isWeakLikeSession? `<button id="excludeBtn" style="margin-top:8px;width:100%;background:var(--paper-deep);border:1px solid var(--line-strong);border-radius:9px;padding:9px;font-size:12.5px;color:var(--ink-soft);cursor:pointer;">✕ 이 문제는 취약문제에서 그만 보기</button>` : ''}
             <button id="reportErrorBtn" style="margin-top:8px;width:100%;background:transparent;border:1px dashed var(--line-strong);border-radius:9px;padding:8px;font-size:12px;color:var(--ink-soft);cursor:pointer;">🚩 문제 오류 신고</button>
