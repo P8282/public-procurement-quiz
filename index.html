@@ -3031,8 +3031,16 @@
     const key = state.chapter;
     const indices = state.filterIndices || allIndicesOf(key);
     if(newPos<0 || newPos>=indices.length) return;
-    state.index = indices[newPos];
-    state.sheetOpen = false; // 문제를 옮기면 해설 시트는 닫는다
+    const targetIdx = indices[newPos];
+    state.index = targetIdx;
+    // 🔴 취약 집중공략 / 🟡 복습 다시풀기 / 🔴 숫자 취약만은 "이번 방문에서 다시 답을 골라야" saved로
+    // 치는 재도전 설계라, 여기서 자동으로 열어버리면 다시 못 풀게 막아버린다. 그 외(일반 학습, ⚡ 숫자
+    // 뽀개기.zip · 전체)는 ← 이전 / → 한 단계 이동으로 이미 답변한 문제에 다시 왔을 때, PC 7:3
+    // 레이아웃(quiz-split)에서 매번 "해설 다시 보기"를 눌러야 하는 게 불편하다는 신고가 있어,
+    // 이미 답변 기록이 있으면 해설을 자동으로 펼쳐서 보여준다.
+    const isWeakLikeSession = state.filterKind === 'wrong' || state.filterKind === 'weaknum';
+    const alreadyAnswered = !isWeakLikeSession && !!(state.progress[key] && state.progress[key][targetIdx]);
+    state.sheetOpen = alreadyAnswered;
     state.reviewAnswered = false; // 다음 문제로 넘어가는 것이므로 "이번에 다시 답함" 표시도 초기화한다.
     render();
   }
@@ -3054,8 +3062,9 @@
       state.chapter = prevKey;
       state.filterIndices = prevIdxs;
       state.filterKind = 'num';
-      state.index = prevIdxs[prevIdxs.length - 1];
-      state.sheetOpen = false;
+      const lastIdx = prevIdxs[prevIdxs.length - 1];
+      state.index = lastIdx;
+      state.sheetOpen = !!(state.progress[prevKey] && state.progress[prevKey][lastIdx]); // 이미 답변한 문제면 해설 자동 표시
       saveProgress();
       render();
       return;
