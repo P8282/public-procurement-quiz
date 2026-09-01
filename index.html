@@ -2905,6 +2905,7 @@
             </div>
             <div class="options">${optionsHtml}</div>
             ${saved? `<button class="nav-btn" id="showSheetBtn" style="width:100%;margin-top:18px;font-size:14px;padding:12px;">📖 해설 다시 보기</button>` : ''}
+            <div class="kbd-hint"><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd> 답 선택 &nbsp; <kbd>Enter</kbd>/<kbd>Space</kbd> 다음 &nbsp; <kbd>←</kbd>/<kbd>→</kbd> 이동 &nbsp; <kbd>↑</kbd> 해설</div>
           </div>
           <div class="qside">
             <div class="sheet-inline-slot">${sheetHtml}</div>
@@ -2919,7 +2920,6 @@
           <span>전체 진행 ${os.answered}/${os.total}</span>
           <span>${isNumSession? 'NUM 정답률' : '이 단원 정답률'} ${(()=>{const s=isNumSession? numStats() : chapterStats(key); return s.answered? Math.round(s.correct/s.answered*100):0;})()}%</span>
         </div>
-        <div class="kbd-hint"><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd> 답 선택 &nbsp; <kbd>Enter</kbd>/<kbd>Space</kbd> 다음 &nbsp; <kbd>←</kbd>/<kbd>→</kbd> 이동 &nbsp; <kbd>↑</kbd> 해설</div>
       </div>
     `;
 
