@@ -3369,6 +3369,11 @@
 
   // ---------- keyboard shortcuts (mirrors original VBA quiz mode) ----------
   document.addEventListener('keydown', (e)=>{
+    // 🚩 문제 오류 신고 입력창처럼, 텍스트를 입력하는 <input>/<textarea>에 포커스가 있을 때는
+    // 단축키를 전부 건너뛴다. 안 그러면 신고 내용에 스페이스바를 치는 순간 "다음 문제로 이동"
+    // 단축키가 같이 발동해서 타이핑을 방해한다(신고된 버그).
+    const activeTag = document.activeElement && document.activeElement.tagName;
+    if(activeTag === 'INPUT' || activeTag === 'TEXTAREA') return;
     if(state.view==='temp'){
       const total = TEMP_QUIZ.length;
       if(!total) return;
