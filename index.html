@@ -115,13 +115,14 @@
     padding:8px 16px; margin:0 0 18px; font-size:12.5px; font-weight:700; color:var(--navy);
   }
   .exam-schedule b{ font-weight:900; }
+  .exam-schedule-item{ display:inline-flex; align-items:center; gap:7px; white-space:nowrap; }
   .dday-badge{
     background:var(--navy); color:#F5F1E7; font-weight:900; font-size:13px;
     border-radius:999px; padding:4px 12px; letter-spacing:.02em;
   }
   .dday-badge.urgent{ background:var(--seal-deep); }
   .dday-badge.active{ background:var(--correct); } /* 접수중 - 지금 진행 중인 상태를 초록으로 강조 */
-  .dday-badge.gold{ background:var(--gold-text); color:#2A2113; } /* 원서접수 예정 D-day - 필기시험(네이비)과 구분 */
+  .dday-badge.gold{ background:var(--gold); color:#fff; } /* 원서접수 예정 D-day - 필기시험(네이비)과 구분되는 선명한 금색 */
   .exam-schedule .divider{ width:1px; height:11px; background:rgba(27,42,71,.22); flex-shrink:0; }
 
   .hero p.sub{ color:var(--ink-soft); font-size:14px; line-height:1.6; margin:0 auto 22px; max-width:340px; }
@@ -2477,9 +2478,8 @@
             <div class="kicker">14일 · ${formatNum(os.total)}문제 완주 플랜</div>
             <h1>공공조달관리사<br>2주 완성</h1>
             <div class="exam-schedule">
-              ${examRegistrationInfo().show? `<span>원서접수 <b>9.14~9.17</b></span><span class="dday-badge ${examRegistrationInfo().active? 'active' : 'gold'}">${examRegistrationInfo().label}</span><span class="divider"></span>` : ''}
-              <span>필기시험 <b>10.3</b></span>
-              ${!examDdayInfo().passed? `<span class="dday-badge${examDdayInfo().urgent? ' urgent' : ''}">${examDdayInfo().label}</span>` : ''}
+              ${examRegistrationInfo().show? `<span class="exam-schedule-item">원서접수 <b>9.14~9.17</b><span class="dday-badge ${examRegistrationInfo().active? 'active' : 'gold'}">${examRegistrationInfo().label}</span></span><span class="divider"></span>` : ''}
+              <span class="exam-schedule-item">필기시험 <b>10.3</b>${!examDdayInfo().passed? `<span class="dday-badge${examDdayInfo().urgent? ' urgent' : ''}">${examDdayInfo().label}</span>` : ''}</span>
             </div>
           </div>
           <div class="home-hero-right">
