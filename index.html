@@ -607,13 +607,14 @@
   /* ---- 오늘 학습 ---- */
   .home-today{ padding:0 18px 14px; }
   .home-today-card{
-    background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px 18px;
-    box-shadow:var(--shadow);
+    background:var(--card); border:1px solid var(--line); border-radius:14px; padding:13px 16px;
+    /* 빠른 학습(클릭해서 행동하는 영역)과 구분되도록, 그림자 없이 얇은 테두리만 사용해서
+       "지금 상태를 확인하는 영역"이라는 낮은 위계를 자연스럽게 나타낸다. */
   }
-  .home-today-title{ font-size:12px; font-weight:700; color:var(--ink-soft); margin:0 0 10px; }
+  .home-today-title{ font-size:11px; font-weight:600; color:var(--ink-soft); margin:0 0 8px; }
   .home-today-row{ display:flex; gap:14px; }
   .home-today-row .stat{ flex:1; text-align:center; }
-  .home-today-row .stat b{ display:block; font-family:'Noto Serif KR',serif; font-size:21px; font-weight:900; color:var(--navy); line-height:1; }
+  .home-today-row .stat b{ display:block; font-family:'Noto Serif KR',serif; font-size:19px; font-weight:900; color:var(--navy); line-height:1; }
   .home-today-row .stat span{ font-size:10px; color:var(--ink-soft); display:block; margin-top:4px; }
   .home-today-row .stat.weak b{ color:var(--seal); }
   .home-today-row .stat.review b{ color:var(--gold-text); }
@@ -2470,18 +2471,6 @@
           </div>
         </div>
 
-        <div class="home-today">
-          <div class="home-today-card">
-            <div class="home-today-title">오늘 학습</div>
-            <div class="home-today-row">
-              <div class="stat"><b>${formatNum(todayN)}</b><span>문제</span></div>
-              <div class="stat num"><b>${formatNum(todayNumCount())}</b><span>숫자</span></div>
-              <div class="stat weak"><b>${formatNum(todayWeakCount())}</b><span>취약</span></div>
-              <div class="stat review"><b>${formatNum(todayReviewCount())}</b><span>복습</span></div>
-            </div>
-          </div>
-        </div>
-
         <div class="home-quick">
           <p class="home-quick-title">빠른 학습</p>
           <div class="home-quick-grid">
@@ -2513,6 +2502,18 @@
               <span class="qc-title">복습 다시풀기</span>
               <span class="qc-sub">맞혀가는 중인 문제 ${totalReviewOnly}개</span>
             </button>` : ''}
+          </div>
+        </div>
+
+        <div class="home-today">
+          <div class="home-today-card">
+            <div class="home-today-title">오늘 학습</div>
+            <div class="home-today-row">
+              <div class="stat"><b>${formatNum(todayN)}</b><span>문제</span></div>
+              <div class="stat num"><b>${formatNum(todayNumCount())}</b><span>숫자</span></div>
+              <div class="stat weak"><b>${formatNum(todayWeakCount())}</b><span>취약</span></div>
+              <div class="stat review"><b>${formatNum(todayReviewCount())}</b><span>복습</span></div>
+            </div>
           </div>
         </div>
 
