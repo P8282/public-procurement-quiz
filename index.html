@@ -120,6 +120,8 @@
     border-radius:999px; padding:4px 12px; letter-spacing:.02em;
   }
   .dday-badge.urgent{ background:var(--seal-deep); }
+  .dday-badge.active{ background:var(--correct); } /* 접수중 - 지금 진행 중인 상태를 초록으로 강조 */
+  .dday-badge.gold{ background:var(--gold-text); color:#2A2113; } /* 원서접수 예정 D-day - 필기시험(네이비)과 구분 */
   .exam-schedule .divider{ width:1px; height:11px; background:rgba(27,42,71,.22); flex-shrink:0; }
 
   .hero p.sub{ color:var(--ink-soft); font-size:14px; line-height:1.6; margin:0 auto 22px; max-width:340px; }
@@ -1366,14 +1368,18 @@
     const label = diffDays > 0 ? `D-${diffDays}` : (diffDays === 0 ? 'D-DAY' : `D+${-diffDays}`);
     return { label, urgent: diffDays <= 14, passed: diffDays < 0 };
   }
-  // 원서접수(9.14~9.17) 마감일이 지났는지 - todayDateStr()와 동일하게 로컬 자정 기준으로 날짜만
-  // 비교한다. 마감(9.17) 다음날부터 "원서접수 9.14~9.17" 문구 자체를 화면에서 숨긴다(더 이상
-  // 접수할 수 없는 지난 일정이므로).
-  function isRegistrationPassed(){
+  // 원서접수(9.14~9.17) 상태를 판정한다 - todayDateStr()와 동일하게 로컬 자정 기준으로 날짜만
+  // 비교한다. 세 단계: 시작 전(D-day 표시) / 접수 기간 중("접수중" 표시) / 마감 후(show:false,
+  // 문구 자체를 화면에서 숨김 - 더 이상 접수할 수 없는 지난 일정이므로).
+  function examRegistrationInfo(){
     const today = new Date();
     const todayMid = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const regEnd = new Date(2026, 8, 17); // 9월 17일, month 0-based라 9월은 8
-    return todayMid > regEnd;
+    const regStart = new Date(2026, 8, 14); // 9월 14일, month 0-based라 9월은 8
+    const regEnd = new Date(2026, 8, 17);   // 9월 17일
+    if(todayMid > regEnd) return { show: false };
+    if(todayMid >= regStart) return { show: true, active: true, label: '접수중' };
+    const diffDays = Math.round((regStart - todayMid) / 86400000);
+    return { show: true, active: false, label: diffDays === 0 ? 'D-DAY' : `D-${diffDays}` };
   }
   // selectAnswer()에서 답을 고를 때마다 호출한다. 날짜가 바뀌었으면 전부 0부터 다시 센다(다시 풀기
   // 포함, questionReviewCounts와 동일하게 "풀이 행위" 자체를 센다).
@@ -2471,7 +2477,7 @@
             <div class="kicker">14일 · ${formatNum(os.total)}문제 완주 플랜</div>
             <h1>공공조달관리사<br>2주 완성</h1>
             <div class="exam-schedule">
-              ${!isRegistrationPassed()? `<span>원서접수 <b>9.14~9.17</b></span><span class="divider"></span>` : ''}
+              ${examRegistrationInfo().show? `<span>원서접수 <b>9.14~9.17</b></span><span class="dday-badge ${examRegistrationInfo().active? 'active' : 'gold'}">${examRegistrationInfo().label}</span><span class="divider"></span>` : ''}
               <span>필기시험 <b>10.3</b></span>
               ${!examDdayInfo().passed? `<span class="dday-badge${examDdayInfo().urgent? ' urgent' : ''}">${examDdayInfo().label}</span>` : ''}
             </div>
