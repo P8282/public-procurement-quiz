@@ -143,6 +143,17 @@
   .cover-facts b{ display:block; font-family:'Noto Serif KR',serif; font-size:20px; color:var(--navy); font-weight:900; }
   .cover-facts span{ font-size:10.5px; color:var(--ink-soft); }
 
+  /* ==== 홈 화면 hero 전용 여백 압축 ====
+     .hero는 비밀번호/초대코드 화면과 공유하는 클래스라 그 자체는 건드리지 않고,
+     .home-hero가 같이 붙어있을 때(홈 화면일 때)만 적용되도록 범위를 좁힌다.
+     글자 크기는 그대로 두고 상하 패딩/마진만 줄여서, 브랜드 느낌(제목 존재감,
+     시험 일정, D-day, 통계)은 그대로 유지하면서 "빠른 학습" 영역이 더 빨리 보이게 한다. */
+  .hero.home-hero{ padding:27px 24px 18px; }
+  .home-hero .kicker{ margin-bottom:7px; }
+  .home-hero h1{ margin:0 0 9px; }
+  .home-hero .exam-schedule{ padding:6px 16px; margin:0 0 13px; }
+  .home-hero .cover-facts{ margin-bottom:20px; }
+
   .btn{
     appearance:none; border:none; cursor:pointer; font-family:'Noto Sans KR', sans-serif;
     font-weight:700; border-radius:10px; transition:transform .12s ease, opacity .12s ease, background .15s ease;
@@ -660,7 +671,7 @@
 
   /* ==== 태블릿 세로(768px~) : 여백/카드 확대 ==== */
   @media (min-width:768px){
-    .home-hero{ padding:30px 40px 18px; }
+    .home-hero{ padding:24px 40px 14px; }
     .home-today{ padding:0 40px 18px; }
     .home-quick{ padding:0 40px 18px; }
     .home-subjects{ padding:0 40px; }
@@ -672,7 +683,7 @@
     #app{ max-width:min(1400px, 92vw); } /* 퀴즈 화면과 동일한 폭 상한(820px 규칙 재사용) */
     .home-hero{
       display:grid; grid-template-columns:1fr auto; align-items:center; gap:28px;
-      padding:26px 44px 18px;
+      padding:22px 44px 15px;
     }
     .home-hero-left{ text-align:left; }
     .home-hero-left h1{ font-size:27px; }
