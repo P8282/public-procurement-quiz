@@ -1366,6 +1366,15 @@
     const label = diffDays > 0 ? `D-${diffDays}` : (diffDays === 0 ? 'D-DAY' : `D+${-diffDays}`);
     return { label, urgent: diffDays <= 14, passed: diffDays < 0 };
   }
+  // 원서접수(9.14~9.17) 마감일이 지났는지 - todayDateStr()와 동일하게 로컬 자정 기준으로 날짜만
+  // 비교한다. 마감(9.17) 다음날부터 "원서접수 9.14~9.17" 문구 자체를 화면에서 숨긴다(더 이상
+  // 접수할 수 없는 지난 일정이므로).
+  function isRegistrationPassed(){
+    const today = new Date();
+    const todayMid = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const regEnd = new Date(2026, 8, 17); // 9월 17일, month 0-based라 9월은 8
+    return todayMid > regEnd;
+  }
   // selectAnswer()에서 답을 고를 때마다 호출한다. 날짜가 바뀌었으면 전부 0부터 다시 센다(다시 풀기
   // 포함, questionReviewCounts와 동일하게 "풀이 행위" 자체를 센다).
   // opts.isNum: 이 문제가 숫자(NUM) 태그 문제인지. opts.statusBefore: 답을 고르기 "직전" 이 문제의
@@ -2462,9 +2471,8 @@
             <div class="kicker">14일 · ${formatNum(os.total)}문제 완주 플랜</div>
             <h1>공공조달관리사<br>2주 완성</h1>
             <div class="exam-schedule">
-              <span>📝 원서접수 <b>9.14~9.17</b></span>
-              <span class="divider"></span>
-              <span>✏️ 필기시험 <b>10.3</b></span>
+              ${!isRegistrationPassed()? `<span>원서접수 <b>9.14~9.17</b></span><span class="divider"></span>` : ''}
+              <span>필기시험 <b>10.3</b></span>
               ${!examDdayInfo().passed? `<span class="dday-badge${examDdayInfo().urgent? ' urgent' : ''}">${examDdayInfo().label}</span>` : ''}
             </div>
           </div>
