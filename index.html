@@ -704,10 +704,16 @@
     /* 태블릿 가로 전용: 과목 카드 길이가 서로 크게 다르면(예: 1과목만 유독 김) grid의 "같은 행은
        무조건 같은 높이" 특성 때문에 옆 칸(2과목)이 강제로 늘어나고, 그 아래 3과목 이하가 전부
        밀려 내려가면서 오른쪽에 거대한 빈 공간이 생기는 문제가 있었다(신고된 버그).
-       column-count(신문 다단형)로 바꾸면 "행" 개념이 없어져서, 카드는 위→아래로 왼쪽 열부터 채우고
-       짧은 카드는 다음 카드가 바로 그 밑에 붙는다. PC(1280px+)는 아래 블록에서 다시 grid로 되돌린다. */
-    .home-subjects{ display:block; column-count:2; column-gap:14px; }
-    .home-subjects .home-subject-card{ break-inside:avoid; margin-bottom:14px; }
+       이 앱은 과목이 정확히 3개뿐이므로(1/2/3과목 고정), 자동 밸런싱형(column-count) 대신
+       "1과목은 왼쪽 전체(위아래 두 칸 차지), 2·3과목은 오른쪽에 위아래로 쌓임"을 명시적으로
+       지정한다 - 자동 밸런싱은 브라우저마다(특히 사파리) 결과가 달라져서 "1과목+2과목이 왼쪽,
+       3과목만 오른쪽"처럼 의도와 다르게 배치되는 문제가 있었다. align-items:start라서 2·3과목이
+       자기 칸보다 짧아도 억지로 안 늘어나고 그냥 위쪽에 붙는다(빈 공간이 생겨도 아래로 밀리지 않음).
+       PC(1280px+)는 아래 블록에서 3열로 되돌리며 이 명시적 위치 지정도 함께 초기화한다. */
+    .home-subjects{ display:grid; grid-template-columns:1fr 1fr; grid-auto-flow:row; align-items:start; gap:14px; }
+    .home-subjects .home-subject-card:nth-child(1){ grid-column:1; grid-row:1 / span 2; }
+    .home-subjects .home-subject-card:nth-child(2){ grid-column:2; grid-row:1; }
+    .home-subjects .home-subject-card:nth-child(3){ grid-column:2; grid-row:2; }
     .home-subjects .subtopic-list{ display:grid; grid-template-columns:1fr 1fr; gap:6px; }
 
     /* 동기화 상태: 헤더 우측에 작은 표시를 추가로 보여주되, 복사/로그아웃 버튼이 있는 sync-bar
@@ -720,6 +726,10 @@
   @media (min-width:1280px){
     .home-subjects{ display:grid; grid-template-columns:repeat(3, 1fr); column-count:auto; align-items:start; gap:14px; }
     .home-subjects .home-subject-card{ break-inside:auto; margin-bottom:0; }
+    /* 태블릿 가로의 명시적 위치 지정(1번=왼쪽 전체, 2/3번=오른쪽 위아래)을 되돌려서 3열 자동 배치로 */
+    .home-subjects .home-subject-card:nth-child(1),
+    .home-subjects .home-subject-card:nth-child(2),
+    .home-subjects .home-subject-card:nth-child(3){ grid-column:auto; grid-row:auto; }
     .home-subjects .subtopic-list{ grid-template-columns:repeat(3, 1fr); }
   }
 
