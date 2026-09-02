@@ -2635,10 +2635,12 @@
   function startGlobalReviewOnlyReview(){
     const queue = allChapterKeys().filter(k => reviewOnlyIndices(k).length > 0);
     if(!queue.length){ alert('현재 복습할 문제가 없습니다! 🎉'); return; }
-    // 다른 전체 세션 도중에 이걸 시작하면 두 플래그가 동시에 true로 남아 goPrev()의 챕터 간
-    // 이동이 엉뚱한 큐를 참조할 수 있으므로, 시작할 때 서로 정리한다.
+    // 다른 전체 세션 도중에 이걸 시작하면 플래그가 여러 개 동시에 true로 남아 완료 시점에
+    // goHomeOrContinueGlobalReview()가 엉뚱한 세션으로 이어가버릴 수 있으므로, 시작할 때
+    // 나머지 3개 플래그를 전부 확실히 끈다.
     state.globalWeakReview = false;
     state.globalWeakNumReview = false;
+    state.globalNumReview = false;
     state.globalReviewOnlyReview = true;
     state.globalReviewOnlyQueue = queue;
     state.globalReviewOnlyQueueIndex = 0;
@@ -2665,10 +2667,12 @@
     //  못하는 문제가 있었다 - "16개 복습하기가 안 됨" 버그의 원인)
     const queue = allChapterKeys().filter(k => weakCount(k) > 0);
     if(!queue.length){ alert('현재 취약 문제가 없습니다! 🎉'); return; }
-    // 다른 전체 세션 도중에 이걸 시작하면 두 플래그가 동시에 true로 남아 goPrev()의 챕터 간
-    // 이동이 엉뚱한 큐를 참조할 수 있으므로, 시작할 때 서로 정리한다.
+    // 다른 전체 세션 도중에 이걸 시작하면 플래그가 여러 개 동시에 true로 남아 완료 시점에
+    // goHomeOrContinueGlobalReview()가 엉뚱한 세션으로 이어가버릴 수 있으므로, 시작할 때
+    // 나머지 3개 플래그를 전부 확실히 끈다.
     state.globalReviewOnlyReview = false;
     state.globalWeakNumReview = false;
+    state.globalNumReview = false;
     state.globalWeakReview = true;
     state.globalWeakQueue = queue;
     state.globalWeakQueueIndex = 0;
@@ -2727,6 +2731,12 @@
   // 완료 화면에서 다음 챕터로 자동으로 이어간다(goHomeOrContinueGlobalReview 참고).
   // 전부 이미 풀었으면(안 푼 게 없으면) NUM 문제가 하나라도 있는 챕터를 처음부터 다시 보여준다.
   function startGlobalNumReview(){
+    // 다른 전체 세션 도중에 이걸 시작하면 플래그가 여러 개 동시에 true로 남아 완료 시점에
+    // goHomeOrContinueGlobalReview()가 엉뚱한 세션으로 이어가버릴 수 있으므로, 시작할 때
+    // 나머지 3개 플래그를 전부 확실히 끈다(이 함수는 원래 아예 초기화를 안 하고 있었다).
+    state.globalWeakReview = false;
+    state.globalReviewOnlyReview = false;
+    state.globalWeakNumReview = false;
     const key = nextNumChapterKey();
     if(key){
       state.globalNumReview = true;
@@ -2759,10 +2769,13 @@
   function startGlobalWeakNumReview(){
     const queue = allChapterKeys().filter(k => weakNumCount(k) > 0);
     if(!queue.length){ alert('현재 취약 숫자문제가 없습니다! 🎉'); return; }
-    // 다른 전체 세션 도중에 이걸 시작하면 두 플래그가 동시에 true로 남아 goPrev()의 챕터 간
-    // 이동이 엉뚱한 큐를 참조할 수 있으므로, 시작할 때 서로 정리한다.
+    // 다른 전체 세션 도중에 이걸 시작하면 플래그가 여러 개 동시에 true로 남아 완료 시점에
+    // goHomeOrContinueGlobalReview()가 엉뚱한 세션으로 이어가버릴 수 있으므로(신고된 버그: 숫자
+    // 취약만을 다 마쳤는데 남아있던 globalNumReview 때문에 숫자 전체 세션으로 튕겨나감),
+    // 시작할 때 나머지 3개 플래그를 전부 확실히 끈다.
     state.globalWeakReview = false;
     state.globalReviewOnlyReview = false;
+    state.globalNumReview = false;
     state.globalWeakNumReview = true;
     state.globalWeakNumQueue = queue;
     state.globalWeakNumQueueIndex = 0;
