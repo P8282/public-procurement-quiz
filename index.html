@@ -2290,7 +2290,7 @@
             <div class="sheet-inline-slot">
               <div class="sheet" style="position:static;max-width:none;width:100%;margin:0;animation:none;box-shadow:var(--shadow);">
                 <div class="sheet-head ok"><span>정답: ${q.answer}번</span></div>
-                <div class="sheet-body">${escapeHtml((q.explanation||'해설 없음').trim())}</div>
+                <div class="sheet-body">${escapeHtml((q.explanation||'해설 없음').trim())}${q.source? `<div class="sheet-src">§ 출처: ${escapeHtml(q.source)}</div>` : ''}</div>
               </div>
             </div>
           </div>
