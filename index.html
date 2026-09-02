@@ -1756,7 +1756,7 @@
   // 신고했던 그 문제로 바로 이동해서 다시 풀어볼 수 있게 한다.
   function goToReportedQuestion(chapterKey, questionIndex){
     if(!QUIZ[chapterKey] || !QUIZ[chapterKey][questionIndex]){
-      alert('이 문제를 찾을 수 없습니다. (구글시트에서 삭제되었거나 순서가 바뀌었을 수 있어요)');
+      alert('이 문제를 찾을 수 없습니다. (삭제되었거나 순서가 바뀌었을 수 있어요)');
       return;
     }
     closeMyReportsView();
@@ -1842,10 +1842,13 @@
         </div>
       `;
     } else {
+      // admin의 "오류 신고 모아보기"도 questionText(신고 당시 문제 텍스트) 하나만 저장/표시하고
+      // 보기·정답·해설은 애초에 신고 데이터에 없어서 안 보여준다. 여기서도 그와 똑같이 문제
+      // 텍스트만 담담히 보여준다 - 예전엔 "⚠️ 찾을 수 없습니다" 경고를 추가로 보여줘서 admin과
+      // 다르게 놀라 보였는데(신고된 불일치), 이제 admin과 동일한 표시 방식으로 맞춘다.
       questionBlockHtml = `
         <div class="quiz-head"><div class="crumb"><b>${escapeHtml(META.names[r.chapterKey] || r.chapterKey)}</b></div></div>
-        <div class="qcard"><div class="qtext" style="color:var(--ink-soft);">${escapeHtml(r.questionText || '(문제 내용 없음)')}</div></div>
-        <div style="font-size:12.5px;color:var(--ink-soft);margin:-4px 0 4px;">⚠️ 이 문제를 찾을 수 없습니다. (구글시트에서 삭제되었거나 순서가 바뀌었을 수 있어요)</div>
+        <div class="qcard"><div class="qtext">${escapeHtml(r.questionText || '(문제 내용 없음)')}</div></div>
       `;
     }
 
@@ -2264,7 +2267,7 @@
       app.innerHTML = `
         <div class="topbar"><div class="brand">🧪 Temp (임시 테스트)</div></div>
         <div style="padding:40px 20px; text-align:center; color:var(--ink-soft); font-size:14px;">
-          불러온 문제가 없습니다.<br>구글시트의 "Temp" 탭에 문제가 있는지, 시트 공유 설정을 확인해주세요.
+          불러온 문제가 없습니다.<br>"Temp" 탭(또는 목록)에 문제가 있는지 확인해주세요.
         </div>
       `;
       return;
@@ -2836,7 +2839,7 @@
       });
     }
     if(!indices.length){
-      alert('이 항목은 아직 등록된 문제가 없습니다.\n출제기준에는 있지만 구글시트에 문제가 추가되지 않은 상태예요.');
+      alert('이 항목은 아직 등록된 문제가 없습니다.\n출제기준에는 있지만 아직 문제가 추가되지 않은 상태예요.');
       return;
     }
     openChapter(key, true, indices, 'subtopic'); // resume=true: 이 항목 안에서 이미 푼 문제는 건너뛰고 이어서 시작
