@@ -2503,7 +2503,7 @@
             <span class="title">${escapeHtml(subj.title)}</span>
             <span class="cnt">${subjAnswered}/${subjTotal}</span>
           </div>
-          ${subjUpdInfo? `<button class="subject-updated-btn" data-subj-idx="${subjIdx}" style="display:flex;align-items:center;justify-content:space-between;width:100%;font-size:11px;font-weight:700;color:#0B6B8C;background:#E4F3F8;border:1px solid #B9DEE9;border-radius:8px;padding:5px 10px;margin-bottom:8px;">
+          ${subjUpdInfo? `<button class="subject-updated-btn" data-subj-idx="${subjIdx}" style="display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;color:#0B6B8C;background:#E4F3F8;border:1px solid #B9DEE9;border-radius:999px;padding:3px 9px;margin-bottom:8px;">
             <span>🆕 New ${escapeHtml(formatRevMMDD(subjUpdInfo.latestRev))} · ${subjUpdInfo.count}개</span>
             <span style="text-decoration:underline;">바로가기 →</span>
           </button>` : ''}
