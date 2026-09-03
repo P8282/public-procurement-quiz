@@ -861,7 +861,7 @@
   function cfEnabled(){
     return !!CF_API_BASE && CF_API_BASE.indexOf('여기에') !== 0;
   }
-  let CF_META = {};              // { chapterKey: { count, categories: [[c1,c2], ...] } }
+  let CF_META = {};              // { chapterKey: { count, categories: [[c1,c2], ...], nums: [bool,...], revs: [rev|null,...] } }
   const CF_LOADED = {};          // { chapterKey: Set(불러온 인덱스) } - 중복 요청 방지용(일시 상태)
   const CF_PENDING = {};         // { chapterKey: { batchStartIndex: Promise } } - 동시에 같은 배치를 두 번 요청하지 않기 위함
 
@@ -1121,25 +1121,38 @@
   // 이 챕터 안에서 "개정일자(rev)가 찍혀있고 + 아직 한 번도 안 푼" 문제들의 인덱스.
   // (이미 답한 문제는 invalidateChangedAnswers()가 이미 알아서 처리하므로 여기 대상이 아니다 -
   //  둘이 겹치지 않게: 이 함수는 순수하게 "아직 안 건드린 신규/개정 문제"만 다룬다.)
+  // numIndicesOf()와 동일한 패턴: Cloudflare 모드에서는 문제 본문을 안 받아도 되는 /meta의
+  // revs(챕터별 개정일자 배열)로 판단한다 - 안 그러면 아직 한 번도 안 열어본 챕터는 문제 본문
+  // 자체가 없어서(QUIZ[key]가 비어있음) 개정 여부를 전혀 알 수 없어 홈 화면 배지가 대부분
+  // 안 뜨는 문제가 있었다(신고된 버그: "안 뜨는데"). 그 외(구글시트/내장 데이터)에서는 기존처럼
+  // QUIZ[key] 항목에 직접 담긴 rev로 판단한다.
   function updatedUnansweredIndicesOf(key){
-    const list = QUIZ[key] || [];
     const out = [];
-    list.forEach((q, i)=>{
-      if(!q || !q.rev) return;
-      if(state.progress[key] && state.progress[key][i]) return; // 이미 답함 - 대상 아님
-      out.push(i);
-    });
+    if(cfEnabled() && CF_META[key]){
+      (CF_META[key].revs || []).forEach((rev, i)=>{
+        if(!rev) return;
+        if(state.progress[key] && state.progress[key][i]) return; // 이미 답함 - 대상 아님
+        out.push(i);
+      });
+    } else {
+      (QUIZ[key] || []).forEach((q, i)=>{
+        if(!q || !q.rev) return;
+        if(state.progress[key] && state.progress[key][i]) return;
+        out.push(i);
+      });
+    }
     return out;
   }
   // 챕터 단위 집계: { count, latestRev } 또는 없으면 null. rev는 "260830" 같은 YYMMDD 문자열이라
-  // 자리수가 같으면 문자열 비교만으로도 날짜 순서가 정확히 맞는다.
+  // 자리수가 같으면 문자열 비교만으로도 날짜 순서가 정확히 맞는다. 개정일자 자체도 문제 본문 없이
+  // CF_META[key].revs에서 바로 읽는다(updatedUnansweredIndicesOf와 동일한 이유).
   function chapterUpdateInfo(key){
     const idxs = updatedUnansweredIndicesOf(key);
     if(!idxs.length) return null;
-    const list = QUIZ[key] || [];
+    const revsFromMeta = (cfEnabled() && CF_META[key]) ? CF_META[key].revs : null;
     let latestRev = null;
     idxs.forEach(i=>{
-      const r = list[i] && list[i].rev;
+      const r = revsFromMeta ? revsFromMeta[i] : (QUIZ[key] && QUIZ[key][i] && QUIZ[key][i].rev);
       if(r && (!latestRev || r > latestRev)) latestRev = r;
     });
     return { count: idxs.length, latestRev };
