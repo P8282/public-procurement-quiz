@@ -1118,6 +1118,46 @@
     if(changed){ saveProgress(); saveWrongMastery(); }
   }
 
+  // 이 챕터 안에서 "개정일자(rev)가 찍혀있고 + 아직 한 번도 안 푼" 문제들의 인덱스.
+  // (이미 답한 문제는 invalidateChangedAnswers()가 이미 알아서 처리하므로 여기 대상이 아니다 -
+  //  둘이 겹치지 않게: 이 함수는 순수하게 "아직 안 건드린 신규/개정 문제"만 다룬다.)
+  function updatedUnansweredIndicesOf(key){
+    const list = QUIZ[key] || [];
+    const out = [];
+    list.forEach((q, i)=>{
+      if(!q || !q.rev) return;
+      if(state.progress[key] && state.progress[key][i]) return; // 이미 답함 - 대상 아님
+      out.push(i);
+    });
+    return out;
+  }
+  // 챕터 단위 집계: { count, latestRev } 또는 없으면 null. rev는 "260830" 같은 YYMMDD 문자열이라
+  // 자리수가 같으면 문자열 비교만으로도 날짜 순서가 정확히 맞는다.
+  function chapterUpdateInfo(key){
+    const idxs = updatedUnansweredIndicesOf(key);
+    if(!idxs.length) return null;
+    const list = QUIZ[key] || [];
+    let latestRev = null;
+    idxs.forEach(i=>{
+      const r = list[i] && list[i].rev;
+      if(r && (!latestRev || r > latestRev)) latestRev = r;
+    });
+    return { count: idxs.length, latestRev };
+  }
+  // 과목 단위 집계: 그 과목에 속한 모든 챕터를 합산.
+  function subjectUpdateInfo(subj){
+    let count = 0, latestRev = null;
+    (subj.chapters || []).forEach(key=>{
+      const info = chapterUpdateInfo(key);
+      if(info){
+        count += info.count;
+        if(info.latestRev && (!latestRev || info.latestRev > latestRev)) latestRev = info.latestRev;
+      }
+    });
+    if(!count) return null;
+    return { count, latestRev };
+  }
+
   // 임시 테스트용 "Temp" 시트를 불러온다. 정식 챕터들의 QUIZ 객체와는 완전히 분리된 별도 변수(TEMP_QUIZ)에 담아서,
   // 진행률/오답노트/전체 문항수 통계 등 정식 데이터 흐름에 전혀 섞이지 않게 한다.
   // Cloudflare Worker의 /temp 엔드포인트(동기화 코드로 인증)에서 받아온다 - 배치 없이 전체를 한 번에.
@@ -2370,10 +2410,11 @@
     // 내부 구조(회독/진행률/숙달도/취약·복습 버튼/목차 펼치기)는 기존 그대로이며, 클릭 바인딩용
     // 클래스명(chapter-card/weak-btn/review-btn/expand-btn/subtopic-item/toc-group-title)도 그대로 유지한다.
     let subjectsHtml = '';
-    META.subjects.forEach(subj=>{
+    META.subjects.forEach((subj, subjIdx)=>{
       const subjTotal = subj.chapters.reduce((a,k)=>a+QUIZ[k].length,0);
       const subjAnswered = subj.chapters.reduce((a,k)=>a+chapterStats(k).answered,0);
       const subjPct = subjTotal? Math.round(subjAnswered/subjTotal*100) : 0;
+      const subjUpdInfo = subjectUpdateInfo(subj); // 🆕 이 과목 전체의 "개정된 안 푼 문제" 집계(없으면 null)
       let chaptersInSubj = '';
       subj.chapters.forEach(key=>{
         const s = chapterStats(key);
@@ -2383,6 +2424,7 @@
         const weakN = weakCount(key);
         const reviewN = reviewOnlyCount(key);
         const masteredN = masteredCount(key);
+        const updInfo = chapterUpdateInfo(key); // 🆕 이 챕터의 "개정된 안 푼 문제" 집계(없으면 null)
         const hasError = !!state.remoteErrors[key];
         const num = chapterNumber(key); // 전체 순번(1~13)
         const toc = getChapterToc(key);
@@ -2425,6 +2467,7 @@
                 ${done? `<span class="chapter-badge">✓ 완료</span>` : ''}
                 ${weakN>0? `<button class="weak-btn" data-key="${key}" style="font-size:10.5px;font-weight:700;color:var(--seal);background:var(--seal-tint);border:1px solid #E9C2BC;border-radius:999px;padding:3px 9px;">🔴 취약 ${weakN}</button>` : ''}
                 ${reviewN>0? `<button class="review-btn" data-key="${key}" style="font-size:10.5px;font-weight:700;color:var(--gold-text);background:var(--gold-tint);border:1px solid var(--gold-border);border-radius:999px;padding:3px 9px;">🟡 복습 ${reviewN}</button>` : ''}
+                ${updInfo? `<button class="updated-btn" data-key="${key}" style="font-size:10.5px;font-weight:700;color:#0B6B8C;background:#E4F3F8;border:1px solid #B9DEE9;border-radius:999px;padding:3px 9px;">🆕 ${escapeHtml(updInfo.latestRev||'')} · ${updInfo.count}문제</button>` : ''}
               </div>
               ${hasError? `<div style="margin-top:7px;font-size:10.5px;color:var(--wrong);">⚠ 시트 연동 실패 — 내장 문제로 표시 중</div>` : ''}
               ${tocInlineHtml}
@@ -2437,6 +2480,10 @@
             <span class="title">${escapeHtml(subj.title)}</span>
             <span class="cnt">${subjAnswered}/${subjTotal}</span>
           </div>
+          ${subjUpdInfo? `<button class="subject-updated-btn" data-subj-idx="${subjIdx}" style="display:flex;align-items:center;justify-content:space-between;width:100%;font-size:11px;font-weight:700;color:#0B6B8C;background:#E4F3F8;border:1px solid #B9DEE9;border-radius:8px;padding:5px 10px;margin-bottom:8px;">
+            <span>🆕 ${escapeHtml(subjUpdInfo.latestRev||'')} · 안 푼 문제 ${subjUpdInfo.count}개</span>
+            <span style="text-decoration:underline;">바로가기 →</span>
+          </button>` : ''}
           <div class="home-subject-progress"><div style="width:${subjPct}%"></div></div>
           <div class="home-subject-chapters">${chaptersInSubj}</div>
         </div>`;
@@ -2594,6 +2641,26 @@
     document.querySelectorAll('.review-btn').forEach(el=>{
       el.onclick = (e)=>{ e.stopPropagation(); state.globalWeakReview = false; state.globalReviewOnlyReview = false; startReviewOnlyReview(el.dataset.key); };
     });
+    document.querySelectorAll('.updated-btn').forEach(el=>{
+      // 챕터별 단독 바로가기이므로, 남아있을 수 있는 전체세션 플래그(과목별 개정 업데이트 포함)를
+      // 모두 꺼서 이 챕터만 정상적으로 풀고 완료 화면을 보게 한다(다른 4개 버튼과 동일한 방어 패턴).
+      el.onclick = (e)=>{
+        e.stopPropagation();
+        state.globalWeakReview = false;
+        state.globalReviewOnlyReview = false;
+        state.globalWeakNumReview = false;
+        state.globalNumReview = false;
+        state.globalUpdatedReview = false;
+        startUpdatedReview(el.dataset.key);
+      };
+    });
+    document.querySelectorAll('.subject-updated-btn').forEach(el=>{
+      el.onclick = (e)=>{
+        e.stopPropagation();
+        const subj = META.subjects[Number(el.dataset.subjIdx)];
+        if(subj) startGlobalUpdatedReview(subj);
+      };
+    });
     document.querySelectorAll('.expand-btn').forEach(el=>{
       el.onclick = (e)=>{
         e.stopPropagation();
@@ -2699,6 +2766,7 @@
     state.globalWeakReview = false;
     state.globalWeakNumReview = false;
     state.globalNumReview = false;
+    state.globalUpdatedReview = false;
     state.globalReviewOnlyReview = true;
     state.globalReviewOnlyQueue = queue;
     state.globalReviewOnlyQueueIndex = 0;
@@ -2731,6 +2799,7 @@
     state.globalReviewOnlyReview = false;
     state.globalWeakNumReview = false;
     state.globalNumReview = false;
+    state.globalUpdatedReview = false;
     state.globalWeakReview = true;
     state.globalWeakQueue = queue;
     state.globalWeakQueueIndex = 0;
@@ -2795,6 +2864,7 @@
     state.globalWeakReview = false;
     state.globalReviewOnlyReview = false;
     state.globalWeakNumReview = false;
+    state.globalUpdatedReview = false;
     const key = nextNumChapterKey();
     if(key){
       state.globalNumReview = true;
@@ -2834,6 +2904,7 @@
     state.globalWeakReview = false;
     state.globalReviewOnlyReview = false;
     state.globalNumReview = false;
+    state.globalUpdatedReview = false;
     state.globalWeakNumReview = true;
     state.globalWeakNumQueue = queue;
     state.globalWeakNumQueueIndex = 0;
@@ -2848,6 +2919,38 @@
   }
   function globalWeakNumTotalCount(){
     return (state.globalWeakNumCounts || []).reduce((a, b) => a + b, 0);
+  }
+
+  // 🆕 챕터별 "개정 업데이트" 바로가기: 이 챕터 안의 "개정일자 있고 아직 안 푼" 문제만 모아 연다.
+  // 이미 다 정상 답변 취급이라(취약형이 아님) 재도전 게이트 없이 일반 학습처럼 바로 저장된다.
+  function startUpdatedReview(key){
+    const idxs = updatedUnansweredIndicesOf(key);
+    if(!idxs.length) return;
+    openChapter(key, true, idxs, 'updated');
+  }
+  // 🆕 과목별 "개정 업데이트" 바로가기: 그 과목에 속한 챕터들 중 개정 문제가 있는 것만 큐에 담아
+  // 순서대로 이어간다(다른 전체 세션들과 동일한 패턴).
+  function startGlobalUpdatedReview(subj){
+    const queue = (subj.chapters || []).filter(k => chapterUpdateInfo(k));
+    if(!queue.length) return;
+    // 다른 전체 세션과 동시에 진행 중이면 완료 시점에 엉뚱한 세션으로 이어질 수 있으므로 정리한다.
+    state.globalWeakReview = false;
+    state.globalReviewOnlyReview = false;
+    state.globalNumReview = false;
+    state.globalWeakNumReview = false;
+    state.globalUpdatedReview = true;
+    state.globalUpdatedQueue = queue;
+    state.globalUpdatedQueueIndex = 0;
+    state.globalUpdatedCounts = queue.map(k => chapterUpdateInfo(k).count);
+    startUpdatedReview(queue[0]);
+  }
+  function globalUpdatedPrecedingCount(){
+    let sum = 0;
+    for(let i=0; i<state.globalUpdatedQueueIndex; i++) sum += (state.globalUpdatedCounts[i] || 0);
+    return sum;
+  }
+  function globalUpdatedTotalCount(){
+    return (state.globalUpdatedCounts || []).reduce((a, b) => a + b, 0);
   }
 
   // 챕터 안에서 특정 세부항목(category1) 또는 세세항목(category2)에 해당하는 문제만 골라 이어서 풀도록 연다.
@@ -2928,26 +3031,31 @@
     const isGlobalWrongSession = isWrongSession && state.globalWeakReview;
     const isGlobalReviewOnlySession = isWrongSession && state.globalReviewOnlyReview;
     const isGlobalWeakNumSession = isWeakNumSession && state.globalWeakNumReview;
+    const isUpdatedSession = state.filterKind === 'updated';
+    const isGlobalUpdatedSession = isUpdatedSession && state.globalUpdatedReview;
     const globalPos = isNumSession? numPrecedingCount(key) + pos
       : (isGlobalWrongSession? globalWeakPrecedingCount() + pos
       : (isGlobalReviewOnlySession? globalReviewOnlyPrecedingCount() + pos
-      : (isGlobalWeakNumSession? globalWeakNumPrecedingCount() + pos : pos)));
+      : (isGlobalWeakNumSession? globalWeakNumPrecedingCount() + pos
+      : (isGlobalUpdatedSession? globalUpdatedPrecedingCount() + pos : pos))));
     const globalTotal = isNumSession? totalNumCount()
       : (isGlobalWrongSession? globalWeakTotalCount()
       : (isGlobalReviewOnlySession? globalReviewOnlyTotalCount()
-      : (isGlobalWeakNumSession? globalWeakNumTotalCount() : total)));
+      : (isGlobalWeakNumSession? globalWeakNumTotalCount()
+      : (isGlobalUpdatedSession? globalUpdatedTotalCount() : total))));
     // "학습 완료"/"단원 완료" 버튼은 이 세션 전체의 마지막 문제일 때만 보여야 한다. 일반 세션은 이
     // 챕터 안에서의 마지막(pos===total-1)이 곧 세션의 마지막이지만, "전체 취약 문제 복습"/
-    // "복습 다시풀기"/"숫자 취약만"은 여러 챕터를 끊김 없이 이어서 보여주므로 챕터별 마지막이 아니라
-    // 전체 목록 기준 마지막(globalPos===globalTotal-1)이어야 한다 - 안 그러면 챕터가 바뀔 때마다
-    // "다음 문제" 대신 매번 "학습 완료"가 떠버린다.
-    const isLast = (isGlobalWrongSession || isGlobalReviewOnlySession || isGlobalWeakNumSession) ? (globalPos === globalTotal - 1) : (pos === total - 1);
+    // "복습 다시풀기"/"숫자 취약만"/"개정 업데이트(과목별)"는 여러 챕터를 끊김 없이 이어서 보여주므로
+    // 챕터별 마지막이 아니라 전체 목록 기준 마지막(globalPos===globalTotal-1)이어야 한다 - 안 그러면
+    // 챕터가 바뀔 때마다 "다음 문제" 대신 매번 "학습 완료"가 떠버린다.
+    const isLast = (isGlobalWrongSession || isGlobalReviewOnlySession || isGlobalWeakNumSession || isGlobalUpdatedSession) ? (globalPos === globalTotal - 1) : (pos === total - 1);
     // "이전" 버튼 비활성화 여부 계산용 - 지금 챕터의 첫 문제(pos===0)라도, "전체" 세션에서 이전
     // 챕터로 넘어갈 수 있으면(goPrev 참고) 비활성화하면 안 된다.
     const hasPrevChapter = (isNumSession && !!prevNumChapterKey(key))
       || (isGlobalWrongSession && state.globalWeakQueueIndex > 0)
       || (isGlobalReviewOnlySession && state.globalReviewOnlyQueueIndex > 0)
-      || (isGlobalWeakNumSession && state.globalWeakNumQueueIndex > 0);
+      || (isGlobalWeakNumSession && state.globalWeakNumQueueIndex > 0)
+      || (isGlobalUpdatedSession && state.globalUpdatedQueueIndex > 0);
     const streak = masteryStreak(key, idx);
     // 이 문제를 지금까지 몇 번 풀었는지(누적). 해설 시트 하단 통계("총 N회 풀이")에 쓰인다.
     const storedReviewCount = (state.questionReviewCounts[key] && state.questionReviewCounts[key][idx]) || 0;
@@ -3089,7 +3197,7 @@
           render();
           return;
         }
-        if((isWrongSession && state.globalWeakReview) || (isWrongSession && state.globalReviewOnlyReview) || (isWeakNumSession && state.globalWeakNumReview)){
+        if((isWrongSession && state.globalWeakReview) || (isWrongSession && state.globalReviewOnlyReview) || (isWeakNumSession && state.globalWeakNumReview) || (state.filterKind==='updated' && state.globalUpdatedReview)){
           // "전체 취약 문제 N개 복습하기" / "숫자 뽀개기.zip · 취약만"은 NUM 모아풀기(⚡ 숫자
           // 뽀개기.zip · 전체)와 마찬가지로 전체를 한 번에 이어서 푸는 게 목적이므로, 챕터
           // 경계마다 "단원 완료" 화면을 보여주고 사용자가 직접 다음으로 넘겨야 하게 만들면
@@ -3249,6 +3357,25 @@
         }
       }
       return; // 전체 숫자 취약만 목록의 첫 문제 - 더 갈 곳 없음
+    }
+    if(state.filterKind === 'updated' && state.globalUpdatedReview && pos <= 0){
+      if(state.globalUpdatedQueueIndex > 0){
+        const prevKey = state.globalUpdatedQueue[state.globalUpdatedQueueIndex - 1];
+        const prevIdxs = updatedUnansweredIndicesOf(prevKey);
+        if(prevIdxs.length){
+          state.globalUpdatedQueueIndex--;
+          state.chapter = prevKey;
+          state.filterIndices = prevIdxs;
+          state.filterKind = 'updated';
+          const lastIdx = prevIdxs[prevIdxs.length - 1];
+          state.index = lastIdx;
+          state.sheetOpen = window.innerWidth >= 820 && !!(state.progress[prevKey] && state.progress[prevKey][lastIdx]); // 개정 업데이트는 취약형이 아니라 일반 문제 취급이므로 NUM과 동일하게 처리
+          saveProgress();
+          render();
+          return;
+        }
+      }
+      return; // 전체 개정 업데이트 목록의 첫 문제 - 더 갈 곳 없음
     }
     goto(pos - 1);
   }
@@ -3477,6 +3604,23 @@
       state.globalReviewOnlyQueue = [];
       alert('🎉 복습 문제를 모두 마쳤습니다!');
     }
+    if(state.globalUpdatedReview){
+      // globalWeakReview 분기와 동일한 패턴: 큐를 한 칸씩 전진하며, 그 사이 이미 다 풀어버린
+      // (chapterUpdateInfo가 null인) 챕터는 건너뛰고 다음 챕터를 찾는다.
+      let nextKey = null;
+      while(state.globalUpdatedQueueIndex + 1 < state.globalUpdatedQueue.length){
+        state.globalUpdatedQueueIndex++;
+        const cand = state.globalUpdatedQueue[state.globalUpdatedQueueIndex];
+        if(chapterUpdateInfo(cand)){ nextKey = cand; break; }
+      }
+      if(nextKey){
+        startUpdatedReview(nextKey); // 기존 startUpdatedReview 로직 그대로 재사용
+        return;
+      }
+      state.globalUpdatedReview = false;
+      state.globalUpdatedQueue = [];
+      alert('🎉 이번 개정 업데이트 문제를 모두 확인했습니다!');
+    }
     state.view = 'home';
     render();
   }
@@ -3534,7 +3678,7 @@
           render();
           return;
         }
-        if((isWrongSession && state.globalWeakReview) || (isWrongSession && state.globalReviewOnlyReview) || (isWeakNumSession && state.globalWeakNumReview)){
+        if((isWrongSession && state.globalWeakReview) || (isWrongSession && state.globalReviewOnlyReview) || (isWeakNumSession && state.globalWeakNumReview) || (state.filterKind==='updated' && state.globalUpdatedReview)){
           goHomeOrContinueGlobalReview();
           return;
         }
@@ -3576,7 +3720,7 @@
           render();
           return;
         }
-        if((isWrongSession && state.globalWeakReview) || (isWrongSession && state.globalReviewOnlyReview) || (isWeakNumSession && state.globalWeakNumReview)){
+        if((isWrongSession && state.globalWeakReview) || (isWrongSession && state.globalReviewOnlyReview) || (isWeakNumSession && state.globalWeakNumReview) || (state.filterKind==='updated' && state.globalUpdatedReview)){
           // goToNextUnanswered()와 동일하게, "전체 취약 문제 복습" / "숫자 취약만"은 완료 화면 없이
           // 바로 다음 챕터로 이어간다(마우스 클릭 경로와 동작을 통일).
           goHomeOrContinueGlobalReview();
