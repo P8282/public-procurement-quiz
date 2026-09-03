@@ -1174,6 +1174,12 @@
     if(!count) return null;
     return { count, latestRev };
   }
+  // "260830" 같은 YYMMDD 개정일자를 화면 배지용 "0830"(월일만)으로 잘라준다.
+  // 형식이 예상과 다르면(자리수가 6이 아니면) 안전하게 원본 그대로 보여준다.
+  function formatRevMMDD(rev){
+    if(!rev) return '';
+    return rev.length===6 ? rev.slice(2) : rev;
+  }
 
   // 임시 테스트용 "Temp" 시트를 불러온다. 정식 챕터들의 QUIZ 객체와는 완전히 분리된 별도 변수(TEMP_QUIZ)에 담아서,
   // 진행률/오답노트/전체 문항수 통계 등 정식 데이터 흐름에 전혀 섞이지 않게 한다.
@@ -2484,7 +2490,7 @@
                 ${done? `<span class="chapter-badge">✓ 완료</span>` : ''}
                 ${weakN>0? `<button class="weak-btn" data-key="${key}" style="font-size:10.5px;font-weight:700;color:var(--seal);background:var(--seal-tint);border:1px solid #E9C2BC;border-radius:999px;padding:3px 9px;">🔴 취약 ${weakN}</button>` : ''}
                 ${reviewN>0? `<button class="review-btn" data-key="${key}" style="font-size:10.5px;font-weight:700;color:var(--gold-text);background:var(--gold-tint);border:1px solid var(--gold-border);border-radius:999px;padding:3px 9px;">🟡 복습 ${reviewN}</button>` : ''}
-                ${updInfo? `<button class="updated-btn" data-key="${key}" style="font-size:10.5px;font-weight:700;color:#0B6B8C;background:#E4F3F8;border:1px solid #B9DEE9;border-radius:999px;padding:3px 9px;">🆕 ${escapeHtml(updInfo.latestRev||'')} · ${updInfo.count}문제</button>` : ''}
+                ${updInfo? `<button class="updated-btn" data-key="${key}" style="font-size:10.5px;font-weight:700;color:#0B6B8C;background:#E4F3F8;border:1px solid #B9DEE9;border-radius:999px;padding:3px 9px;">🆕 New ${escapeHtml(formatRevMMDD(updInfo.latestRev))} · ${updInfo.count}개</button>` : ''}
               </div>
               ${hasError? `<div style="margin-top:7px;font-size:10.5px;color:var(--wrong);">⚠ 시트 연동 실패 — 내장 문제로 표시 중</div>` : ''}
               ${tocInlineHtml}
@@ -2498,7 +2504,7 @@
             <span class="cnt">${subjAnswered}/${subjTotal}</span>
           </div>
           ${subjUpdInfo? `<button class="subject-updated-btn" data-subj-idx="${subjIdx}" style="display:flex;align-items:center;justify-content:space-between;width:100%;font-size:11px;font-weight:700;color:#0B6B8C;background:#E4F3F8;border:1px solid #B9DEE9;border-radius:8px;padding:5px 10px;margin-bottom:8px;">
-            <span>🆕 ${escapeHtml(subjUpdInfo.latestRev||'')} · 안 푼 문제 ${subjUpdInfo.count}개</span>
+            <span>🆕 New ${escapeHtml(formatRevMMDD(subjUpdInfo.latestRev))} · ${subjUpdInfo.count}개</span>
             <span style="text-decoration:underline;">바로가기 →</span>
           </button>` : ''}
           <div class="home-subject-progress"><div style="width:${subjPct}%"></div></div>
