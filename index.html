@@ -689,20 +689,31 @@
       display:grid; grid-template-columns:1fr auto; align-items:center; gap:28px;
       padding:22px 44px 15px;
     }
-    .home-hero-left{ text-align:left; }
+    .home-hero-left{ align-self:center; text-align:left; }
     .home-hero-left h1{ font-size:27px; }
     .home-hero-left .exam-schedule{ justify-content:flex-start; margin-left:0; }
     .home-hero-left .btn-primary{ width:auto; padding:15px 34px; }
     /* 아이패드 가로/PC는 화면이 넓어 모바일과 같은 크기면 상대적으로 작아 보이므로 한 단계 더 키운다. */
     .dday-badge{ font-size:15px; padding:5px 14px; }
     .home-hero-right{
-      display:flex; flex-direction:column; align-items:flex-end; gap:2px; flex-shrink:0;
+      display:flex; flex-direction:column; align-items:flex-end; align-self:center; gap:2px; flex-shrink:0;
     }
     .home-hero-right .big-pct{ font-family:'Noto Serif KR',serif; font-size:42px; font-weight:900; color:var(--navy); line-height:1; }
     .home-hero-right .big-pct-label{ font-size:11.5px; color:var(--ink-soft); font-weight:700; }
     .home-hero-right .big-total{ font-size:12.5px; color:var(--ink-soft); margin-top:6px; }
     .home-hero-right .big-today{ font-size:11px; color:var(--navy); font-weight:700; margin-top:4px; padding-top:6px; border-top:1px solid var(--line); }
     .home-hero .cover-facts{ display:none; } /* 큰 퍼센트(home-hero-right)로 대체 */
+    /* PC는 "오늘 학습" 카드가 화면 폭 전체를 그대로 늘려 써서 내용 대비 여백이 과도해 보이는
+       문제가 있었다(신고된 버그). "빠른 학습" 카드와 리듬을 맞추기 위해, 감싸는 큰 카드를 없애고
+       4칸을 각각 빠른 학습과 동일한 테두리 박스로 분리한다 - 두 섹션이 폭 기준으로 자연스럽게
+       이어져 보이고, 빈 여백도 각 칸의 테두리가 시각적 경계를 잡아줘서 덜 휑해 보인다. */
+    .home-today-card{ background:none; border:none; padding:0; }
+    .home-today-title{ padding:0 2px; }
+    .home-today-row{ gap:10px; }
+    .home-today-row .stat{
+      background:var(--card); border:1.4px solid var(--line); border-radius:13px;
+      padding:16px 10px; box-shadow:var(--shadow);
+    }
 
     /* 태블릿 가로 전용: 과목 카드 길이가 서로 크게 다르면(예: 1과목만 유독 김) grid의 "같은 행은
        무조건 같은 높이" 특성 때문에 옆 칸(2과목)이 강제로 늘어나고, 그 아래 3과목 이하가 전부
