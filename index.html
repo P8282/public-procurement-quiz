@@ -1118,26 +1118,30 @@
     if(changed){ saveProgress(); saveWrongMastery(); }
   }
 
-  // 이 챕터 안에서 "개정일자(rev)가 찍혀있고 + 아직 한 번도 안 푼" 문제들의 인덱스.
-  // (이미 답한 문제는 invalidateChangedAnswers()가 이미 알아서 처리하므로 여기 대상이 아니다 -
-  //  둘이 겹치지 않게: 이 함수는 순수하게 "아직 안 건드린 신규/개정 문제"만 다룬다.)
+  // 이 챕터 안에서 "개정일자(rev)가 찍혀있고 + 지금 개정판을 아직 안 푼" 문제들의 인덱스.
+  // "안 푼"의 기준: 한 번도 안 푼 경우뿐 아니라, 예전에 답했지만 그때의 개정일자(rec.rev)가
+  // 지금 개정일자(rev)와 다른 경우도 포함한다. invalidateChangedAnswers()가 이런 문제를 결국
+  // "안 푼 것"으로 되돌려주긴 하지만, 그건 그 챕터의 문제 본문을 실제로 다시 받아와야만(그 챕터를
+  // 열어봐야만) 실행된다 - 그래서 rec.rev 비교를 여기서 직접 하면, 챕터를 안 열어봐도(메타데이터만
+  // 으로도) "예전에 풀었는데 그 뒤 개정된 문제"까지 정확히 잡아낼 수 있다(신고된 버그: "안 뜨는데" -
+  // 이미 답했던 문제가 개정된 경우가 누락되고 있었음).
   // numIndicesOf()와 동일한 패턴: Cloudflare 모드에서는 문제 본문을 안 받아도 되는 /meta의
-  // revs(챕터별 개정일자 배열)로 판단한다 - 안 그러면 아직 한 번도 안 열어본 챕터는 문제 본문
-  // 자체가 없어서(QUIZ[key]가 비어있음) 개정 여부를 전혀 알 수 없어 홈 화면 배지가 대부분
-  // 안 뜨는 문제가 있었다(신고된 버그: "안 뜨는데"). 그 외(구글시트/내장 데이터)에서는 기존처럼
-  // QUIZ[key] 항목에 직접 담긴 rev로 판단한다.
+  // revs(챕터별 개정일자 배열)로 판단한다. 그 외(구글시트/내장 데이터)에서는 QUIZ[key] 항목에
+  // 직접 담긴 rev로 판단한다.
   function updatedUnansweredIndicesOf(key){
     const out = [];
     if(cfEnabled() && CF_META[key]){
       (CF_META[key].revs || []).forEach((rev, i)=>{
         if(!rev) return;
-        if(state.progress[key] && state.progress[key][i]) return; // 이미 답함 - 대상 아님
+        const rec = state.progress[key] && state.progress[key][i];
+        if(rec && rec.rev === rev) return; // 이미 이 개정판 그대로 정상 답변함 - 대상 아님
         out.push(i);
       });
     } else {
       (QUIZ[key] || []).forEach((q, i)=>{
         if(!q || !q.rev) return;
-        if(state.progress[key] && state.progress[key][i]) return;
+        const rec = state.progress[key] && state.progress[key][i];
+        if(rec && rec.rev === q.rev) return;
         out.push(i);
       });
     }
