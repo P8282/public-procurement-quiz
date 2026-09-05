@@ -378,6 +378,32 @@
     margin-top:16px; font-size:11.5px; color:var(--ink-soft); white-space:nowrap;
   }
 
+  /* ---------- 🔍 키워드로 문제 찾기 (태그 검색, 온라인) ---------- */
+  .search-wrap{ padding:16px 18px 40px; }
+  .search-input{
+    width:100%; padding:13px 14px; border:1.4px solid var(--line-strong); border-radius:11px;
+    font-size:15px; box-sizing:border-box; margin-bottom:12px; background:var(--card); color:var(--ink);
+  }
+  .search-input:focus{ outline:none; border-color:var(--navy); }
+  .search-status{ font-size:12.5px; color:var(--ink-soft); margin-bottom:10px; line-height:1.6; }
+  .search-toolbar{
+    display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; gap:10px;
+  }
+  .search-toolbar .count{ font-size:12.5px; color:var(--ink-soft); }
+  .search-result-card{
+    background:var(--card); border:1px solid var(--line); border-radius:12px;
+    padding:13px 14px; margin-bottom:10px; cursor:pointer; transition:box-shadow .15s ease, border-color .15s ease;
+  }
+  .search-result-card:hover{ border-color:var(--navy); box-shadow:var(--shadow); }
+  .search-result-card .meta{ font-size:11px; color:var(--ink-soft); margin-bottom:6px; }
+  .search-result-card .tags{ display:flex; flex-wrap:wrap; gap:6px; }
+  .tag-chip{
+    display:inline-flex; align-items:center; font-size:12px; font-weight:600; color:var(--ink-soft);
+    background:var(--paper-deep); border:1px solid var(--line-strong); border-radius:999px; padding:4px 10px;
+  }
+  .tag-chip.match{ color:var(--seal); background:var(--seal-tint); border-color:var(--seal); font-weight:700; }
+  .search-empty{ text-align:center; color:var(--ink-soft); font-size:13px; padding:36px 0; line-height:1.7; }
+
   .keyhint{ text-align:center; font-size:10.5px; color:var(--ink-soft); margin-top:12px; letter-spacing:.02em; }
 
   /* ---------- 해설 하단 시트 ---------- */
@@ -864,6 +890,11 @@
   //   GET {CF_API_BASE}/meta?code={동기화코드}
   //     -> { "1-1_공공조달개요": { count: 119, categories: [["세부1","세세1"], ["세부1","세세2"], ...] }, ... }
   //        (문제 내용 없이 "개수"와 "인덱스별 세부/세세항목"만 - 목차 표시용, 노출 최소화)
+  //   🔍 키워드로 문제 찾기(태그 검색)용으로 meta 응답에 tags 필드가 추가로 실려온다(하위호환 - 없으면
+  //   검색 결과가 그냥 0건으로 나올 뿐 나머지 기능엔 영향 없음):
+  //     -> { ..., tags: [["낙찰자","하자보수보증금"], ["지명경쟁"], [], ...] }
+  //        (문제/보기/해설 원문은 절대 안 실려온다 - 관리자 쪽에서 원문 기반으로 미리 뽑아둔
+  //        키워드 단어만, categories와 마찬가지로 인덱스 순서를 그대로 따르는 배열로 온다)
   //   GET {CF_API_BASE}/questions?chapter={키}&offset={N}&count={M}&code={동기화코드}
   //     -> [ {question, category1, category2, options, answer, explanation, source, rev}, ... ] (M개, 인증 필요)
   const CF_API_BASE = "https://quiz-api.puhahal.workers.dev";
@@ -1013,7 +1044,10 @@
     // 5개 단위 배치로 받으면 실제로 안 보는 이웃 문제까지 같이 받아오는 낭비가 생기고, "다음 배치" 프리페치도
     // 거의 안 맞는다. 그래서 이 세션에서는 지금 필요한 것 하나만 보지 않고, 이 세션에서 필요한 인덱스
     // 전체 중 아직 안 받은 것을 한 번에(indices 모드로) 모아서 요청한다 - 챕터당 요청을 1~2번으로 줄인다.
-    if(state.filterKind === 'wrong'){
+    // 🔍 키워드 검색 결과("모아서 풀어보기")도 취약/복습과 마찬가지로 인덱스가 챕터 안에 띄엄띄엄
+    // 흩어져 있는 경우가 흔해서, 5개 단위 배치로 받으면 실제로 안 보는 이웃 문제까지 낭비해서
+    // 받아오게 된다. 자원을 아끼기 위해 같은 최적화(indices 모드로 필요한 것만 한 번에)를 쓴다.
+    if(state.filterKind === 'wrong' || state.filterKind === 'search'){
       if(CF_LOADED[key] && CF_LOADED[key].has(index)) return;
       const needed = (state.filterIndices || [index]).filter(i => !CF_LOADED[key] || !CF_LOADED[key].has(i));
       if(!needed.length) return;
@@ -1253,7 +1287,12 @@
     storageOk: null,   // true/false/null(테스트 전) - 저장소(window.storage) 실제 동작 여부 자체진단 결과
     expandedChapter: null, // 홈 화면에서 목차(대분류>세세항목)를 카드 안에 펼쳐놓은 챕터키(일시 상태, 저장하지 않음)
     filterIndices: null, // 세세항목 등 부분 학습 세션에서 사용할 QUIZ[key] 안의 인덱스 목록(일시 상태, 저장하지 않음)
-    filterKind: null,    // 'wrong' | 'subtopic' | 'num' | 'weaknum' | null - 현재 부분 학습 세션의 종류(일시 상태, 저장하지 않음)
+    filterKind: null,    // 'wrong' | 'subtopic' | 'num' | 'weaknum' | 'search' | null - 현재 부분 학습 세션의 종류(일시 상태, 저장하지 않음)
+    searchKeyword: '',   // 🔍 키워드로 문제 찾기 검색창 입력값(일시 상태, 저장하지 않음)
+    searchResults: [],   // 위 검색의 결과 목록 [{key, idx, tags, matchedTags}, ...] (일시 상태, 저장하지 않음)
+    globalSearchReview: false, // "📖 모아서 풀어보기" 진행 여부(일시 상태, 저장하지 않음) - 챕터를 순차로 이어가는 데 사용
+    globalSearchQueue: [],     // [{key, idxs}] - 모아서 풀어보기 시작 시점의 챕터별 검색결과 인덱스 스냅샷(일시 상태)
+    globalSearchQueueIndex: 0, // 위 큐에서 지금 몇 번째 챕터를 보고 있는지(일시 상태)
     excluded: {},          // { chapterKey: { idx: true } } - 오답노트 대상에서 수동으로 뺀 문제 목록(영구 저장)
     wrongMastery: { pool: {}, streak: {} }, // pool: 한 번이라도 틀려서 오답노트 대상에 들어간 문제, streak: 그 문제의 현재 연속 정답 횟수(둘 다 영구 저장)
     globalWeakReview: false, // 메인화면 "전체 취약 문제 복습" 진입 여부(일시 상태, 저장하지 않음) - 챕터를 순차로 이어가는 데 사용
@@ -2285,6 +2324,43 @@
     return Array.from({length: (QUIZ[key]||[]).length}, (_,i)=>i);
   }
 
+  // ====== 🔍 키워드로 문제 찾기 (온라인, 태그 인덱스 검색) ======
+  // 문제 원문은 아직 안 받아온 상태에서도(챕터를 안 열어봤어도) 검색이 되어야 하므로, 매칭 대상은
+  // 원문이 아니라 앞서 받아둔 가벼운 태그 인덱스(cfLoadMeta로 이미 받아온 CF_META[key].tags)다.
+  // 원문 전문검색(admin 오프라인 빌드의 offlineSearchQuestions)과 달리, 태그로 미리 뽑히지 않은
+  // 표현은 검색에 안 걸릴 수 있다는 한계가 있다.
+  function chapterTags(key){
+    const meta = CF_META[key];
+    return (meta && meta.tags) || [];
+  }
+  // 검색어와 "태그 단어" 사이의 부분일치를 본다(태그 하나를 통째로 정확히 입력해야 하는 부담을 줄임).
+  // 예: "낙찰"만 쳐도 태그에 "낙찰자", "낙찰하한율"이 있으면 걸린다.
+  function runTagSearch(keyword){
+    const kw = (keyword || '').trim().toLowerCase();
+    if(!kw) return [];
+    const results = [];
+    allChapterKeys().forEach(key=>{
+      const tagsByIdx = chapterTags(key);
+      tagsByIdx.forEach((tagList, idx)=>{
+        if(!tagList || !tagList.length) return;
+        const matchedTags = tagList.filter(t => (t || '').toLowerCase().indexOf(kw) !== -1);
+        if(matchedTags.length) results.push({ key, idx, tags: tagList, matchedTags });
+      });
+    });
+    return results;
+  }
+  // 검색 결과를 "처음 등장한 순서" 기준으로 챕터별로 묶는다. 📖 모아서 풀어보기가 챕터를
+  // 순서대로 이어가는 데 쓰는 큐를 만드는 용도.
+  function groupSearchResultsByChapter(results){
+    const order = [];
+    const byChapter = {};
+    results.forEach(r=>{
+      if(!byChapter[r.key]){ byChapter[r.key] = []; order.push(r.key); }
+      byChapter[r.key].push(r.idx);
+    });
+    return order.map(key => ({ key, idxs: byChapter[key] }));
+  }
+
   // "이어서 학습" 카드 위치 캡션 계산용. openChapter()의 "일반 학습" 재개 로직(처음 만나는 안 푼
   // 문제를 찾는 방식)과 정확히 똑같이 계산해서, 카드에 적힌 숫자와 실제로 눌러서 들어갔을 때
   // 퀴즈 화면 우측 상단에 뜨는 숫자가 항상 일치하게 한다(전에는 "답변한 개수"를 보여줘서 순서를
@@ -2368,6 +2444,7 @@
     else if(state.view==='quiz') renderQuiz();
     else if(state.view==='complete') renderComplete();
     else if(state.view==='numComplete') renderNumComplete();
+    else if(state.view==='search') renderSearch();
     if(keepScroll) window.scrollTo(0, y);
     else window.scrollTo(0,0);
   }
@@ -2427,6 +2504,77 @@
     `;
     document.getElementById('tempPrevBtn').onclick = ()=>{ state.tempIndex = Math.max(0, i-1); render(); };
     document.getElementById('tempNextBtn').onclick = ()=>{ state.tempIndex = Math.min(total-1, i+1); render(); };
+  }
+
+  // 🔍 키워드로 문제 찾기: 태그 인덱스(CF_META[key].tags) 대상 검색. 아직 한 번도 안 열어본 챕터의
+  // 문제도(원문은 없이) 검색 대상에 포함된다 - 문제 원문을 미리 다 받아오지 않고도 "같은 주제
+  // 문제 모아보기"가 되도록 하는 게 이 기능의 핵심이다.
+  function renderSearch(){
+    app.innerHTML = `
+      <div class="topbar">
+        <div class="brand" id="searchBackBtn" style="cursor:pointer;">← 🔍 키워드로 문제 찾기</div>
+      </div>
+      <div class="search-wrap">
+        <input id="searchInput" class="search-input" type="text" value="${escapeHtml(state.searchKeyword)}"
+          placeholder="예: 낙찰, 하자보수보증금">
+        <div id="searchResultsWrap"></div>
+      </div>
+    `;
+    document.getElementById('searchBackBtn').onclick = ()=>{ state.view='home'; render(); };
+    const input = document.getElementById('searchInput');
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+    // 입력할 때마다 화면 전체(app.innerHTML)를 새로 그리면 한글 입력기(IME) 조합이 끊겨 낱자로
+    // 쪼개져 보이는 문제가 생긴다. 그래서 입력창은 한 번만 그리고, 입력할 때마다는 결과
+    // 영역(#searchResultsWrap)만 따로 갱신한다.
+    input.oninput = ()=>{
+      state.searchKeyword = input.value;
+      state.searchResults = runTagSearch(input.value);
+      renderSearchResultsOnly();
+    };
+    renderSearchResultsOnly();
+  }
+  function renderSearchResultsOnly(){
+    const wrap = document.getElementById('searchResultsWrap');
+    if(!wrap) return;
+    const kw = state.searchKeyword || '';
+    const results = state.searchResults || [];
+    const anyTagsLoaded = allChapterKeys().some(k => chapterTags(k).some(t => t && t.length));
+    if(!kw.trim()){
+      wrap.innerHTML = anyTagsLoaded
+        ? `<div class="search-empty">궁금한 키워드를 입력해보세요.<br>같은 주제를 다루는 문제를 태그로 모아드려요.</div>`
+        : `<div class="search-empty">태그 데이터가 아직 준비되지 않았습니다.<br>잠시 후 다시 시도해주세요.</div>`;
+      return;
+    }
+    if(!results.length){
+      wrap.innerHTML = `<div class="search-empty">"${escapeHtml(kw)}"에 해당하는 문제를 찾지 못했습니다.</div>`;
+      return;
+    }
+    wrap.innerHTML = `
+      <div class="search-toolbar">
+        <span class="count">${results.length}개 결과</span>
+        <button class="btn btn-primary" id="searchSolveAllBtn" style="width:auto;padding:10px 16px;font-size:13px;">📖 모아서 풀어보기</button>
+      </div>
+      ${results.map((r,i)=>`
+        <div class="search-result-card" data-i="${i}">
+          <div class="meta">${escapeHtml(chapterNameWithSubject(r.key))} · #${r.idx+1}</div>
+          <div class="tags">
+            ${r.matchedTags.map(t => `<span class="tag-chip match">${escapeHtml(t)}</span>`).join('')}
+          </div>
+        </div>
+      `).join('')}
+    `;
+    document.getElementById('searchSolveAllBtn').onclick = ()=> startGlobalSearchReview(results);
+    document.querySelectorAll('.search-result-card').forEach(el=>{
+      el.onclick = ()=>{
+        const r = results[Number(el.dataset.i)];
+        // 이 챕터에서 같이 걸린 다른 결과들도 filterIndices로 같이 넘겨, 하나를 열어도 "다음 →"으로
+        // 이 챕터 안의 나머지 검색 결과를 이어서 볼 수 있게 한다.
+        const idxsInChapter = results.filter(x => x.key === r.key).map(x => x.idx);
+        if(idxsInChapter.indexOf(r.idx) === -1) idxsInChapter.push(r.idx);
+        openChapter(r.key, true, idxsInChapter, 'search');
+      };
+    });
   }
 
   function renderHome(){
@@ -2622,6 +2770,8 @@
           </div>
         </div>
 
+        <div style="text-align:center;margin:2px 0 4px;"><button id="searchEntryBtn" style="background:none;border:none;color:var(--navy);font-size:12.5px;font-weight:700;text-decoration:underline;cursor:pointer;padding:6px;">🔍 키워드로 문제 검색</button></div>
+
         <div class="home-subjects">${subjectsHtml}</div>
 
         ${syncEnabled() && state.syncCode? `<div style="text-align:center;margin-top:14px;"><button id="myReportsBtn" style="background:none;border:none;color:var(--ink-soft);font-size:12px;text-decoration:underline;cursor:pointer;padding:6px;">🚩 내가 신고한 오류${myReportCount()>0? ` ${myReportCount()}개` : ''} 모아보기</button></div>` : ''}
@@ -2647,6 +2797,8 @@
     if(globalWeakNumBtn) globalWeakNumBtn.onclick = ()=> startGlobalWeakNumReview();
     const myReportsBtn = document.getElementById('myReportsBtn');
     if(myReportsBtn) myReportsBtn.onclick = ()=> openMyReportsModal();
+    const searchEntryBtn = document.getElementById('searchEntryBtn');
+    if(searchEntryBtn) searchEntryBtn.onclick = ()=>{ state.view='search'; render(); };
 
     const syncCopyBtn = document.getElementById('syncCopyBtn');
     if(syncCopyBtn) syncCopyBtn.onclick = ()=>{
@@ -2781,6 +2933,41 @@
     const idxs = reviewOnlyIndices(key);
     if(!idxs.length) return;
     openChapter(key, true, idxs, 'wrong');
+  }
+
+  // 🔍 키워드 검색 결과 "모아서 풀어보기": 한 챕터 분량을 연다. weakIndices(key)처럼 다시 계산하지
+  // 않고 검색 시점에 고정해둔 idxs를 그대로 쓴다(검색은 매번 새로 실행하는 게 아니라 그 순간의
+  // 스냅샷이므로, 재계산할 대상 자체가 없다).
+  function startSearchReview(key, idxs){
+    if(!idxs || !idxs.length) return;
+    openChapter(key, true, idxs, 'search');
+  }
+  // 검색 결과 목록에서 "📖 모아서 풀어보기"를 눌렀을 때 진입점. 챕터별로 묶은 큐를 순서대로 이어간다
+  // (goHomeOrContinueGlobalReview 참고). 다른 전체 세션과 동일한 패턴 - 시작할 때 나머지 플래그를 끈다.
+  function startGlobalSearchReview(results){
+    const queue = groupSearchResultsByChapter(results);
+    if(!queue.length) return;
+    state.globalWeakReview = false;
+    state.globalReviewOnlyReview = false;
+    state.globalWeakNumReview = false;
+    state.globalNumReview = false;
+    state.globalUpdatedReview = false;
+    state.globalSearchReview = true;
+    state.globalSearchQueue = queue;
+    state.globalSearchQueueIndex = 0;
+    startSearchReview(queue[0].key, queue[0].idxs);
+  }
+  // globalWeakPrecedingCount/globalWeakTotalCount와 동일한 역할, "🔍 키워드로 문제 찾기 → 모아서
+  // 풀어보기" 전용. weakCount(key)처럼 다시 계산하지 않고, 검색 시점에 챕터별로 고정해둔
+  // idxs.length(state.globalSearchQueue)를 그대로 합산한다 - 검색 결과는 그 순간의 스냅샷이라
+  // "지금 다시 세면 몇 개인지"가 아니라 "그때 몇 개였는지"가 진행률 표시의 기준이 되어야 한다.
+  function globalSearchPrecedingCount(){
+    let sum = 0;
+    for(let i=0; i<state.globalSearchQueueIndex; i++) sum += (state.globalSearchQueue[i] ? state.globalSearchQueue[i].idxs.length : 0);
+    return sum;
+  }
+  function globalSearchTotalCount(){
+    return (state.globalSearchQueue || []).reduce((a, entry) => a + (entry ? entry.idxs.length : 0), 0);
   }
 
   // 전체 13개 챕터에 걸친 취약 문제 총 개수(메인화면 "전체 취약 문제 복습" UI에 표시).
@@ -3073,29 +3260,37 @@
     const isGlobalWeakNumSession = isWeakNumSession && state.globalWeakNumReview;
     const isUpdatedSession = state.filterKind === 'updated';
     const isGlobalUpdatedSession = isUpdatedSession && state.globalUpdatedReview;
+    // "🔍 키워드로 문제 찾기 → 모아서 풀어보기"도 위 전체 세션들과 동일한 패턴: 챕터가 바뀌어도
+    // "검색 결과 전체 목록 안에서 몇 번째"를 이어서 보여준다(그렇지 않으면 챕터가 바뀔 때마다
+    // 분모가 "이 챕터에서 걸린 개수"로 작아 보여 "전체 결과 수"가 아니게 된다).
+    const isGlobalSearchSession = state.filterKind === 'search' && state.globalSearchReview;
     const globalPos = isNumSession? numPrecedingCount(key) + pos
       : (isGlobalWrongSession? globalWeakPrecedingCount() + pos
       : (isGlobalReviewOnlySession? globalReviewOnlyPrecedingCount() + pos
       : (isGlobalWeakNumSession? globalWeakNumPrecedingCount() + pos
-      : (isGlobalUpdatedSession? globalUpdatedPrecedingCount() + pos : pos))));
+      : (isGlobalUpdatedSession? globalUpdatedPrecedingCount() + pos
+      : (isGlobalSearchSession? globalSearchPrecedingCount() + pos : pos)))));
     const globalTotal = isNumSession? totalNumCount()
       : (isGlobalWrongSession? globalWeakTotalCount()
       : (isGlobalReviewOnlySession? globalReviewOnlyTotalCount()
       : (isGlobalWeakNumSession? globalWeakNumTotalCount()
-      : (isGlobalUpdatedSession? globalUpdatedTotalCount() : total))));
+      : (isGlobalUpdatedSession? globalUpdatedTotalCount()
+      : (isGlobalSearchSession? globalSearchTotalCount() : total)))));
     // "학습 완료"/"단원 완료" 버튼은 이 세션 전체의 마지막 문제일 때만 보여야 한다. 일반 세션은 이
     // 챕터 안에서의 마지막(pos===total-1)이 곧 세션의 마지막이지만, "전체 취약 문제 복습"/
-    // "복습 다시풀기"/"숫자 취약만"/"개정 업데이트(과목별)"는 여러 챕터를 끊김 없이 이어서 보여주므로
-    // 챕터별 마지막이 아니라 전체 목록 기준 마지막(globalPos===globalTotal-1)이어야 한다 - 안 그러면
-    // 챕터가 바뀔 때마다 "다음 문제" 대신 매번 "학습 완료"가 떠버린다.
-    const isLast = (isGlobalWrongSession || isGlobalReviewOnlySession || isGlobalWeakNumSession || isGlobalUpdatedSession) ? (globalPos === globalTotal - 1) : (pos === total - 1);
+    // "복습 다시풀기"/"숫자 취약만"/"개정 업데이트(과목별)"/"검색 결과 모아서 풀어보기"는 여러
+    // 챕터를 끊김 없이 이어서 보여주므로 챕터별 마지막이 아니라 전체 목록 기준 마지막
+    // (globalPos===globalTotal-1)이어야 한다 - 안 그러면 챕터가 바뀔 때마다 "다음 문제" 대신
+    // 매번 "학습 완료"가 떠버린다.
+    const isLast = (isGlobalWrongSession || isGlobalReviewOnlySession || isGlobalWeakNumSession || isGlobalUpdatedSession || isGlobalSearchSession) ? (globalPos === globalTotal - 1) : (pos === total - 1);
     // "이전" 버튼 비활성화 여부 계산용 - 지금 챕터의 첫 문제(pos===0)라도, "전체" 세션에서 이전
     // 챕터로 넘어갈 수 있으면(goPrev 참고) 비활성화하면 안 된다.
     const hasPrevChapter = (isNumSession && !!prevNumChapterKey(key))
       || (isGlobalWrongSession && state.globalWeakQueueIndex > 0)
       || (isGlobalReviewOnlySession && state.globalReviewOnlyQueueIndex > 0)
       || (isGlobalWeakNumSession && state.globalWeakNumQueueIndex > 0)
-      || (isGlobalUpdatedSession && state.globalUpdatedQueueIndex > 0);
+      || (isGlobalUpdatedSession && state.globalUpdatedQueueIndex > 0)
+      || (isGlobalSearchSession && state.globalSearchQueueIndex > 0);
     const streak = masteryStreak(key, idx);
     // 이 문제를 지금까지 몇 번 풀었는지(누적). 해설 시트 하단 통계("총 N회 풀이")에 쓰인다.
     const storedReviewCount = (state.questionReviewCounts[key] && state.questionReviewCounts[key][idx]) || 0;
@@ -3237,7 +3432,7 @@
           render();
           return;
         }
-        if((isWrongSession && state.globalWeakReview) || (isWrongSession && state.globalReviewOnlyReview) || (isWeakNumSession && state.globalWeakNumReview) || (state.filterKind==='updated' && state.globalUpdatedReview)){
+        if((isWrongSession && state.globalWeakReview) || (isWrongSession && state.globalReviewOnlyReview) || (isWeakNumSession && state.globalWeakNumReview) || (state.filterKind==='updated' && state.globalUpdatedReview) || (state.filterKind==='search' && state.globalSearchReview)){
           // "전체 취약 문제 N개 복습하기" / "숫자 뽀개기.zip · 취약만"은 NUM 모아풀기(⚡ 숫자
           // 뽀개기.zip · 전체)와 마찬가지로 전체를 한 번에 이어서 푸는 게 목적이므로, 챕터
           // 경계마다 "단원 완료" 화면을 보여주고 사용자가 직접 다음으로 넘겨야 하게 만들면
@@ -3416,6 +3611,23 @@
         }
       }
       return; // 전체 개정 업데이트 목록의 첫 문제 - 더 갈 곳 없음
+    }
+    if(state.filterKind === 'search' && state.globalSearchReview && pos <= 0){
+      if(state.globalSearchQueueIndex > 0){
+        const prevEntry = state.globalSearchQueue[state.globalSearchQueueIndex - 1];
+        if(prevEntry && prevEntry.idxs.length){
+          state.globalSearchQueueIndex--;
+          state.chapter = prevEntry.key;
+          state.filterIndices = prevEntry.idxs;
+          state.filterKind = 'search';
+          state.index = prevEntry.idxs[prevEntry.idxs.length - 1];
+          state.sheetOpen = false;
+          saveProgress();
+          render();
+          return;
+        }
+      }
+      return; // 검색 결과 목록의 첫 문제 - 더 갈 곳 없음
     }
     goto(pos - 1);
   }
@@ -3661,6 +3873,22 @@
       state.globalUpdatedQueue = [];
       alert('🎉 이번 개정 업데이트 문제를 모두 확인했습니다!');
     }
+    if(state.globalSearchReview){
+      // 검색 결과는 그 순간의 스냅샷이라(weakCount처럼 "아직 남아있는지" 다시 계산할 게 없음),
+      // 건너뛰기 없이 큐를 그냥 한 칸씩 전진한다.
+      if(state.globalSearchQueueIndex + 1 < state.globalSearchQueue.length){
+        state.globalSearchQueueIndex++;
+        const next = state.globalSearchQueue[state.globalSearchQueueIndex];
+        startSearchReview(next.key, next.idxs);
+        return;
+      }
+      state.globalSearchReview = false;
+      state.globalSearchQueue = [];
+      alert('🎉 검색 결과 문제를 모두 풀었습니다!');
+      state.view = 'search';
+      render();
+      return;
+    }
     state.view = 'home';
     render();
   }
@@ -3718,7 +3946,7 @@
           render();
           return;
         }
-        if((isWrongSession && state.globalWeakReview) || (isWrongSession && state.globalReviewOnlyReview) || (isWeakNumSession && state.globalWeakNumReview) || (state.filterKind==='updated' && state.globalUpdatedReview)){
+        if((isWrongSession && state.globalWeakReview) || (isWrongSession && state.globalReviewOnlyReview) || (isWeakNumSession && state.globalWeakNumReview) || (state.filterKind==='updated' && state.globalUpdatedReview) || (state.filterKind==='search' && state.globalSearchReview)){
           goHomeOrContinueGlobalReview();
           return;
         }
@@ -3760,7 +3988,7 @@
           render();
           return;
         }
-        if((isWrongSession && state.globalWeakReview) || (isWrongSession && state.globalReviewOnlyReview) || (isWeakNumSession && state.globalWeakNumReview) || (state.filterKind==='updated' && state.globalUpdatedReview)){
+        if((isWrongSession && state.globalWeakReview) || (isWrongSession && state.globalReviewOnlyReview) || (isWeakNumSession && state.globalWeakNumReview) || (state.filterKind==='updated' && state.globalUpdatedReview) || (state.filterKind==='search' && state.globalSearchReview)){
           // goToNextUnanswered()와 동일하게, "전체 취약 문제 복습" / "숫자 취약만"은 완료 화면 없이
           // 바로 다음 챕터로 이어간다(마우스 클릭 경로와 동작을 통일).
           goHomeOrContinueGlobalReview();
