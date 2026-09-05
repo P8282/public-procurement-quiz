@@ -2972,6 +2972,13 @@
     state.globalWeakNumReview = false;
     state.globalNumReview = false;
     state.globalUpdatedReview = false;
+    // "모아서 풀어보기"를 누르는 이 시점에 목록 전체(지금 열 첫 챕터뿐 아니라 나중에 이어질 챕터
+    // 것까지 전부)의 "오늘 이미 답했음" 표시를 한 번에 지운다. openChapter도 챕터에 들어갈 때마다
+    // 그 챕터 몫을 똑같이 지우긴 하지만(re-entry 대비 이중 안전장치), 여기서 버튼을 누르는 즉시
+    // 목록 전체를 지워둬야 "다시 모아서 풀어보기를 눌러도 예전에 풀었던 게 그대로 잠겨있다"는
+    // 상황이 생길 여지가 없다(신고된 버그: "다시 모아서 풀어보기로 초기화가 안 됨").
+    results.forEach(r => state.reviewAnsweredKeys.delete(r.key + ':' + r.idx));
+    saveReviewAnswered();
     state.globalSearchReview = true;
     state.globalSearchQueue = queue;
     state.globalSearchQueueIndex = 0;
