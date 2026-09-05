@@ -2891,6 +2891,25 @@
     // 풀 수 있게 한다(신고사항: "이미 풀었던 문제일지라도 1번부터 다시 풀기").
     const isWeakLikeSession = state.filterKind === 'wrong' || state.filterKind === 'weaknum' || state.filterKind === 'search';
     if(resume){
+      // 🔍 키워드로 문제 찾기 결과는 매번 새로 모은 임시 목록이라, 취약/복습처럼 "오늘 어디까지
+      // 풀었는지"를 기준으로 이어서 시작하지 않는다 - 예전에(심지어 오늘) 이미 풀었던 문제가
+      // 섞여 있어도 항상 목록 1번부터 순서대로 보여준다(신고사항: "풀었던 문제도 1번부터
+      // 순차적으로 풀기").
+      if(state.filterKind === 'search'){
+        // "1번부터 순차적으로"가 순서만이 아니라 실제 재풀이가 되려면, 이 문제들이 "오늘 이미
+        // 검색으로 답했음" 표시(isReviewAnsweredToday)까지 지워야 한다 - 안 그러면 순서는
+        // 1번으로 가더라도 화면엔 정답/오답이 이미 표시된 잠긴 상태로 보여서 다시 고를 수 없다.
+        // (참고: 뒤로/앞으로 이동해서 같은 세션 안에서 방금 답한 문제로 돌아가는 경우는 openChapter를
+        // 다시 안 거치므로 - goPrev/goto 참고 - 방금 고른 답은 그대로 유지된다.)
+        indices.forEach(i => state.reviewAnsweredKeys.delete(key + ':' + i));
+        saveReviewAnswered();
+        state.index = indices[0];
+        state.view = 'quiz';
+        state.sheetOpen = false;
+        saveProgress();
+        render();
+        return;
+      }
       let pos = 0;
       let allDoneToday = true; // 취약형 세션에서만 의미 있음(아래 참고)
       for(let p=0; p<indices.length; p++){
