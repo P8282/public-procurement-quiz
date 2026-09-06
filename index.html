@@ -2335,16 +2335,21 @@
   }
   // 검색어와 "태그 단어" 사이의 부분일치를 본다(태그 하나를 통째로 정확히 입력해야 하는 부담을 줄임).
   // 예: "낙찰"만 쳐도 태그에 "낙찰자", "낙찰하한율"이 있으면 걸린다.
+  // 공백으로 여러 단어를 입력하면 AND로 본다 - 입력한 단어 전부가 (각자 어떤 태그에든) 부분일치로
+  // 걸려야 결과에 포함시킨다(예: "낙찰 하자보수" → 두 단어 모두와 관련 있는 문제만).
   function runTagSearch(keyword){
-    const kw = (keyword || '').trim().toLowerCase();
-    if(!kw) return [];
+    const terms = (keyword || '').trim().toLowerCase().split(/\s+/).filter(Boolean);
+    if(!terms.length) return [];
     const results = [];
     allChapterKeys().forEach(key=>{
       const tagsByIdx = chapterTags(key);
       tagsByIdx.forEach((tagList, idx)=>{
         if(!tagList || !tagList.length) return;
-        const matchedTags = tagList.filter(t => (t || '').toLowerCase().indexOf(kw) !== -1);
-        if(matchedTags.length) results.push({ key, idx, tags: tagList, matchedTags });
+        const lowerTags = tagList.map(t => (t || '').toLowerCase());
+        const allTermsMatch = terms.every(term => lowerTags.some(t => t.indexOf(term) !== -1));
+        if(!allTermsMatch) return;
+        const matchedTags = tagList.filter((t, i) => terms.some(term => lowerTags[i].indexOf(term) !== -1));
+        results.push({ key, idx, tags: tagList, matchedTags });
       });
     });
     return results;
@@ -2516,7 +2521,7 @@
       </div>
       <div class="search-wrap">
         <input id="searchInput" class="search-input" type="text" value="${escapeHtml(state.searchKeyword)}"
-          placeholder="예: 낙찰, 하자보수보증금">
+          placeholder="예: 낙찰 하자보수 (띄어쓰면 둘 다 포함된 문제)">
         <div id="searchResultsWrap"></div>
       </div>
     `;
