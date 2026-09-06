@@ -365,6 +365,18 @@
   .feedback .fb-source{ margin-top:11px; font-size:12.5px; color:var(--ink-soft); border-top:1px dashed var(--line-strong); padding-top:9px; }
 
   .nav-row{ display:flex; gap:10px; margin-top:22px; }
+  /* Temp 미리보기 화면 전용: 모바일에서는 문제/해설이 길면 이전·다음 버튼을 누르려고 매번
+     스크롤을 내려야 하는 불편이 있어(신고된 사항), 화면 하단에 고정한다. 그만큼 본문이 버튼에
+     가리지 않도록 wrap 하단에 여백을 더한다(아래 max-width:767px 블록에서 처리). */
+  @media (max-width:767px){
+    .temp-nav-row{
+      position:fixed; left:0; right:0; bottom:0; z-index:40; margin-top:0;
+      padding:10px 16px calc(10px + env(safe-area-inset-bottom));
+      background:var(--paper); border-top:1.4px solid var(--line-strong);
+      box-shadow:0 -4px 14px -6px rgba(27,42,71,.15);
+    }
+    .temp-quiz-wrap{ padding-bottom:76px; } /* 하단 고정 바(temp-nav-row)에 마지막 내용이 안 가리도록 */
+  }
   .nav-btn{
     flex:1; background:var(--card); border:1.4px solid var(--line-strong); border-radius:10px;
     padding:15px; font-size:15px; font-weight:700; color:var(--navy); cursor:pointer;
@@ -2476,7 +2488,7 @@
         </div>
         <div class="progress-bar-top"><div style="width:${(i)/total*100}%"></div></div>
       </div>
-      <div class="quiz-wrap">
+      <div class="quiz-wrap temp-quiz-wrap">
         <div class="quiz-head">
           <div class="crumb"><b>${escapeHtml(q.category1||'')}</b><br>${escapeHtml(q.category2||'')}</div>
         </div>
@@ -2500,7 +2512,7 @@
               </div>
             </div>
           </div>
-          <div class="nav-row">
+          <div class="nav-row temp-nav-row">
             <button class="nav-btn" id="tempPrevBtn" ${i===0?'disabled':''}>← 이전</button>
             <button class="nav-btn primary" id="tempNextBtn" ${i===total-1?'disabled':''}>다음 →</button>
           </div>
