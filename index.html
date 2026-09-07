@@ -1204,6 +1204,21 @@
     }
     return out;
   }
+  // 특정 문제가 "지금 개정판 기준으로" 이미 정상 답변됐는지 - saved 여부 판정용. 예전 개정판 때
+  // 답한 기록(state.progress에는 남아있음)은 여기선 "아직 안 풀림"으로 본다 - 그래야 "Update
+  // 바로가기"로 열었을 때, 예전 기록 때문에 옵션이 잠긴 상태로 보이지 않고 실제로 다시 고를 수
+  // 있다(updatedUnansweredIndicesOf와 동일한 rev 비교 기준을 그대로 재사용).
+  function isUpdatedRevResolved(key, idx){
+    const rec = state.progress[key] && state.progress[key][idx];
+    if(!rec) return false;
+    if(cfEnabled() && CF_META[key]){
+      const rev = (CF_META[key].revs || [])[idx];
+      return !rev || rec.rev === rev;
+    }
+    const q = QUIZ[key] && QUIZ[key][idx];
+    const rev = q && q.rev;
+    return !rev || rec.rev === rev;
+  }
   // 챕터 단위 집계: { count, latestRev } 또는 없으면 null. rev는 "260830" 같은 YYMMDD 문자열이라
   // 자리수가 같으면 문자열 비교만으로도 날짜 순서가 정확히 맞는다. 개정일자 자체도 문제 본문 없이
   // CF_META[key].revs에서 바로 읽는다(updatedUnansweredIndicesOf와 동일한 이유).
@@ -2948,6 +2963,20 @@
         render();
         return;
       }
+      if(state.filterKind === 'updated'){
+        // "🆕 Update 바로가기"도 검색과 동일하게 항상 1번부터 보여준다. updatedUnansweredIndicesOf가
+        // 골라준 목록은 전부 "이 개정판을 아직 안 푼" 문제들인데, 그중 일부는 예전 개정판 때 이미
+        // 답했던 적이 있어서(state.progress에 기록이 남아있어서) 일반 진행 기록 기준 "이미 풀림"으로
+        // 오판되어 맨 뒤로 건너뛰어버리는 문제가 있었다(신고사항: "1번부터 풀기"). saved 여부는
+        // isUpdatedRevResolved()가 별도로 "이 개정판 기준으로" 다시 판단하므로, 여기서는 위치만
+        // 항상 0으로 고정한다.
+        state.index = indices[0];
+        state.view = 'quiz';
+        state.sheetOpen = false;
+        saveProgress();
+        render();
+        return;
+      }
       let pos = 0;
       let allDoneToday = true; // 취약형 세션에서만 의미 있음(아래 참고)
       for(let p=0; p<indices.length; p++){
@@ -3324,7 +3353,9 @@
     // 빼서 오답노트 대상 세션(취약/복습/숫자취약만)에서만 보이게 분리한다.
     const showsMasteryUi = isWrongSession || isWeakNumSession;
     const rawAnswered = state.progress[key] && state.progress[key][idx];
-    const saved = isWeakLikeSession ? (isReviewAnsweredToday(key, idx) ? rawAnswered : null) : rawAnswered;
+    const saved = isWeakLikeSession
+      ? (isReviewAnsweredToday(key, idx) ? rawAnswered : null)
+      : (state.filterKind === 'updated' ? (isUpdatedRevResolved(key, idx) ? rawAnswered : null) : rawAnswered);
     // NUM 모아풀기 / "전체 취약 문제 복습" / "숫자 취약만"은 모두 챕터가 바뀌어도 전체를 하나로
     // 이어서 보여준다(진행률·회차 표시용). pos/total은 "이 챕터 안에서의" 위치이고,
     // 아래 두 값은 "전체 목록 안에서의" 위치다.
@@ -4011,7 +4042,9 @@
     // saved를 판단해야 한다. 이 처리가 없으면 옛날 정답 기록 때문에 숫자키(1~4)로 답을 다시 고를
     // 수 없게 굳어버린다.
     const rawAnswered = state.progress[key] && state.progress[key][idx];
-    const saved = isWeakLikeSession ? (isReviewAnsweredToday(key, idx) ? rawAnswered : null) : rawAnswered;
+    const saved = isWeakLikeSession
+      ? (isReviewAnsweredToday(key, idx) ? rawAnswered : null)
+      : (state.filterKind === 'updated' ? (isUpdatedRevResolved(key, idx) ? rawAnswered : null) : rawAnswered);
     if(['1','2','3','4'].includes(e.key) && !saved){
       selectAnswer(Number(e.key)-1);
     } else if(e.key==='Escape' && state.sheetOpen){
