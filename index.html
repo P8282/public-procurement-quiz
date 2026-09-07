@@ -2876,7 +2876,7 @@
         state.globalReviewOnlyReview = false;
         state.globalWeakNumReview = false;
         state.globalNumReview = false;
-        state.globalUpdatedReview = false;
+        state.globalUpdatedReview = false; state.globalUpdatedSubj = null;
         startUpdatedReview(el.dataset.key);
       };
     });
@@ -3009,7 +3009,7 @@
     state.globalReviewOnlyReview = false;
     state.globalWeakNumReview = false;
     state.globalNumReview = false;
-    state.globalUpdatedReview = false;
+    state.globalUpdatedReview = false; state.globalUpdatedSubj = null;
     // "모아서 풀어보기"를 누르는 이 시점에 목록 전체(지금 열 첫 챕터뿐 아니라 나중에 이어질 챕터
     // 것까지 전부)의 "오늘 이미 답했음" 표시를 한 번에 지운다. openChapter도 챕터에 들어갈 때마다
     // 그 챕터 몫을 똑같이 지우긴 하지만(re-entry 대비 이중 안전장치), 여기서 버튼을 누르는 즉시
@@ -3057,7 +3057,7 @@
     state.globalWeakReview = false;
     state.globalWeakNumReview = false;
     state.globalNumReview = false;
-    state.globalUpdatedReview = false;
+    state.globalUpdatedReview = false; state.globalUpdatedSubj = null;
     state.globalReviewOnlyReview = true;
     state.globalReviewOnlyQueue = queue;
     state.globalReviewOnlyQueueIndex = 0;
@@ -3090,7 +3090,7 @@
     state.globalReviewOnlyReview = false;
     state.globalWeakNumReview = false;
     state.globalNumReview = false;
-    state.globalUpdatedReview = false;
+    state.globalUpdatedReview = false; state.globalUpdatedSubj = null;
     state.globalWeakReview = true;
     state.globalWeakQueue = queue;
     state.globalWeakQueueIndex = 0;
@@ -3155,7 +3155,7 @@
     state.globalWeakReview = false;
     state.globalReviewOnlyReview = false;
     state.globalWeakNumReview = false;
-    state.globalUpdatedReview = false;
+    state.globalUpdatedReview = false; state.globalUpdatedSubj = null;
     const key = nextNumChapterKey();
     if(key){
       state.globalNumReview = true;
@@ -3195,7 +3195,7 @@
     state.globalWeakReview = false;
     state.globalReviewOnlyReview = false;
     state.globalNumReview = false;
-    state.globalUpdatedReview = false;
+    state.globalUpdatedReview = false; state.globalUpdatedSubj = null;
     state.globalWeakNumReview = true;
     state.globalWeakNumQueue = queue;
     state.globalWeakNumQueueIndex = 0;
@@ -3230,6 +3230,7 @@
     state.globalNumReview = false;
     state.globalWeakNumReview = false;
     state.globalUpdatedReview = true;
+    state.globalUpdatedSubj = subj; // 큐를 다 돌았을 때 과목 전체를 다시 훑기 위해 보관(아래 goHomeOrContinueGlobalReview 참고)
     state.globalUpdatedQueue = queue;
     state.globalUpdatedQueueIndex = 0;
     state.globalUpdatedCounts = queue.map(k => chapterUpdateInfo(k).count);
@@ -3937,11 +3938,24 @@
         const cand = state.globalUpdatedQueue[state.globalUpdatedQueueIndex];
         if(chapterUpdateInfo(cand)){ nextKey = cand; break; }
       }
+      // 큐를 끝까지 다 돌았는데도 다음 챕터를 못 찾았다면, 바로 "완료"로 끝내지 않고 과목 전체를
+      // 한 번 더 처음부터 새로 훑는다. 큐는 세션 시작 시점에 한 번 고정한 목록이라, 그 사이(다른
+      // 챕터를 푸는 도중) 놓친 챕터가 있어도 여기서 다시 정확하게 잡아낸다(신고된 버그: "모든
+      // 문제를 보여주지 않고 바로가기를 반복해서 눌러야 함").
+      if(!nextKey && state.globalUpdatedSubj){
+        const freshQueue = (state.globalUpdatedSubj.chapters || []).filter(k => chapterUpdateInfo(k));
+        if(freshQueue.length){
+          nextKey = freshQueue[0];
+          state.globalUpdatedQueue = freshQueue;
+          state.globalUpdatedQueueIndex = 0;
+          state.globalUpdatedCounts = freshQueue.map(k => chapterUpdateInfo(k).count);
+        }
+      }
       if(nextKey){
         startUpdatedReview(nextKey); // 기존 startUpdatedReview 로직 그대로 재사용
         return;
       }
-      state.globalUpdatedReview = false;
+      state.globalUpdatedReview = false; state.globalUpdatedSubj = null;
       state.globalUpdatedQueue = [];
       alert('🎉 이번 개정 업데이트 문제를 모두 확인했습니다!');
     }
