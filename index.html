@@ -1139,10 +1139,18 @@
   function isDeletedQuestion(q){ return !!q && isDeletedCategoryName(q.category2); }
 
   // 전체 챕터를 통틀어 "삭제된 문제"(e-발주시스템 활용) 총 개수. 홈 화면 상단 "삭제 N문제" 배지용.
+  // 🚩 챕터를 아직 한 번도 안 열어본 상태(QUIZ[key]가 구멍 뚫린 빈 배열)에서도 정확히 세야 하므로,
+  // Cloudflare 모드에서는 문제 본문을 안 받아도 되는 가벼운 CF_META[key].categories(분류 메타데이터)로
+  // 판단한다(getChapterToc/numIndicesOf와 동일한 패턴). 그 외(구글시트/내장 데이터)에서는
+  // QUIZ[key]에 이미 다 들어있는 문제 항목을 직접 훑는다.
   function totalDeletedCount(){
     let n = 0;
     allChapterKeys().forEach(k=>{
-      (QUIZ[k] || []).forEach(q=>{ if(isDeletedQuestion(q)) n++; });
+      if(cfEnabled() && CF_META[k]){
+        (CF_META[k].categories || []).forEach(cats=>{ if(isDeletedCategoryName(cats[1])) n++; });
+      } else {
+        (QUIZ[k] || []).forEach(q=>{ if(isDeletedQuestion(q)) n++; });
+      }
     });
     return n;
   }
