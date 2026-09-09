@@ -3425,7 +3425,11 @@
       alert('이 항목은 아직 등록된 문제가 없습니다.\n출제기준에는 있지만 아직 문제가 추가되지 않은 상태예요.');
       return;
     }
-    openChapter(key, true, indices, 'subtopic'); // resume=true: 이 항목 안에서 이미 푼 문제는 건너뛰고 이어서 시작
+    // "e-발주시스템 활용"(삭제된 문제) 세세항목은 항상 1번부터 보여준다(신고사항: "삭제된 문제
+    // 보기는 항상 1번부터 보기"). 이 항목의 문제는 진입과 동시에 자동으로 deleted:true 처리되어
+    // 있어서, 일반 resume=true로 열면 "이미 풀림"으로 판정돼 다음(안 풀린) 문제로 건너뛰어버린다.
+    const alwaysFromStart = isDeletedCategoryName(topicName);
+    openChapter(key, !alwaysFromStart, indices, 'subtopic'); // resume=true: 이 항목 안에서 이미 푼 문제는 건너뛰고 이어서 시작(삭제 항목은 예외)
   }
 
   // 퀴즈 화면에서 마지막으로 실제로 그려졌던 "챕터:인덱스" 위치. 같은 문제 안에서 일어나는
