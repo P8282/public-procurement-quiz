@@ -294,6 +294,7 @@
   .quiz-wrap{ padding:10px 18px calc(40px + env(safe-area-inset-bottom)); flex:1; }
   .quiz-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
   .quiz-head .crumb{ font-size:12px; color:var(--ink-soft); line-height:1.6; word-break:keep-all; }
+  .deleted-chip{ display:inline-flex; align-items:center; gap:4px; margin-top:6px; font-size:10.5px; font-weight:700; color:var(--seal); background:var(--seal-tint); border:1px solid #E9C2BC; border-radius:999px; padding:3px 10px; cursor:pointer; }
   .quiz-head .crumb b{ color:var(--navy); font-size:12.5px; }
   .quiz-head .qno{
     font-family:'Noto Serif KR', serif; font-weight:900; font-size:15px; color:var(--seal);
@@ -1155,9 +1156,40 @@
     return n;
   }
 
+  // "삭제된 문제"가 속한 첫 번째 챕터 키. 홈 상단 "삭제 N문제" 팝업의 "문제보기" 버튼이
+  // 어느 챕터로 스크롤/펼치기 할지 찾는 데 쓴다(totalDeletedCount와 동일한 메타/본문 판단 방식).
+  function firstDeletedChapterKey(){
+    for(const k of allChapterKeys()){
+      if(cfEnabled() && CF_META[k]){
+        if((CF_META[k].categories || []).some(cats=>isDeletedCategoryName(cats[1]))) return k;
+      } else {
+        if((QUIZ[k] || []).some(q=>isDeletedQuestion(q))) return k;
+      }
+    }
+    return null;
+  }
+
+  // 홈 화면에서 "삭제된 문제"가 속한 챕터 목차를 펼친 상태로 보여주고 그 카드로 스크롤한다.
+  // ("문제보기" 버튼 - 문제 자체를 바로 풀게 하는 게 아니라, 그 문제가 어디 있는지 목차에서
+  //  보여주는 용도라 openChapter가 아니라 홈 화면 안에서의 이동으로 처리한다)
+  function goToDeletedChapterInHome(){
+    const key = firstDeletedChapterKey();
+    if(!key) return;
+    state.view = 'home';
+    state.expandedChapter = key;
+    render();
+    setTimeout(()=>{
+      const el = document.querySelector('.chapter-card[data-key="' + key + '"]');
+      if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
+    }, 50);
+  }
+
   // "삭제된 문제" 안내 팝업. Enter/Space/Escape 또는 팝업 어디를 터치/클릭해도 닫힌다
   // (오버레이 배경, 카드, 버튼 구분 없이 클릭 이벤트가 오버레이까지 버블링되므로 리스너 하나로 처리).
-  function showDeletedNotice(){
+  // opts.showGoto가 true면(홈 화면 "삭제 N문제" 배지에서 호출) "문제보기" 버튼을 하나 더 보여준다
+  // (문제풀이 화면 상단 칩에서 호출할 때는 이미 그 문제 안에 있으므로 필요 없음).
+  function showDeletedNotice(opts){
+    opts = opts || {};
     if(document.getElementById('deletedNoticeOverlay')) return;
     state.deletedNoticeOpen = true;
     const overlay = document.createElement('div');
@@ -1167,12 +1199,21 @@
       <div style="background:var(--card);border-radius:16px;max-width:320px;width:100%;padding:26px 22px;text-align:center;box-shadow:var(--shadow);border:1px solid var(--gold-border);">
         <div style="font-size:26px;margin-bottom:10px;">🗑️</div>
         <div style="font-family:'Noto Serif KR',serif;font-weight:900;font-size:15px;color:var(--seal);margin-bottom:10px;">출제기준 제외 안내</div>
-        <div style="font-size:13.5px;line-height:1.65;color:var(--ink);margin-bottom:18px;">e-발주시스템은 차세대 나라장터에 통합되어 출제기준에서 제외됩니다.<br>(한국산업인력공단에 민원 제기)</div>
+        <div style="font-size:13.5px;line-height:1.65;color:var(--ink);margin-bottom:18px;"><b style="color:var(--seal);">e-발주시스템</b>은 차세대 나라장터에 통합되어 출제기준에서 제외됩니다.<br>(한국산업인력공단에 민원 제기)</div>
+        ${opts.showGoto? `<button class="btn btn-ghost" id="deletedNoticeGotoBtn" style="width:100%;margin-bottom:8px;">문제보기</button>` : ''}
         <button class="btn btn-primary" id="deletedNoticeCloseBtn" style="width:100%;">확인</button>
       </div>
     `;
     document.body.appendChild(overlay);
     overlay.addEventListener('click', closeDeletedNotice);
+    if(opts.showGoto){
+      const gotoBtn = document.getElementById('deletedNoticeGotoBtn');
+      if(gotoBtn) gotoBtn.onclick = (e)=>{
+        e.stopPropagation();
+        closeDeletedNotice();
+        goToDeletedChapterInHome();
+      };
+    }
   }
   function closeDeletedNotice(){
     state.deletedNoticeOpen = false;
@@ -2921,9 +2962,9 @@
     // 홈 상단 "삭제 N문제" 배지(PC: home-hero-right / 모바일: cover-facts) - 누르면 문제풀이 화면과
     // 동일한 안내 팝업을 띄운다.
     const deletedBadgePc = document.getElementById('deletedCountBadgePc');
-    if(deletedBadgePc) deletedBadgePc.onclick = ()=> showDeletedNotice();
+    if(deletedBadgePc) deletedBadgePc.onclick = ()=> showDeletedNotice({showGoto:true});
     const deletedBadgeMobile = document.getElementById('deletedCountBadgeMobile');
-    if(deletedBadgeMobile) deletedBadgeMobile.onclick = ()=> showDeletedNotice();
+    if(deletedBadgeMobile) deletedBadgeMobile.onclick = ()=> showDeletedNotice({showGoto:true});
     const globalWeakBtn = document.getElementById('globalWeakBtn');
     if(globalWeakBtn) globalWeakBtn.onclick = ()=> startGlobalWeakReview();
     const globalReviewBtn = document.getElementById('globalReviewBtn');
@@ -3439,9 +3480,10 @@
       // saved가 항상 truthy라) 사용자가 "닫고 보기"를 눌러도 다음 렌더에서 다시 강제로 열려버려
       // 시트가 절대 안 닫히는 버그가 된다(특히 모바일에서 하단 시트가 화면을 계속 덮어 고장난
       // 것처럼 보임 - 신고된 버그).
+      // 자동 팝업은 없앴다(상단 "출제기준 제외" 칩을 눌러야만 안내가 뜨는 방식으로 변경 - 신고된
+      // 피드백: 자동 팝업이 화면을 가려 부담스럽다). 해설 자동 노출 여부(PC/태블릿만)는 그대로 유지.
       if(enteredNewQuestion){
-        state.sheetOpen = window.innerWidth >= 820; // PC/태블릿만 해설 자동 노출, 모바일은 팝업만
-        state.pendingDeletedNotice = true; // app.innerHTML 반영 뒤 팝업을 띄우기 위한 표시
+        state.sheetOpen = window.innerWidth >= 820; // PC/태블릿만 해설 자동 노출, 모바일은 정답만 하이라이트
       }
     }
 
@@ -3582,7 +3624,7 @@
       </div>
       <div class="quiz-wrap">
         <div class="quiz-head">
-          <div class="crumb">${statusBadgeHtml}<b>${escapeHtml(tocLabels.group)}</b><br>${escapeHtml(tocLabels.sub)}</div>
+          <div class="crumb">${statusBadgeHtml}<b>${escapeHtml(tocLabels.group)}</b><br>${escapeHtml(tocLabels.sub)}${qDeleted? `<br><span class="deleted-chip" id="deletedChip">🗑️ 출제기준 제외</span>` : ''}</div>
           <div class="qno">${globalPos+1} / ${globalTotal}</div>
         </div>
         ${showsMasteryUi? `
@@ -3615,12 +3657,9 @@
       </div>
     `;
 
-    if(state.pendingDeletedNotice){
-      state.pendingDeletedNotice = false;
-      showDeletedNotice();
-    }
-
     document.getElementById('quizTopbar').onclick = ()=>{ state.view='home'; saveProgress(); render(); };
+    const deletedChip = document.getElementById('deletedChip');
+    if(deletedChip) deletedChip.onclick = (e)=>{ e.stopPropagation(); showDeletedNotice(); };
 
     document.getElementById('prevBtn').onclick = ()=> goPrev();
 
