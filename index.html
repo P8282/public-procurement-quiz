@@ -145,6 +145,9 @@
   .cover-facts div{ text-align:center; }
   .cover-facts b{ display:block; font-family:'Noto Serif KR',serif; font-size:20px; color:var(--navy); font-weight:900; }
   .cover-facts span{ font-size:10.5px; color:var(--ink-soft); }
+  .cover-facts .deleted-fact{ cursor:pointer; }
+  .cover-facts .deleted-fact b{ color:var(--seal); }
+  .cover-facts .deleted-fact span{ color:var(--seal); font-weight:700; }
 
   /* ==== 홈 화면 hero 전용 여백 압축 ====
      .hero는 비밀번호/초대코드 화면과 공유하는 클래스라 그 자체는 건드리지 않고,
@@ -740,6 +743,7 @@
     .home-hero-right .big-pct-label{ font-size:11.5px; color:var(--ink-soft); font-weight:700; }
     .home-hero-right .big-total{ font-size:12.5px; color:var(--ink-soft); margin-top:6px; }
     .home-hero-right .big-today{ font-size:11px; color:var(--navy); font-weight:700; margin-top:4px; padding-top:6px; border-top:1px solid var(--line); }
+    .home-hero-right .deleted-badge{ display:inline-flex; align-items:center; gap:4px; margin-top:8px; font-size:10.5px; font-weight:700; color:var(--seal); background:var(--seal-tint); border:1px solid #E9C2BC; border-radius:999px; padding:3px 10px; cursor:pointer; }
     .home-hero .cover-facts{ display:none; } /* 큰 퍼센트(home-hero-right)로 대체 */
     /* PC는 "오늘 학습" 카드가 화면 폭 전체를 그대로 늘려 써서 내용 대비 여백이 과도해 보이는
        문제가 있었다(신고된 버그). "빠른 학습" 카드와 리듬을 맞추기 위해, 감싸는 큰 카드를 없애고
@@ -1133,6 +1137,15 @@
   function stripCategoryNumber(s){ return (s || '').trim().replace(/^\d+\.\s*/, ''); }
   function isDeletedCategoryName(name){ return stripCategoryNumber(name) === DELETED_CATEGORY_NAME; }
   function isDeletedQuestion(q){ return !!q && isDeletedCategoryName(q.category2); }
+
+  // 전체 챕터를 통틀어 "삭제된 문제"(e-발주시스템 활용) 총 개수. 홈 화면 상단 "삭제 N문제" 배지용.
+  function totalDeletedCount(){
+    let n = 0;
+    allChapterKeys().forEach(k=>{
+      (QUIZ[k] || []).forEach(q=>{ if(isDeletedQuestion(q)) n++; });
+    });
+    return n;
+  }
 
   // "삭제된 문제" 안내 팝업. Enter/Space/Escape 또는 팝업 어디를 터치/클릭해도 닫힌다
   // (오버레이 배경, 카드, 버튼 구분 없이 클릭 이벤트가 오버레이까지 버블링되므로 리스너 하나로 처리).
@@ -2678,6 +2691,7 @@
   function renderHome(){
     const os = overallStats();
     const overallPct = os.total? Math.round(os.answered/os.total*100) : 0;
+    const deletedTotal = totalDeletedCount();
     const totalWeak = totalWeakCount();
     const totalReviewOnly = totalReviewOnlyCount();
     const totalNum = totalNumCount();
@@ -2822,11 +2836,13 @@
             <div class="big-pct-label">전체 학습률</div>
             <div class="big-total">${formatNum(os.total)}문제</div>
             <div class="big-today">오늘 ${formatNum(todayN)}문제 학습</div>
+            ${deletedTotal>0? `<span class="deleted-badge" id="deletedCountBadgePc">🗑️ 삭제 ${formatNum(deletedTotal)}문제</span>` : ''}
           </div>
           <div class="cover-facts">
             <div><b>${formatNum(os.total)}</b><span>전체 문제</span></div>
             <div><b>${formatNum(os.answered)}</b><span>풀이 완료</span></div>
             <div><b>${formatNum(todayN)}</b><span>오늘 학습</span></div>
+            ${deletedTotal>0? `<div class="deleted-fact" id="deletedCountBadgeMobile"><b>${formatNum(deletedTotal)}</b><span>🗑️ 삭제</span></div>` : ''}
           </div>
         </div>
 
@@ -2894,6 +2910,12 @@
       openChapter(key, true);
     };
     document.getElementById('resumeBtn2').onclick = goResume; // "빠른 학습" 카드 - hero의 이어서 풀기 버튼은 삭제되어 이게 유일한 진입점
+    // 홈 상단 "삭제 N문제" 배지(PC: home-hero-right / 모바일: cover-facts) - 누르면 문제풀이 화면과
+    // 동일한 안내 팝업을 띄운다.
+    const deletedBadgePc = document.getElementById('deletedCountBadgePc');
+    if(deletedBadgePc) deletedBadgePc.onclick = ()=> showDeletedNotice();
+    const deletedBadgeMobile = document.getElementById('deletedCountBadgeMobile');
+    if(deletedBadgeMobile) deletedBadgeMobile.onclick = ()=> showDeletedNotice();
     const globalWeakBtn = document.getElementById('globalWeakBtn');
     if(globalWeakBtn) globalWeakBtn.onclick = ()=> startGlobalWeakReview();
     const globalReviewBtn = document.getElementById('globalReviewBtn');
