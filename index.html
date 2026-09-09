@@ -110,19 +110,16 @@
   .hero h1 em{ font-style:normal; color:var(--seal); }
 
   .exam-schedule{
-    display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap; justify-content:center;
+    display:inline-flex; align-items:center; gap:9px; flex-wrap:wrap; justify-content:center;
     background:rgba(27,42,71,.07); border:1.4px solid rgba(27,42,71,.18); border-radius:999px;
-    padding:7px 14px; margin:0 0 18px; font-size:11.5px; font-weight:700; color:var(--navy);
+    padding:8px 16px; margin:0 0 18px; font-size:12.5px; font-weight:700; color:var(--navy);
   }
   .exam-schedule b{ font-weight:900; }
-  .exam-schedule-item{ display:inline-flex; align-items:center; gap:5px; white-space:nowrap; }
   .dday-badge{
-    background:#1D3154; color:#fff; font-weight:600; font-size:12px;
-    border-radius:999px; padding:3px 10px; letter-spacing:.01em; border:none;
+    background:var(--navy); color:#F5F1E7; font-weight:900; font-size:13px;
+    border-radius:999px; padding:4px 12px; letter-spacing:.02em;
   }
   .dday-badge.urgent{ background:var(--seal-deep); }
-  .dday-badge.active{ background:var(--correct); } /* 접수중 - 지금 진행 중인 상태를 초록으로 강조 */
-  .dday-badge.gold{ background:#A97818; color:#fff; } /* 원서접수 예정 D-day - muted gold */
   .exam-schedule .divider{ width:1px; height:11px; background:rgba(27,42,71,.22); flex-shrink:0; }
 
   .hero p.sub{ color:var(--ink-soft); font-size:14px; line-height:1.6; margin:0 auto 22px; max-width:340px; }
@@ -145,17 +142,6 @@
   .cover-facts div{ text-align:center; }
   .cover-facts b{ display:block; font-family:'Noto Serif KR',serif; font-size:20px; color:var(--navy); font-weight:900; }
   .cover-facts span{ font-size:10.5px; color:var(--ink-soft); }
-
-  /* ==== 홈 화면 hero 전용 여백 압축 ====
-     .hero는 비밀번호/초대코드 화면과 공유하는 클래스라 그 자체는 건드리지 않고,
-     .home-hero가 같이 붙어있을 때(홈 화면일 때)만 적용되도록 범위를 좁힌다.
-     글자 크기는 그대로 두고 상하 패딩/마진만 줄여서, 브랜드 느낌(제목 존재감,
-     시험 일정, D-day, 통계)은 그대로 유지하면서 "빠른 학습" 영역이 더 빨리 보이게 한다. */
-  .hero.home-hero{ padding:27px 24px 18px; }
-  .home-hero .kicker{ margin-bottom:7px; }
-  .home-hero h1{ margin:0 0 9px; }
-  .home-hero .exam-schedule{ padding:6px 16px; margin:0 0 13px; }
-  .home-hero .cover-facts{ margin-bottom:20px; }
 
   .btn{
     appearance:none; border:none; cursor:pointer; font-family:'Noto Sans KR', sans-serif;
@@ -365,18 +351,6 @@
   .feedback .fb-source{ margin-top:11px; font-size:12.5px; color:var(--ink-soft); border-top:1px dashed var(--line-strong); padding-top:9px; }
 
   .nav-row{ display:flex; gap:10px; margin-top:22px; }
-  /* Temp 미리보기 화면 전용: 모바일에서는 문제/해설이 길면 이전·다음 버튼을 누르려고 매번
-     스크롤을 내려야 하는 불편이 있어(신고된 사항), 화면 하단에 고정한다. 그만큼 본문이 버튼에
-     가리지 않도록 wrap 하단에 여백을 더한다(아래 max-width:767px 블록에서 처리). */
-  @media (max-width:767px){
-    .temp-nav-row{
-      position:fixed; left:0; right:0; bottom:0; z-index:40; margin-top:0;
-      padding:10px 16px calc(10px + env(safe-area-inset-bottom));
-      background:var(--paper); border-top:1.4px solid var(--line-strong);
-      box-shadow:0 -4px 14px -6px rgba(27,42,71,.15);
-    }
-    .temp-quiz-wrap{ padding-bottom:76px; } /* 하단 고정 바(temp-nav-row)에 마지막 내용이 안 가리도록 */
-  }
   .nav-btn{
     flex:1; background:var(--card); border:1.4px solid var(--line-strong); border-radius:10px;
     padding:15px; font-size:15px; font-weight:700; color:var(--navy); cursor:pointer;
@@ -389,32 +363,6 @@
     display:flex; justify-content:space-between; align-items:center;
     margin-top:16px; font-size:11.5px; color:var(--ink-soft); white-space:nowrap;
   }
-
-  /* ---------- 🔍 키워드로 문제 찾기 (태그 검색, 온라인) ---------- */
-  .search-wrap{ padding:16px 18px 40px; }
-  .search-input{
-    width:100%; padding:13px 14px; border:1.4px solid var(--line-strong); border-radius:11px;
-    font-size:15px; box-sizing:border-box; margin-bottom:12px; background:var(--card); color:var(--ink);
-  }
-  .search-input:focus{ outline:none; border-color:var(--navy); }
-  .search-status{ font-size:12.5px; color:var(--ink-soft); margin-bottom:10px; line-height:1.6; }
-  .search-toolbar{
-    display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; gap:10px;
-  }
-  .search-toolbar .count{ font-size:12.5px; color:var(--ink-soft); }
-  .search-result-card{
-    background:var(--card); border:1px solid var(--line); border-radius:12px;
-    padding:13px 14px; margin-bottom:10px; cursor:pointer; transition:box-shadow .15s ease, border-color .15s ease;
-  }
-  .search-result-card:hover{ border-color:var(--navy); box-shadow:var(--shadow); }
-  .search-result-card .meta{ font-size:11px; color:var(--ink-soft); margin-bottom:6px; }
-  .search-result-card .tags{ display:flex; flex-wrap:wrap; gap:6px; }
-  .tag-chip{
-    display:inline-flex; align-items:center; font-size:12px; font-weight:600; color:var(--ink-soft);
-    background:var(--paper-deep); border:1px solid var(--line-strong); border-radius:999px; padding:4px 10px;
-  }
-  .tag-chip.match{ color:var(--seal); background:var(--seal-tint); border-color:var(--seal); font-weight:700; }
-  .search-empty{ text-align:center; color:var(--ink-soft); font-size:13px; padding:36px 0; line-height:1.7; }
 
   .keyhint{ text-align:center; font-size:10.5px; color:var(--ink-soft); margin-top:12px; letter-spacing:.02em; }
 
@@ -648,14 +596,13 @@
   /* ---- 오늘 학습 ---- */
   .home-today{ padding:0 18px 14px; }
   .home-today-card{
-    background:var(--card); border:1px solid var(--line); border-radius:14px; padding:13px 16px;
-    /* 빠른 학습(클릭해서 행동하는 영역)과 구분되도록, 그림자 없이 얇은 테두리만 사용해서
-       "지금 상태를 확인하는 영역"이라는 낮은 위계를 자연스럽게 나타낸다. */
+    background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px 18px;
+    box-shadow:var(--shadow);
   }
-  .home-today-title{ font-size:11px; font-weight:600; color:var(--ink-soft); margin:0 0 8px; }
+  .home-today-title{ font-size:12px; font-weight:700; color:var(--ink-soft); margin:0 0 10px; }
   .home-today-row{ display:flex; gap:14px; }
   .home-today-row .stat{ flex:1; text-align:center; }
-  .home-today-row .stat b{ display:block; font-family:'Noto Serif KR',serif; font-size:19px; font-weight:900; color:var(--navy); line-height:1; }
+  .home-today-row .stat b{ display:block; font-family:'Noto Serif KR',serif; font-size:21px; font-weight:900; color:var(--navy); line-height:1; }
   .home-today-row .stat span{ font-size:10px; color:var(--ink-soft); display:block; margin-top:4px; }
   .home-today-row .stat.weak b{ color:var(--seal); }
   .home-today-row .stat.review b{ color:var(--gold-text); }
@@ -713,7 +660,7 @@
 
   /* ==== 태블릿 세로(768px~) : 여백/카드 확대 ==== */
   @media (min-width:768px){
-    .home-hero{ padding:24px 40px 14px; }
+    .home-hero{ padding:30px 40px 18px; }
     .home-today{ padding:0 40px 18px; }
     .home-quick{ padding:0 40px 18px; }
     .home-subjects{ padding:0 40px; }
@@ -725,47 +672,30 @@
     #app{ max-width:min(1400px, 92vw); } /* 퀴즈 화면과 동일한 폭 상한(820px 규칙 재사용) */
     .home-hero{
       display:grid; grid-template-columns:1fr auto; align-items:center; gap:28px;
-      padding:22px 44px 15px;
+      padding:26px 44px 18px;
     }
-    .home-hero-left{ align-self:center; text-align:left; }
+    .home-hero-left{ text-align:left; }
     .home-hero-left h1{ font-size:27px; }
     .home-hero-left .exam-schedule{ justify-content:flex-start; margin-left:0; }
     .home-hero-left .btn-primary{ width:auto; padding:15px 34px; }
     /* 아이패드 가로/PC는 화면이 넓어 모바일과 같은 크기면 상대적으로 작아 보이므로 한 단계 더 키운다. */
     .dday-badge{ font-size:15px; padding:5px 14px; }
     .home-hero-right{
-      display:flex; flex-direction:column; align-items:flex-end; align-self:center; gap:2px; flex-shrink:0;
+      display:flex; flex-direction:column; align-items:flex-end; gap:2px; flex-shrink:0;
     }
     .home-hero-right .big-pct{ font-family:'Noto Serif KR',serif; font-size:42px; font-weight:900; color:var(--navy); line-height:1; }
     .home-hero-right .big-pct-label{ font-size:11.5px; color:var(--ink-soft); font-weight:700; }
     .home-hero-right .big-total{ font-size:12.5px; color:var(--ink-soft); margin-top:6px; }
     .home-hero-right .big-today{ font-size:11px; color:var(--navy); font-weight:700; margin-top:4px; padding-top:6px; border-top:1px solid var(--line); }
     .home-hero .cover-facts{ display:none; } /* 큰 퍼센트(home-hero-right)로 대체 */
-    /* PC는 "오늘 학습" 카드가 화면 폭 전체를 그대로 늘려 써서 내용 대비 여백이 과도해 보이는
-       문제가 있었다(신고된 버그). "빠른 학습" 카드와 리듬을 맞추기 위해, 감싸는 큰 카드를 없애고
-       4칸을 각각 빠른 학습과 동일한 테두리 박스로 분리한다 - 두 섹션이 폭 기준으로 자연스럽게
-       이어져 보이고, 빈 여백도 각 칸의 테두리가 시각적 경계를 잡아줘서 덜 휑해 보인다. */
-    .home-today-card{ background:none; border:none; padding:0; }
-    .home-today-title{ padding:0 2px; }
-    .home-today-row{ gap:10px; }
-    .home-today-row .stat{
-      background:var(--card); border:1.4px solid var(--line); border-radius:13px;
-      padding:16px 10px; box-shadow:var(--shadow);
-    }
 
     /* 태블릿 가로 전용: 과목 카드 길이가 서로 크게 다르면(예: 1과목만 유독 김) grid의 "같은 행은
        무조건 같은 높이" 특성 때문에 옆 칸(2과목)이 강제로 늘어나고, 그 아래 3과목 이하가 전부
        밀려 내려가면서 오른쪽에 거대한 빈 공간이 생기는 문제가 있었다(신고된 버그).
-       이 앱은 과목이 정확히 3개뿐이므로(1/2/3과목 고정), 자동 밸런싱형(column-count) 대신
-       "1과목은 왼쪽 전체(위아래 두 칸 차지), 2·3과목은 오른쪽에 위아래로 쌓임"을 명시적으로
-       지정한다 - 자동 밸런싱은 브라우저마다(특히 사파리) 결과가 달라져서 "1과목+2과목이 왼쪽,
-       3과목만 오른쪽"처럼 의도와 다르게 배치되는 문제가 있었다. align-items:start라서 2·3과목이
-       자기 칸보다 짧아도 억지로 안 늘어나고 그냥 위쪽에 붙는다(빈 공간이 생겨도 아래로 밀리지 않음).
-       PC(1280px+)는 아래 블록에서 3열로 되돌리며 이 명시적 위치 지정도 함께 초기화한다. */
-    .home-subjects{ display:grid; grid-template-columns:1fr 1fr; grid-auto-flow:row; align-items:start; gap:14px; }
-    .home-subjects .home-subject-card:nth-child(1){ grid-column:1; grid-row:1 / span 2; }
-    .home-subjects .home-subject-card:nth-child(2){ grid-column:2; grid-row:1; }
-    .home-subjects .home-subject-card:nth-child(3){ grid-column:2; grid-row:2; }
+       column-count(신문 다단형)로 바꾸면 "행" 개념이 없어져서, 카드는 위→아래로 왼쪽 열부터 채우고
+       짧은 카드는 다음 카드가 바로 그 밑에 붙는다. PC(1280px+)는 아래 블록에서 다시 grid로 되돌린다. */
+    .home-subjects{ display:block; column-count:2; column-gap:14px; }
+    .home-subjects .home-subject-card{ break-inside:avoid; margin-bottom:14px; }
     .home-subjects .subtopic-list{ display:grid; grid-template-columns:1fr 1fr; gap:6px; }
 
     /* 동기화 상태: 헤더 우측에 작은 표시를 추가로 보여주되, 복사/로그아웃 버튼이 있는 sync-bar
@@ -778,10 +708,6 @@
   @media (min-width:1280px){
     .home-subjects{ display:grid; grid-template-columns:repeat(3, 1fr); column-count:auto; align-items:start; gap:14px; }
     .home-subjects .home-subject-card{ break-inside:auto; margin-bottom:0; }
-    /* 태블릿 가로의 명시적 위치 지정(1번=왼쪽 전체, 2/3번=오른쪽 위아래)을 되돌려서 3열 자동 배치로 */
-    .home-subjects .home-subject-card:nth-child(1),
-    .home-subjects .home-subject-card:nth-child(2),
-    .home-subjects .home-subject-card:nth-child(3){ grid-column:auto; grid-row:auto; }
     .home-subjects .subtopic-list{ grid-template-columns:repeat(3, 1fr); }
   }
 
@@ -902,11 +828,6 @@
   //   GET {CF_API_BASE}/meta?code={동기화코드}
   //     -> { "1-1_공공조달개요": { count: 119, categories: [["세부1","세세1"], ["세부1","세세2"], ...] }, ... }
   //        (문제 내용 없이 "개수"와 "인덱스별 세부/세세항목"만 - 목차 표시용, 노출 최소화)
-  //   🔍 키워드로 문제 찾기(태그 검색)용으로 meta 응답에 tags 필드가 추가로 실려온다(하위호환 - 없으면
-  //   검색 결과가 그냥 0건으로 나올 뿐 나머지 기능엔 영향 없음):
-  //     -> { ..., tags: [["낙찰자","하자보수보증금"], ["지명경쟁"], [], ...] }
-  //        (문제/보기/해설 원문은 절대 안 실려온다 - 관리자 쪽에서 원문 기반으로 미리 뽑아둔
-  //        키워드 단어만, categories와 마찬가지로 인덱스 순서를 그대로 따르는 배열로 온다)
   //   GET {CF_API_BASE}/questions?chapter={키}&offset={N}&count={M}&code={동기화코드}
   //     -> [ {question, category1, category2, options, answer, explanation, source, rev}, ... ] (M개, 인증 필요)
   const CF_API_BASE = "https://quiz-api.puhahal.workers.dev";
@@ -915,7 +836,7 @@
   function cfEnabled(){
     return !!CF_API_BASE && CF_API_BASE.indexOf('여기에') !== 0;
   }
-  let CF_META = {};              // { chapterKey: { count, categories: [[c1,c2], ...], nums: [bool,...], revs: [rev|null,...] } }
+  let CF_META = {};              // { chapterKey: { count, categories: [[c1,c2], ...] } }
   const CF_LOADED = {};          // { chapterKey: Set(불러온 인덱스) } - 중복 요청 방지용(일시 상태)
   const CF_PENDING = {};         // { chapterKey: { batchStartIndex: Promise } } - 동시에 같은 배치를 두 번 요청하지 않기 위함
 
@@ -1056,10 +977,7 @@
     // 5개 단위 배치로 받으면 실제로 안 보는 이웃 문제까지 같이 받아오는 낭비가 생기고, "다음 배치" 프리페치도
     // 거의 안 맞는다. 그래서 이 세션에서는 지금 필요한 것 하나만 보지 않고, 이 세션에서 필요한 인덱스
     // 전체 중 아직 안 받은 것을 한 번에(indices 모드로) 모아서 요청한다 - 챕터당 요청을 1~2번으로 줄인다.
-    // 🔍 키워드 검색 결과("모아서 풀어보기")도 취약/복습과 마찬가지로 인덱스가 챕터 안에 띄엄띄엄
-    // 흩어져 있는 경우가 흔해서, 5개 단위 배치로 받으면 실제로 안 보는 이웃 문제까지 낭비해서
-    // 받아오게 된다. 자원을 아끼기 위해 같은 최적화(indices 모드로 필요한 것만 한 번에)를 쓴다.
-    if(state.filterKind === 'wrong' || state.filterKind === 'search'){
+    if(state.filterKind === 'wrong'){
       if(CF_LOADED[key] && CF_LOADED[key].has(index)) return;
       const needed = (state.filterIndices || [index]).filter(i => !CF_LOADED[key] || !CF_LOADED[key].has(i));
       if(!needed.length) return;
@@ -1175,84 +1093,6 @@
     if(changed){ saveProgress(); saveWrongMastery(); }
   }
 
-  // 이 챕터 안에서 "개정일자(rev)가 찍혀있고 + 지금 개정판을 아직 안 푼" 문제들의 인덱스.
-  // "안 푼"의 기준: 한 번도 안 푼 경우뿐 아니라, 예전에 답했지만 그때의 개정일자(rec.rev)가
-  // 지금 개정일자(rev)와 다른 경우도 포함한다. invalidateChangedAnswers()가 이런 문제를 결국
-  // "안 푼 것"으로 되돌려주긴 하지만, 그건 그 챕터의 문제 본문을 실제로 다시 받아와야만(그 챕터를
-  // 열어봐야만) 실행된다 - 그래서 rec.rev 비교를 여기서 직접 하면, 챕터를 안 열어봐도(메타데이터만
-  // 으로도) "예전에 풀었는데 그 뒤 개정된 문제"까지 정확히 잡아낼 수 있다(신고된 버그: "안 뜨는데" -
-  // 이미 답했던 문제가 개정된 경우가 누락되고 있었음).
-  // numIndicesOf()와 동일한 패턴: Cloudflare 모드에서는 문제 본문을 안 받아도 되는 /meta의
-  // revs(챕터별 개정일자 배열)로 판단한다. 그 외(구글시트/내장 데이터)에서는 QUIZ[key] 항목에
-  // 직접 담긴 rev로 판단한다.
-  function updatedUnansweredIndicesOf(key){
-    const out = [];
-    if(cfEnabled() && CF_META[key]){
-      (CF_META[key].revs || []).forEach((rev, i)=>{
-        if(!rev) return;
-        const rec = state.progress[key] && state.progress[key][i];
-        if(rec && rec.rev === rev) return; // 이미 이 개정판 그대로 정상 답변함 - 대상 아님
-        out.push(i);
-      });
-    } else {
-      (QUIZ[key] || []).forEach((q, i)=>{
-        if(!q || !q.rev) return;
-        const rec = state.progress[key] && state.progress[key][i];
-        if(rec && rec.rev === q.rev) return;
-        out.push(i);
-      });
-    }
-    return out;
-  }
-  // 특정 문제가 "지금 개정판 기준으로" 이미 정상 답변됐는지 - saved 여부 판정용. 예전 개정판 때
-  // 답한 기록(state.progress에는 남아있음)은 여기선 "아직 안 풀림"으로 본다 - 그래야 "Update
-  // 바로가기"로 열었을 때, 예전 기록 때문에 옵션이 잠긴 상태로 보이지 않고 실제로 다시 고를 수
-  // 있다(updatedUnansweredIndicesOf와 동일한 rev 비교 기준을 그대로 재사용).
-  function isUpdatedRevResolved(key, idx){
-    const rec = state.progress[key] && state.progress[key][idx];
-    if(!rec) return false;
-    if(cfEnabled() && CF_META[key]){
-      const rev = (CF_META[key].revs || [])[idx];
-      return !rev || rec.rev === rev;
-    }
-    const q = QUIZ[key] && QUIZ[key][idx];
-    const rev = q && q.rev;
-    return !rev || rec.rev === rev;
-  }
-  // 챕터 단위 집계: { count, latestRev } 또는 없으면 null. rev는 "260830" 같은 YYMMDD 문자열이라
-  // 자리수가 같으면 문자열 비교만으로도 날짜 순서가 정확히 맞는다. 개정일자 자체도 문제 본문 없이
-  // CF_META[key].revs에서 바로 읽는다(updatedUnansweredIndicesOf와 동일한 이유).
-  function chapterUpdateInfo(key){
-    const idxs = updatedUnansweredIndicesOf(key);
-    if(!idxs.length) return null;
-    const revsFromMeta = (cfEnabled() && CF_META[key]) ? CF_META[key].revs : null;
-    let latestRev = null;
-    idxs.forEach(i=>{
-      const r = revsFromMeta ? revsFromMeta[i] : (QUIZ[key] && QUIZ[key][i] && QUIZ[key][i].rev);
-      if(r && (!latestRev || r > latestRev)) latestRev = r;
-    });
-    return { count: idxs.length, latestRev };
-  }
-  // 과목 단위 집계: 그 과목에 속한 모든 챕터를 합산.
-  function subjectUpdateInfo(subj){
-    let count = 0, latestRev = null;
-    (subj.chapters || []).forEach(key=>{
-      const info = chapterUpdateInfo(key);
-      if(info){
-        count += info.count;
-        if(info.latestRev && (!latestRev || info.latestRev > latestRev)) latestRev = info.latestRev;
-      }
-    });
-    if(!count) return null;
-    return { count, latestRev };
-  }
-  // "260830" 같은 YYMMDD 개정일자를 화면 배지용 "0830"(월일만)으로 잘라준다.
-  // 형식이 예상과 다르면(자리수가 6이 아니면) 안전하게 원본 그대로 보여준다.
-  function formatRevMMDD(rev){
-    if(!rev) return '';
-    return rev.length===6 ? rev.slice(2) : rev;
-  }
-
   // 임시 테스트용 "Temp" 시트를 불러온다. 정식 챕터들의 QUIZ 객체와는 완전히 분리된 별도 변수(TEMP_QUIZ)에 담아서,
   // 진행률/오답노트/전체 문항수 통계 등 정식 데이터 흐름에 전혀 섞이지 않게 한다.
   // Cloudflare Worker의 /temp 엔드포인트(동기화 코드로 인증)에서 받아온다 - 배치 없이 전체를 한 번에.
@@ -1314,12 +1154,7 @@
     storageOk: null,   // true/false/null(테스트 전) - 저장소(window.storage) 실제 동작 여부 자체진단 결과
     expandedChapter: null, // 홈 화면에서 목차(대분류>세세항목)를 카드 안에 펼쳐놓은 챕터키(일시 상태, 저장하지 않음)
     filterIndices: null, // 세세항목 등 부분 학습 세션에서 사용할 QUIZ[key] 안의 인덱스 목록(일시 상태, 저장하지 않음)
-    filterKind: null,    // 'wrong' | 'subtopic' | 'num' | 'weaknum' | 'search' | null - 현재 부분 학습 세션의 종류(일시 상태, 저장하지 않음)
-    searchKeyword: '',   // 🔍 키워드로 문제 찾기 검색창 입력값(일시 상태, 저장하지 않음)
-    searchResults: [],   // 위 검색의 결과 목록 [{key, idx, tags, matchedTags}, ...] (일시 상태, 저장하지 않음)
-    globalSearchReview: false, // "📖 모아서 풀어보기" 진행 여부(일시 상태, 저장하지 않음) - 챕터를 순차로 이어가는 데 사용
-    globalSearchQueue: [],     // [{key, idxs}] - 모아서 풀어보기 시작 시점의 챕터별 검색결과 인덱스 스냅샷(일시 상태)
-    globalSearchQueueIndex: 0, // 위 큐에서 지금 몇 번째 챕터를 보고 있는지(일시 상태)
+    filterKind: null,    // 'wrong' | 'subtopic' | 'num' | 'weaknum' | null - 현재 부분 학습 세션의 종류(일시 상태, 저장하지 않음)
     excluded: {},          // { chapterKey: { idx: true } } - 오답노트 대상에서 수동으로 뺀 문제 목록(영구 저장)
     wrongMastery: { pool: {}, streak: {} }, // pool: 한 번이라도 틀려서 오답노트 대상에 들어간 문제, streak: 그 문제의 현재 연속 정답 횟수(둘 다 영구 저장)
     globalWeakReview: false, // 메인화면 "전체 취약 문제 복습" 진입 여부(일시 상태, 저장하지 않음) - 챕터를 순차로 이어가는 데 사용
@@ -1508,19 +1343,6 @@
     const diffDays = Math.round((examMid - todayMid) / 86400000);
     const label = diffDays > 0 ? `D-${diffDays}` : (diffDays === 0 ? 'D-DAY' : `D+${-diffDays}`);
     return { label, urgent: diffDays <= 14, passed: diffDays < 0 };
-  }
-  // 원서접수(9.14~9.17) 상태를 판정한다 - todayDateStr()와 동일하게 로컬 자정 기준으로 날짜만
-  // 비교한다. 세 단계: 시작 전(D-day 표시) / 접수 기간 중("접수중" 표시) / 마감 후(show:false,
-  // 문구 자체를 화면에서 숨김 - 더 이상 접수할 수 없는 지난 일정이므로).
-  function examRegistrationInfo(){
-    const today = new Date();
-    const todayMid = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const regStart = new Date(2026, 8, 14); // 9월 14일, month 0-based라 9월은 8
-    const regEnd = new Date(2026, 8, 17);   // 9월 17일
-    if(todayMid > regEnd) return { show: false };
-    if(todayMid >= regStart) return { show: true, active: true, label: '접수중' };
-    const diffDays = Math.round((regStart - todayMid) / 86400000);
-    return { show: true, active: false, label: diffDays === 0 ? 'D-DAY' : `D-${diffDays}` };
   }
   // selectAnswer()에서 답을 고를 때마다 호출한다. 날짜가 바뀌었으면 전부 0부터 다시 센다(다시 풀기
   // 포함, questionReviewCounts와 동일하게 "풀이 행위" 자체를 센다).
@@ -1934,7 +1756,7 @@
   // 신고했던 그 문제로 바로 이동해서 다시 풀어볼 수 있게 한다.
   function goToReportedQuestion(chapterKey, questionIndex){
     if(!QUIZ[chapterKey] || !QUIZ[chapterKey][questionIndex]){
-      alert('이 문제를 찾을 수 없습니다. (삭제되었거나 순서가 바뀌었을 수 있어요)');
+      alert('이 문제를 찾을 수 없습니다. (구글시트에서 삭제되었거나 순서가 바뀌었을 수 있어요)');
       return;
     }
     closeMyReportsView();
@@ -1988,16 +1810,7 @@
   function renderMyReportsView(){
     const total = myReportsList.length;
     const [id, r] = myReportsList[myReportsIndex];
-    const chapterQuiz = QUIZ[r.chapterKey] || [];
-    let q = chapterQuiz[r.questionIndex];
-    // 인덱스로 바로 못 찾으면(문제가 삭제됐거나 순서가 바뀜), 신고 당시 저장해둔 문제 텍스트로
-    // 같은 챕터 안에서 다시 찾아본다 - 문제 자체는 남아있고 순서만 바뀐 경우 이걸로 복구된다.
-    // 이렇게 안 하면, admin의 "오류 신고 모아보기"(텍스트 스냅샷을 그대로 보여줌)는 멀쩡히
-    // 보이는데 여기(index.html)만 "찾을 수 없음"으로 뜨는 불일치가 생긴다(신고된 버그).
-    if((!q || q.question !== r.questionText) && r.questionText){
-      const found = chapterQuiz.find(item => item && item.question === r.questionText);
-      if(found) q = found;
-    }
+    const q = (QUIZ[r.chapterKey] || [])[r.questionIndex];
     const dateStr = r.createdAt? new Date(r.createdAt).toLocaleString('ko-KR', {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
     const statusLabel = r.status === 'resolved' ? '✅ 처리완료' : '🕓 접수됨';
 
@@ -2020,13 +1833,10 @@
         </div>
       `;
     } else {
-      // admin의 "오류 신고 모아보기"도 questionText(신고 당시 문제 텍스트) 하나만 저장/표시하고
-      // 보기·정답·해설은 애초에 신고 데이터에 없어서 안 보여준다. 여기서도 그와 똑같이 문제
-      // 텍스트만 담담히 보여준다 - 예전엔 "⚠️ 찾을 수 없습니다" 경고를 추가로 보여줘서 admin과
-      // 다르게 놀라 보였는데(신고된 불일치), 이제 admin과 동일한 표시 방식으로 맞춘다.
       questionBlockHtml = `
         <div class="quiz-head"><div class="crumb"><b>${escapeHtml(META.names[r.chapterKey] || r.chapterKey)}</b></div></div>
-        <div class="qcard"><div class="qtext">${escapeHtml(r.questionText || '(문제 내용 없음)')}</div></div>
+        <div class="qcard"><div class="qtext" style="color:var(--ink-soft);">${escapeHtml(r.questionText || '(문제 내용 없음)')}</div></div>
+        <div style="font-size:12.5px;color:var(--ink-soft);margin:-4px 0 4px;">⚠️ 이 문제를 찾을 수 없습니다. (구글시트에서 삭제되었거나 순서가 바뀌었을 수 있어요)</div>
       `;
     }
 
@@ -2351,70 +2161,6 @@
     return Array.from({length: (QUIZ[key]||[]).length}, (_,i)=>i);
   }
 
-  // ====== 🔍 키워드로 문제 찾기 (온·오프라인 공용, 태그 인덱스 검색) ======
-  // 문제 원문은 아직 안 받아온 상태에서도(챕터를 안 열어봤어도) 검색이 되어야 하므로, 매칭 대상은
-  // 원문이 아니라 앞서 받아둔 가벼운 태그 인덱스(cfLoadMeta로 이미 받아온 CF_META[key].tags, 또는
-  // 오프라인 빌드에서는 QUIZ[key][idx].tags)다. 원문 전체를 검색하는 방식이 아니므로, 태그로
-  // 미리 뽑히지 않은 표현은 검색에 안 걸릴 수 있다는 한계가 있다.
-  // CF_META(가벼운 메타데이터, 온라인 지연로딩용)에 tags가 있으면 그걸 쓰고, 없으면(오프라인
-  // 빌드는 이 메타데이터 방식 자체를 안 써서 항상 이 경우다) QUIZ[key] 각 문제에 직접 담긴
-  // tags 필드로 폴백한다 - admin이 문제 저장 시 자동 추출해 q.tags에 심어두므로, 오프라인
-  // 빌드가 문제 데이터를 통째로 embed할 때 이 필드도 같이 포함되어 그대로 쓸 수 있다.
-  // (rev 필드의 CF_META/QUIZ 이중 경로 처리와 동일한 패턴 - 신고사항: 오프라인에서 태그 검색이
-  // 항상 "결과 없음"으로 나오던 문제)
-  function chapterTags(key){
-    const meta = CF_META[key];
-    if(meta && meta.tags) return meta.tags;
-    return (QUIZ[key] || []).map(q => (q && q.tags) || []);
-  }
-  // 검색어와 "태그 단어" 사이의 부분일치를 본다(태그 하나를 통째로 정확히 입력해야 하는 부담을 줄임).
-  // 예: "낙찰"만 쳐도 태그에 "낙찰자", "낙찰하한율"이 있으면 걸린다.
-  // 공백으로 여러 단어를 입력하면 AND로 본다 - 입력한 단어 전부가 (각자 어떤 태그에든) 부분일치로
-  // 걸려야 결과에 포함시킨다(예: "낙찰 하자보수" → 두 단어 모두와 관련 있는 문제만).
-  // 태그는 추출 규칙이 놓치는 표현이 있을 수 있어 정확도에 한계가 있다. 그래서 "이미 메모리에
-  // 문제 본문이 로딩되어 있는 경우"에는 태그뿐 아니라 본문(질문/보기/해설)까지 같이 검색 대상에
-  // 포함한다 - 온라인은 아직 안 열어본 챕터는 본문이 없어 여전히 태그로만 찾지만, 이미 열어본
-  // 챕터는 더 정확하게 찾을 수 있다. 오프라인 빌드는 모든 챕터가 처음부터 다 로딩되어 있으므로,
-  // 이 조건 하나로 자동으로 "항상 전체 원문 검색"이 된다(별도의 오프라인 전용 코드 불필요).
-  function runTagSearch(keyword){
-    const terms = (keyword || '').trim().toLowerCase().split(/\s+/).filter(Boolean);
-    if(!terms.length) return [];
-    const results = [];
-    allChapterKeys().forEach(key=>{
-      const tagsByIdx = chapterTags(key);
-      const quizArr = QUIZ[key] || [];
-      const total = Math.max(tagsByIdx.length, quizArr.length);
-      for(let idx=0; idx<total; idx++){
-        const tagList = tagsByIdx[idx] || [];
-        const q = quizArr[idx];
-        const hasFullText = !!(q && q.question); // 온라인의 "아직 안 받아온 구멍"은 undefined라 여기서 자연히 걸러짐
-        const searchParts = hasFullText
-          ? tagList.concat([q.question||'', ...(q.options||[]), q.explanation||''])
-          : tagList;
-        if(!searchParts.length) continue;
-        const lowerParts = searchParts.map(t => (t || '').toLowerCase());
-        const allTermsMatch = terms.every(term => lowerParts.some(t => t.indexOf(term) !== -1));
-        if(!allTermsMatch) continue;
-        // 화면에는 여전히 "태그 칩"으로 보여주므로, 매칭된 태그만 추린다(본문에서만 매칭된 경우는
-        // 태그 칩이 안 뜰 수 있음 - 결과에는 정상적으로 포함되니 검색 자체에는 지장 없음).
-        const matchedTags = tagList.filter((t, i) => terms.some(term => (t||'').toLowerCase().indexOf(term) !== -1));
-        results.push({ key, idx, tags: tagList, matchedTags });
-      }
-    });
-    return results;
-  }
-  // 검색 결과를 "처음 등장한 순서" 기준으로 챕터별로 묶는다. 📖 모아서 풀어보기가 챕터를
-  // 순서대로 이어가는 데 쓰는 큐를 만드는 용도.
-  function groupSearchResultsByChapter(results){
-    const order = [];
-    const byChapter = {};
-    results.forEach(r=>{
-      if(!byChapter[r.key]){ byChapter[r.key] = []; order.push(r.key); }
-      byChapter[r.key].push(r.idx);
-    });
-    return order.map(key => ({ key, idxs: byChapter[key] }));
-  }
-
   // "이어서 학습" 카드 위치 캡션 계산용. openChapter()의 "일반 학습" 재개 로직(처음 만나는 안 푼
   // 문제를 찾는 방식)과 정확히 똑같이 계산해서, 카드에 적힌 숫자와 실제로 눌러서 들어갔을 때
   // 퀴즈 화면 우측 상단에 뜨는 숫자가 항상 일치하게 한다(전에는 "답변한 개수"를 보여줘서 순서를
@@ -2498,7 +2244,6 @@
     else if(state.view==='quiz') renderQuiz();
     else if(state.view==='complete') renderComplete();
     else if(state.view==='numComplete') renderNumComplete();
-    else if(state.view==='search') renderSearch();
     if(keepScroll) window.scrollTo(0, y);
     else window.scrollTo(0,0);
   }
@@ -2510,7 +2255,7 @@
       app.innerHTML = `
         <div class="topbar"><div class="brand">🧪 Temp (임시 테스트)</div></div>
         <div style="padding:40px 20px; text-align:center; color:var(--ink-soft); font-size:14px;">
-          불러온 문제가 없습니다.<br>"Temp" 탭(또는 목록)에 문제가 있는지 확인해주세요.
+          불러온 문제가 없습니다.<br>구글시트의 "Temp" 탭에 문제가 있는지, 시트 공유 설정을 확인해주세요.
         </div>
       `;
       return;
@@ -2525,7 +2270,7 @@
         </div>
         <div class="progress-bar-top"><div style="width:${(i)/total*100}%"></div></div>
       </div>
-      <div class="quiz-wrap temp-quiz-wrap">
+      <div class="quiz-wrap">
         <div class="quiz-head">
           <div class="crumb"><b>${escapeHtml(q.category1||'')}</b><br>${escapeHtml(q.category2||'')}</div>
         </div>
@@ -2549,7 +2294,7 @@
               </div>
             </div>
           </div>
-          <div class="nav-row temp-nav-row">
+          <div class="nav-row">
             <button class="nav-btn" id="tempPrevBtn" ${i===0?'disabled':''}>← 이전</button>
             <button class="nav-btn primary" id="tempNextBtn" ${i===total-1?'disabled':''}>다음 →</button>
           </div>
@@ -2558,77 +2303,6 @@
     `;
     document.getElementById('tempPrevBtn').onclick = ()=>{ state.tempIndex = Math.max(0, i-1); render(); };
     document.getElementById('tempNextBtn').onclick = ()=>{ state.tempIndex = Math.min(total-1, i+1); render(); };
-  }
-
-  // 🔍 키워드로 문제 찾기: 태그 인덱스(CF_META[key].tags) 대상 검색. 아직 한 번도 안 열어본 챕터의
-  // 문제도(원문은 없이) 검색 대상에 포함된다 - 문제 원문을 미리 다 받아오지 않고도 "같은 주제
-  // 문제 모아보기"가 되도록 하는 게 이 기능의 핵심이다.
-  function renderSearch(){
-    app.innerHTML = `
-      <div class="topbar">
-        <div class="brand" id="searchBackBtn" style="cursor:pointer;">← 🔍 키워드로 문제 찾기</div>
-      </div>
-      <div class="search-wrap">
-        <input id="searchInput" class="search-input" type="text" value="${escapeHtml(state.searchKeyword)}"
-          placeholder="예: 낙찰 하자보수 (띄어쓰면 둘 다 포함된 문제)">
-        <div id="searchResultsWrap"></div>
-      </div>
-    `;
-    document.getElementById('searchBackBtn').onclick = ()=>{ state.view='home'; render(); };
-    const input = document.getElementById('searchInput');
-    input.focus();
-    input.setSelectionRange(input.value.length, input.value.length);
-    // 입력할 때마다 화면 전체(app.innerHTML)를 새로 그리면 한글 입력기(IME) 조합이 끊겨 낱자로
-    // 쪼개져 보이는 문제가 생긴다. 그래서 입력창은 한 번만 그리고, 입력할 때마다는 결과
-    // 영역(#searchResultsWrap)만 따로 갱신한다.
-    input.oninput = ()=>{
-      state.searchKeyword = input.value;
-      state.searchResults = runTagSearch(input.value);
-      renderSearchResultsOnly();
-    };
-    renderSearchResultsOnly();
-  }
-  function renderSearchResultsOnly(){
-    const wrap = document.getElementById('searchResultsWrap');
-    if(!wrap) return;
-    const kw = state.searchKeyword || '';
-    const results = state.searchResults || [];
-    const anyTagsLoaded = allChapterKeys().some(k => chapterTags(k).some(t => t && t.length));
-    if(!kw.trim()){
-      wrap.innerHTML = anyTagsLoaded
-        ? `<div class="search-empty">궁금한 키워드를 입력해보세요.<br>같은 주제를 다루는 문제를 태그로 모아드려요.</div>`
-        : `<div class="search-empty">태그 데이터가 아직 준비되지 않았습니다.<br>잠시 후 다시 시도해주세요.</div>`;
-      return;
-    }
-    if(!results.length){
-      wrap.innerHTML = `<div class="search-empty">"${escapeHtml(kw)}"에 해당하는 문제를 찾지 못했습니다.</div>`;
-      return;
-    }
-    wrap.innerHTML = `
-      <div class="search-toolbar">
-        <span class="count">${results.length}개 결과</span>
-        <button class="btn btn-primary" id="searchSolveAllBtn" style="width:auto;padding:10px 16px;font-size:13px;">📖 모아서 풀어보기</button>
-      </div>
-      ${results.map((r,i)=>`
-        <div class="search-result-card" data-i="${i}">
-          <div class="meta">${escapeHtml(chapterNameWithSubject(r.key))} · #${r.idx+1}</div>
-          <div class="tags">
-            ${r.matchedTags.map(t => `<span class="tag-chip match">${escapeHtml(t)}</span>`).join('')}
-          </div>
-        </div>
-      `).join('')}
-    `;
-    document.getElementById('searchSolveAllBtn').onclick = ()=> startGlobalSearchReview(results);
-    document.querySelectorAll('.search-result-card').forEach(el=>{
-      el.onclick = ()=>{
-        const r = results[Number(el.dataset.i)];
-        // 이 챕터에서 같이 걸린 다른 결과들도 filterIndices로 같이 넘겨, 하나를 열어도 "다음 →"으로
-        // 이 챕터 안의 나머지 검색 결과를 이어서 볼 수 있게 한다.
-        const idxsInChapter = results.filter(x => x.key === r.key).map(x => x.idx);
-        if(idxsInChapter.indexOf(r.idx) === -1) idxsInChapter.push(r.idx);
-        openChapter(r.key, true, idxsInChapter, 'search');
-      };
-    });
   }
 
   function renderHome(){
@@ -2646,11 +2320,10 @@
     // 내부 구조(회독/진행률/숙달도/취약·복습 버튼/목차 펼치기)는 기존 그대로이며, 클릭 바인딩용
     // 클래스명(chapter-card/weak-btn/review-btn/expand-btn/subtopic-item/toc-group-title)도 그대로 유지한다.
     let subjectsHtml = '';
-    META.subjects.forEach((subj, subjIdx)=>{
+    META.subjects.forEach(subj=>{
       const subjTotal = subj.chapters.reduce((a,k)=>a+QUIZ[k].length,0);
       const subjAnswered = subj.chapters.reduce((a,k)=>a+chapterStats(k).answered,0);
       const subjPct = subjTotal? Math.round(subjAnswered/subjTotal*100) : 0;
-      const subjUpdInfo = subjectUpdateInfo(subj); // 🆕 이 과목 전체의 "개정된 안 푼 문제" 집계(없으면 null)
       let chaptersInSubj = '';
       subj.chapters.forEach(key=>{
         const s = chapterStats(key);
@@ -2660,7 +2333,6 @@
         const weakN = weakCount(key);
         const reviewN = reviewOnlyCount(key);
         const masteredN = masteredCount(key);
-        const updInfo = chapterUpdateInfo(key); // 🆕 이 챕터의 "개정된 안 푼 문제" 집계(없으면 null)
         const hasError = !!state.remoteErrors[key];
         const num = chapterNumber(key); // 전체 순번(1~13)
         const toc = getChapterToc(key);
@@ -2703,7 +2375,6 @@
                 ${done? `<span class="chapter-badge">✓ 완료</span>` : ''}
                 ${weakN>0? `<button class="weak-btn" data-key="${key}" style="font-size:10.5px;font-weight:700;color:var(--seal);background:var(--seal-tint);border:1px solid #E9C2BC;border-radius:999px;padding:3px 9px;">🔴 취약 ${weakN}</button>` : ''}
                 ${reviewN>0? `<button class="review-btn" data-key="${key}" style="font-size:10.5px;font-weight:700;color:var(--gold-text);background:var(--gold-tint);border:1px solid var(--gold-border);border-radius:999px;padding:3px 9px;">🟡 복습 ${reviewN}</button>` : ''}
-                ${updInfo? `<button class="updated-btn" data-key="${key}" style="font-size:10.5px;font-weight:700;color:#0B6B8C;background:#E4F3F8;border:1px solid #B9DEE9;border-radius:999px;padding:3px 9px;">✏️ Update ${escapeHtml(formatRevMMDD(updInfo.latestRev))} · ${updInfo.count}개</button>` : ''}
               </div>
               ${hasError? `<div style="margin-top:7px;font-size:10.5px;color:var(--wrong);">⚠ 시트 연동 실패 — 내장 문제로 표시 중</div>` : ''}
               ${tocInlineHtml}
@@ -2716,10 +2387,6 @@
             <span class="title">${escapeHtml(subj.title)}</span>
             <span class="cnt">${subjAnswered}/${subjTotal}</span>
           </div>
-          ${subjUpdInfo? `<button class="subject-updated-btn" data-subj-idx="${subjIdx}" style="display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;color:#0B6B8C;background:#E4F3F8;border:1px solid #B9DEE9;border-radius:999px;padding:3px 9px;margin-bottom:8px;">
-            <span>✏️ Update ${escapeHtml(formatRevMMDD(subjUpdInfo.latestRev))} · ${subjUpdInfo.count}개</span>
-            <span style="text-decoration:underline;">바로가기 →</span>
-          </button>` : ''}
           <div class="home-subject-progress"><div style="width:${subjPct}%"></div></div>
           <div class="home-subject-chapters">${chaptersInSubj}</div>
         </div>`;
@@ -2761,8 +2428,10 @@
             <div class="kicker">14일 · ${formatNum(os.total)}문제 완주 플랜</div>
             <h1>공공조달관리사<br>2주 완성</h1>
             <div class="exam-schedule">
-              ${examRegistrationInfo().show? `<span class="exam-schedule-item">원서접수 <b>9.14~9.17</b><span class="dday-badge ${examRegistrationInfo().active? 'active' : 'gold'}">${examRegistrationInfo().label}</span></span><span class="divider"></span>` : ''}
-              <span class="exam-schedule-item">필기시험 <b>10.3</b>${!examDdayInfo().passed? `<span class="dday-badge${examDdayInfo().urgent? ' urgent' : ''}">${examDdayInfo().label}</span>` : ''}</span>
+              <span>📝 원서접수 <b>9.14~9.17</b></span>
+              <span class="divider"></span>
+              <span>✏️ 필기시험 <b>10.3</b></span>
+              ${!examDdayInfo().passed? `<span class="dday-badge${examDdayInfo().urgent? ' urgent' : ''}">${examDdayInfo().label}</span>` : ''}
             </div>
           </div>
           <div class="home-hero-right">
@@ -2775,6 +2444,18 @@
             <div><b>${formatNum(os.total)}</b><span>전체 문제</span></div>
             <div><b>${formatNum(os.answered)}</b><span>풀이 완료</span></div>
             <div><b>${formatNum(todayN)}</b><span>오늘 학습</span></div>
+          </div>
+        </div>
+
+        <div class="home-today">
+          <div class="home-today-card">
+            <div class="home-today-title">오늘 학습</div>
+            <div class="home-today-row">
+              <div class="stat"><b>${formatNum(todayN)}</b><span>문제</span></div>
+              <div class="stat num"><b>${formatNum(todayNumCount())}</b><span>숫자</span></div>
+              <div class="stat weak"><b>${formatNum(todayWeakCount())}</b><span>취약</span></div>
+              <div class="stat review"><b>${formatNum(todayReviewCount())}</b><span>복습</span></div>
+            </div>
           </div>
         </div>
 
@@ -2797,33 +2478,18 @@
                 ${totalWeakNum>0? `<button id="globalWeakNumBtn">취약만 ${totalWeakNum}</button>` : ''}
               </div>
             </div>` : ''}
-            ${(totalWeak>0 || totalReviewOnly>0)? `
-            <div class="home-quick-card weak">
+            ${totalWeak>0? `
+            <button class="home-quick-card weak" id="globalWeakBtn">
               <span class="qc-icon">🔴</span>
-              <span class="qc-title">취약/복습</span>
-              <span class="qc-sub">틀렸거나 맞혀가는 중인 문제</span>
-              <div class="qc-split">
-                ${totalWeak>0? `<button id="globalWeakBtn"><b>취약 ${totalWeak}</b></button>` : ''}
-                ${totalReviewOnly>0? `<button id="globalReviewBtn">복습 ${totalReviewOnly}</button>` : ''}
-              </div>
-            </div>` : ''}
-            <button class="home-quick-card" id="searchEntryBtn">
-              <span class="qc-icon">🔍</span>
-              <span class="qc-title">키워드별 문제 모아보기</span>
-              <span class="qc-sub">같은 키워드가 포함된 문제 모아보기</span>
-            </button>
-          </div>
-        </div>
-
-        <div class="home-today">
-          <div class="home-today-card">
-            <div class="home-today-title">오늘 학습</div>
-            <div class="home-today-row">
-              <div class="stat"><b>${formatNum(todayN)}</b><span>문제</span></div>
-              <div class="stat num"><b>${formatNum(todayNumCount())}</b><span>숫자</span></div>
-              <div class="stat weak"><b>${formatNum(todayWeakCount())}</b><span>취약</span></div>
-              <div class="stat review"><b>${formatNum(todayReviewCount())}</b><span>복습</span></div>
-            </div>
+              <span class="qc-title">취약 집중공략</span>
+              <span class="qc-sub">자주 틀리는 문제 ${totalWeak}개</span>
+            </button>` : ''}
+            ${totalReviewOnly>0? `
+            <button class="home-quick-card review" id="globalReviewBtn">
+              <span class="qc-icon">🟡</span>
+              <span class="qc-title">복습 다시풀기</span>
+              <span class="qc-sub">맞혀가는 중인 문제 ${totalReviewOnly}개</span>
+            </button>` : ''}
           </div>
         </div>
 
@@ -2852,8 +2518,6 @@
     if(globalWeakNumBtn) globalWeakNumBtn.onclick = ()=> startGlobalWeakNumReview();
     const myReportsBtn = document.getElementById('myReportsBtn');
     if(myReportsBtn) myReportsBtn.onclick = ()=> openMyReportsModal();
-    const searchEntryBtn = document.getElementById('searchEntryBtn');
-    if(searchEntryBtn) searchEntryBtn.onclick = ()=>{ state.view='search'; render(); };
 
     const syncCopyBtn = document.getElementById('syncCopyBtn');
     if(syncCopyBtn) syncCopyBtn.onclick = ()=>{
@@ -2881,26 +2545,6 @@
     });
     document.querySelectorAll('.review-btn').forEach(el=>{
       el.onclick = (e)=>{ e.stopPropagation(); state.globalWeakReview = false; state.globalReviewOnlyReview = false; startReviewOnlyReview(el.dataset.key); };
-    });
-    document.querySelectorAll('.updated-btn').forEach(el=>{
-      // 챕터별 단독 바로가기이므로, 남아있을 수 있는 전체세션 플래그(과목별 개정 업데이트 포함)를
-      // 모두 꺼서 이 챕터만 정상적으로 풀고 완료 화면을 보게 한다(다른 4개 버튼과 동일한 방어 패턴).
-      el.onclick = (e)=>{
-        e.stopPropagation();
-        state.globalWeakReview = false;
-        state.globalReviewOnlyReview = false;
-        state.globalWeakNumReview = false;
-        state.globalNumReview = false;
-        state.globalUpdatedReview = false; state.globalUpdatedSubj = null;
-        startUpdatedReview(el.dataset.key);
-      };
-    });
-    document.querySelectorAll('.subject-updated-btn').forEach(el=>{
-      el.onclick = (e)=>{
-        e.stopPropagation();
-        const subj = META.subjects[Number(el.dataset.subjIdx)];
-        if(subj) startGlobalUpdatedReview(subj);
-      };
     });
     document.querySelectorAll('.expand-btn').forEach(el=>{
       el.onclick = (e)=>{
@@ -2938,45 +2582,8 @@
     // 그래서 이 세션들만은 "오늘 다시 푼 기록"(isReviewAnsweredToday) 기준으로 건너뛴다 - 그래야
     // 오늘 이미 다시 풀어둔 만큼은 건너뛰고 이어서 시작하면서도, 오늘 아직 안 건드린 문제는 전체
     // 기록과 무관하게 "안 푼 문제"로 남아 처음부터(또는 그날 중단한 지점부터) 다시 보여준다.
-    // filterKind==='search'는 "🔍 키워드로 문제 찾기"(태그 검색) 결과를 여는 세션 - 검색으로 연
-    // 문제는 예전에 이미 풀었어도 "오늘 검색으로 다시 안 푼 것"만 안 푼 것으로 쳐서, 항상
-    // 1번부터(또는 오늘 이어서) 다시 풀 수 있게 한다(신고사항: "이미 풀었던 문제일지라도
-    // 1번부터 다시 풀기").
-    const isWeakLikeSession = state.filterKind === 'wrong' || state.filterKind === 'weaknum' || state.filterKind === 'search';
+    const isWeakLikeSession = state.filterKind === 'wrong' || state.filterKind === 'weaknum';
     if(resume){
-      // 🔍 키워드로 문제 찾기 결과는 매번 새로 모은 임시 목록이라, 취약/복습처럼 "오늘 어디까지
-      // 풀었는지"를 기준으로 이어서 시작하지 않는다 - 예전에(심지어 오늘) 이미 풀었던 문제가
-      // 섞여 있어도 항상 목록 1번부터 순서대로 보여준다(신고사항: "풀었던 문제도 1번부터
-      // 순차적으로 풀기").
-      if(state.filterKind === 'search'){
-        // "1번부터 순차적으로"가 순서만이 아니라 실제 재풀이가 되려면, 이 문제들이 "오늘 이미
-        // 검색으로 답했음" 표시(isReviewAnsweredToday)까지 지워야 한다 - 안 그러면 순서는
-        // 1번으로 가더라도 화면엔 정답/오답이 이미 표시된 잠긴 상태로 보여서 다시 고를 수 없다.
-        // (참고: 뒤로/앞으로 이동해서 같은 세션 안에서 방금 답한 문제로 돌아가는 경우는 openChapter를
-        // 다시 안 거치므로 - goPrev/goto 참고 - 방금 고른 답은 그대로 유지된다.)
-        indices.forEach(i => state.reviewAnsweredKeys.delete(key + ':' + i));
-        saveReviewAnswered();
-        state.index = indices[0];
-        state.view = 'quiz';
-        state.sheetOpen = false;
-        saveProgress();
-        render();
-        return;
-      }
-      if(state.filterKind === 'updated'){
-        // "🆕 Update 바로가기"도 검색과 동일하게 항상 1번부터 보여준다. updatedUnansweredIndicesOf가
-        // 골라준 목록은 전부 "이 개정판을 아직 안 푼" 문제들인데, 그중 일부는 예전 개정판 때 이미
-        // 답했던 적이 있어서(state.progress에 기록이 남아있어서) 일반 진행 기록 기준 "이미 풀림"으로
-        // 오판되어 맨 뒤로 건너뛰어버리는 문제가 있었다(신고사항: "1번부터 풀기"). saved 여부는
-        // isUpdatedRevResolved()가 별도로 "이 개정판 기준으로" 다시 판단하므로, 여기서는 위치만
-        // 항상 0으로 고정한다.
-        state.index = indices[0];
-        state.view = 'quiz';
-        state.sheetOpen = false;
-        saveProgress();
-        render();
-        return;
-      }
       let pos = 0;
       let allDoneToday = true; // 취약형 세션에서만 의미 있음(아래 참고)
       for(let p=0; p<indices.length; p++){
@@ -3022,48 +2629,6 @@
     openChapter(key, true, idxs, 'wrong');
   }
 
-  // 🔍 키워드 검색 결과 "모아서 풀어보기": 한 챕터 분량을 연다. weakIndices(key)처럼 다시 계산하지
-  // 않고 검색 시점에 고정해둔 idxs를 그대로 쓴다(검색은 매번 새로 실행하는 게 아니라 그 순간의
-  // 스냅샷이므로, 재계산할 대상 자체가 없다).
-  function startSearchReview(key, idxs){
-    if(!idxs || !idxs.length) return;
-    openChapter(key, true, idxs, 'search');
-  }
-  // 검색 결과 목록에서 "📖 모아서 풀어보기"를 눌렀을 때 진입점. 챕터별로 묶은 큐를 순서대로 이어간다
-  // (goHomeOrContinueGlobalReview 참고). 다른 전체 세션과 동일한 패턴 - 시작할 때 나머지 플래그를 끈다.
-  function startGlobalSearchReview(results){
-    const queue = groupSearchResultsByChapter(results);
-    if(!queue.length) return;
-    state.globalWeakReview = false;
-    state.globalReviewOnlyReview = false;
-    state.globalWeakNumReview = false;
-    state.globalNumReview = false;
-    state.globalUpdatedReview = false; state.globalUpdatedSubj = null;
-    // "모아서 풀어보기"를 누르는 이 시점에 목록 전체(지금 열 첫 챕터뿐 아니라 나중에 이어질 챕터
-    // 것까지 전부)의 "오늘 이미 답했음" 표시를 한 번에 지운다. openChapter도 챕터에 들어갈 때마다
-    // 그 챕터 몫을 똑같이 지우긴 하지만(re-entry 대비 이중 안전장치), 여기서 버튼을 누르는 즉시
-    // 목록 전체를 지워둬야 "다시 모아서 풀어보기를 눌러도 예전에 풀었던 게 그대로 잠겨있다"는
-    // 상황이 생길 여지가 없다(신고된 버그: "다시 모아서 풀어보기로 초기화가 안 됨").
-    results.forEach(r => state.reviewAnsweredKeys.delete(r.key + ':' + r.idx));
-    saveReviewAnswered();
-    state.globalSearchReview = true;
-    state.globalSearchQueue = queue;
-    state.globalSearchQueueIndex = 0;
-    startSearchReview(queue[0].key, queue[0].idxs);
-  }
-  // globalWeakPrecedingCount/globalWeakTotalCount와 동일한 역할, "🔍 키워드로 문제 찾기 → 모아서
-  // 풀어보기" 전용. weakCount(key)처럼 다시 계산하지 않고, 검색 시점에 챕터별로 고정해둔
-  // idxs.length(state.globalSearchQueue)를 그대로 합산한다 - 검색 결과는 그 순간의 스냅샷이라
-  // "지금 다시 세면 몇 개인지"가 아니라 "그때 몇 개였는지"가 진행률 표시의 기준이 되어야 한다.
-  function globalSearchPrecedingCount(){
-    let sum = 0;
-    for(let i=0; i<state.globalSearchQueueIndex; i++) sum += (state.globalSearchQueue[i] ? state.globalSearchQueue[i].idxs.length : 0);
-    return sum;
-  }
-  function globalSearchTotalCount(){
-    return (state.globalSearchQueue || []).reduce((a, entry) => a + (entry ? entry.idxs.length : 0), 0);
-  }
-
   // 전체 13개 챕터에 걸친 취약 문제 총 개수(메인화면 "전체 취약 문제 복습" UI에 표시).
   function totalWeakCount(){
     return allChapterKeys().reduce((sum, k) => sum + weakCount(k), 0);
@@ -3086,7 +2651,6 @@
     state.globalWeakReview = false;
     state.globalWeakNumReview = false;
     state.globalNumReview = false;
-    state.globalUpdatedReview = false; state.globalUpdatedSubj = null;
     state.globalReviewOnlyReview = true;
     state.globalReviewOnlyQueue = queue;
     state.globalReviewOnlyQueueIndex = 0;
@@ -3119,7 +2683,6 @@
     state.globalReviewOnlyReview = false;
     state.globalWeakNumReview = false;
     state.globalNumReview = false;
-    state.globalUpdatedReview = false; state.globalUpdatedSubj = null;
     state.globalWeakReview = true;
     state.globalWeakQueue = queue;
     state.globalWeakQueueIndex = 0;
@@ -3184,7 +2747,6 @@
     state.globalWeakReview = false;
     state.globalReviewOnlyReview = false;
     state.globalWeakNumReview = false;
-    state.globalUpdatedReview = false; state.globalUpdatedSubj = null;
     const key = nextNumChapterKey();
     if(key){
       state.globalNumReview = true;
@@ -3224,7 +2786,6 @@
     state.globalWeakReview = false;
     state.globalReviewOnlyReview = false;
     state.globalNumReview = false;
-    state.globalUpdatedReview = false; state.globalUpdatedSubj = null;
     state.globalWeakNumReview = true;
     state.globalWeakNumQueue = queue;
     state.globalWeakNumQueueIndex = 0;
@@ -3239,39 +2800,6 @@
   }
   function globalWeakNumTotalCount(){
     return (state.globalWeakNumCounts || []).reduce((a, b) => a + b, 0);
-  }
-
-  // 🆕 챕터별 "개정 업데이트" 바로가기: 이 챕터 안의 "개정일자 있고 아직 안 푼" 문제만 모아 연다.
-  // 이미 다 정상 답변 취급이라(취약형이 아님) 재도전 게이트 없이 일반 학습처럼 바로 저장된다.
-  function startUpdatedReview(key){
-    const idxs = updatedUnansweredIndicesOf(key);
-    if(!idxs.length) return;
-    openChapter(key, true, idxs, 'updated');
-  }
-  // 🆕 과목별 "개정 업데이트" 바로가기: 그 과목에 속한 챕터들 중 개정 문제가 있는 것만 큐에 담아
-  // 순서대로 이어간다(다른 전체 세션들과 동일한 패턴).
-  function startGlobalUpdatedReview(subj){
-    const queue = (subj.chapters || []).filter(k => chapterUpdateInfo(k));
-    if(!queue.length) return;
-    // 다른 전체 세션과 동시에 진행 중이면 완료 시점에 엉뚱한 세션으로 이어질 수 있으므로 정리한다.
-    state.globalWeakReview = false;
-    state.globalReviewOnlyReview = false;
-    state.globalNumReview = false;
-    state.globalWeakNumReview = false;
-    state.globalUpdatedReview = true;
-    state.globalUpdatedSubj = subj; // 큐를 다 돌았을 때 과목 전체를 다시 훑기 위해 보관(아래 goHomeOrContinueGlobalReview 참고)
-    state.globalUpdatedQueue = queue;
-    state.globalUpdatedQueueIndex = 0;
-    state.globalUpdatedCounts = queue.map(k => chapterUpdateInfo(k).count);
-    startUpdatedReview(queue[0]);
-  }
-  function globalUpdatedPrecedingCount(){
-    let sum = 0;
-    for(let i=0; i<state.globalUpdatedQueueIndex; i++) sum += (state.globalUpdatedCounts[i] || 0);
-    return sum;
-  }
-  function globalUpdatedTotalCount(){
-    return (state.globalUpdatedCounts || []).reduce((a, b) => a + b, 0);
   }
 
   // 챕터 안에서 특정 세부항목(category1) 또는 세세항목(category2)에 해당하는 문제만 골라 이어서 풀도록 연다.
@@ -3299,7 +2827,7 @@
       });
     }
     if(!indices.length){
-      alert('이 항목은 아직 등록된 문제가 없습니다.\n출제기준에는 있지만 아직 문제가 추가되지 않은 상태예요.');
+      alert('이 항목은 아직 등록된 문제가 없습니다.\n출제기준에는 있지만 구글시트에 문제가 추가되지 않은 상태예요.');
       return;
     }
     openChapter(key, true, indices, 'subtopic'); // resume=true: 이 항목 안에서 이미 푼 문제는 건너뛰고 이어서 시작
@@ -3343,58 +2871,35 @@
     // 없게 된다(재풀이 비활성화 버그). 그래서 이 세션들은 "오늘 이 문제에 실제로 다시 답을
     // 골랐는지"(isReviewAnsweredToday, 문제별·날짜별로 영구 기억함)를 기준으로 삼아, 아직 오늘
     // 다시 안 골랐다면 옛날 기록이 있어도 "안 푼 문제"처럼 보여준다. 날짜가 바뀌면 자동으로 초기화된다.
-    // filterKind==='search'("🔍 키워드로 문제 찾기" 태그 검색 결과)도 동일하게 취급한다.
-    const isWeakLikeSession = isWrongSession || isWeakNumSession || state.filterKind === 'search';
-    // "🔥 숙달도"(연속 정답 스트릭)와 "취약문제에서 그만 보기"는 오답노트(wrongMastery) 개념
-    // 전용이다. 🔍 키워드로 문제 찾기 결과는 오답노트와 무관한 임의의 문제 모음이라, 한 번도
-    // 틀린 적 없는 문제가 섞여 있으면 애초에 wrongMastery.pool에 없어 맞혀도 스트릭이 절대 안
-    // 올라간다(selectAnswer 참고) - "체크가 누락되는" 것처럼 보이는 원인. isWeakLikeSession은
-    // 재풀이 가능 여부(다시 답 고르기) 판단에는 search를 포함해야 하지만, 숙달도 UI는 search를
-    // 빼서 오답노트 대상 세션(취약/복습/숫자취약만)에서만 보이게 분리한다.
-    const showsMasteryUi = isWrongSession || isWeakNumSession;
+    const isWeakLikeSession = isWrongSession || isWeakNumSession;
     const rawAnswered = state.progress[key] && state.progress[key][idx];
-    const saved = isWeakLikeSession
-      ? (isReviewAnsweredToday(key, idx) ? rawAnswered : null)
-      : (state.filterKind === 'updated' ? (isUpdatedRevResolved(key, idx) ? rawAnswered : null) : rawAnswered);
+    const saved = isWeakLikeSession ? (isReviewAnsweredToday(key, idx) ? rawAnswered : null) : rawAnswered;
     // NUM 모아풀기 / "전체 취약 문제 복습" / "숫자 취약만"은 모두 챕터가 바뀌어도 전체를 하나로
     // 이어서 보여준다(진행률·회차 표시용). pos/total은 "이 챕터 안에서의" 위치이고,
     // 아래 두 값은 "전체 목록 안에서의" 위치다.
     const isGlobalWrongSession = isWrongSession && state.globalWeakReview;
     const isGlobalReviewOnlySession = isWrongSession && state.globalReviewOnlyReview;
     const isGlobalWeakNumSession = isWeakNumSession && state.globalWeakNumReview;
-    const isUpdatedSession = state.filterKind === 'updated';
-    const isGlobalUpdatedSession = isUpdatedSession && state.globalUpdatedReview;
-    // "🔍 키워드로 문제 찾기 → 모아서 풀어보기"도 위 전체 세션들과 동일한 패턴: 챕터가 바뀌어도
-    // "검색 결과 전체 목록 안에서 몇 번째"를 이어서 보여준다(그렇지 않으면 챕터가 바뀔 때마다
-    // 분모가 "이 챕터에서 걸린 개수"로 작아 보여 "전체 결과 수"가 아니게 된다).
-    const isGlobalSearchSession = state.filterKind === 'search' && state.globalSearchReview;
     const globalPos = isNumSession? numPrecedingCount(key) + pos
       : (isGlobalWrongSession? globalWeakPrecedingCount() + pos
       : (isGlobalReviewOnlySession? globalReviewOnlyPrecedingCount() + pos
-      : (isGlobalWeakNumSession? globalWeakNumPrecedingCount() + pos
-      : (isGlobalUpdatedSession? globalUpdatedPrecedingCount() + pos
-      : (isGlobalSearchSession? globalSearchPrecedingCount() + pos : pos)))));
+      : (isGlobalWeakNumSession? globalWeakNumPrecedingCount() + pos : pos)));
     const globalTotal = isNumSession? totalNumCount()
       : (isGlobalWrongSession? globalWeakTotalCount()
       : (isGlobalReviewOnlySession? globalReviewOnlyTotalCount()
-      : (isGlobalWeakNumSession? globalWeakNumTotalCount()
-      : (isGlobalUpdatedSession? globalUpdatedTotalCount()
-      : (isGlobalSearchSession? globalSearchTotalCount() : total)))));
+      : (isGlobalWeakNumSession? globalWeakNumTotalCount() : total)));
     // "학습 완료"/"단원 완료" 버튼은 이 세션 전체의 마지막 문제일 때만 보여야 한다. 일반 세션은 이
     // 챕터 안에서의 마지막(pos===total-1)이 곧 세션의 마지막이지만, "전체 취약 문제 복습"/
-    // "복습 다시풀기"/"숫자 취약만"/"개정 업데이트(과목별)"/"검색 결과 모아서 풀어보기"는 여러
-    // 챕터를 끊김 없이 이어서 보여주므로 챕터별 마지막이 아니라 전체 목록 기준 마지막
-    // (globalPos===globalTotal-1)이어야 한다 - 안 그러면 챕터가 바뀔 때마다 "다음 문제" 대신
-    // 매번 "학습 완료"가 떠버린다.
-    const isLast = (isGlobalWrongSession || isGlobalReviewOnlySession || isGlobalWeakNumSession || isGlobalUpdatedSession || isGlobalSearchSession) ? (globalPos === globalTotal - 1) : (pos === total - 1);
+    // "복습 다시풀기"/"숫자 취약만"은 여러 챕터를 끊김 없이 이어서 보여주므로 챕터별 마지막이 아니라
+    // 전체 목록 기준 마지막(globalPos===globalTotal-1)이어야 한다 - 안 그러면 챕터가 바뀔 때마다
+    // "다음 문제" 대신 매번 "학습 완료"가 떠버린다.
+    const isLast = (isGlobalWrongSession || isGlobalReviewOnlySession || isGlobalWeakNumSession) ? (globalPos === globalTotal - 1) : (pos === total - 1);
     // "이전" 버튼 비활성화 여부 계산용 - 지금 챕터의 첫 문제(pos===0)라도, "전체" 세션에서 이전
     // 챕터로 넘어갈 수 있으면(goPrev 참고) 비활성화하면 안 된다.
     const hasPrevChapter = (isNumSession && !!prevNumChapterKey(key))
       || (isGlobalWrongSession && state.globalWeakQueueIndex > 0)
       || (isGlobalReviewOnlySession && state.globalReviewOnlyQueueIndex > 0)
-      || (isGlobalWeakNumSession && state.globalWeakNumQueueIndex > 0)
-      || (isGlobalUpdatedSession && state.globalUpdatedQueueIndex > 0)
-      || (isGlobalSearchSession && state.globalSearchQueueIndex > 0);
+      || (isGlobalWeakNumSession && state.globalWeakNumQueueIndex > 0);
     const streak = masteryStreak(key, idx);
     // 이 문제를 지금까지 몇 번 풀었는지(누적). 해설 시트 하단 통계("총 N회 풀이")에 쓰인다.
     const storedReviewCount = (state.questionReviewCounts[key] && state.questionReviewCounts[key][idx]) || 0;
@@ -3426,7 +2931,7 @@
     let sheetHtml = '';
     if(saved && state.sheetOpen){
       const ok = saved.correct;
-      const justMastered = showsMasteryUi && ok && streak>=MASTERY_TARGET;
+      const justMastered = isWeakLikeSession && ok && streak>=MASTERY_TARGET;
       sheetHtml = `
         <div class="sheet-dim" id="sheetDim"></div>
         <div class="sheet" id="sheetPanel" role="dialog" aria-modal="true">
@@ -3440,7 +2945,7 @@
             ${justMastered? `<div style="background:var(--correct-tint);color:#204636;border:1px solid #BFDBCB;border-radius:9px;padding:12px 14px;margin-bottom:14px;font-weight:700;font-size:13.5px;">🎉 연속 정답 ${MASTERY_TARGET}회 달성! 이 문제는 취약문제에서 제외됩니다.</div>` : ''}
             ${escapeHtml((q.explanation||'해설이 제공되지 않았습니다.').trim())}${q.source? `<div class="sheet-src">§ 출처: ${escapeHtml(q.source)}</div>` : ''}
             ${(isWeakNow || !alreadyWeakStatus)? `<button id="manualWeakBtn" style="margin-top:10px;width:100%;background:${isWeakNow? 'var(--correct-tint)':'var(--seal-tint)'};border:1px solid ${isWeakNow? '#BFDBCB':'#E9C2BC'};border-radius:9px;padding:9px;font-size:12.5px;color:${isWeakNow? '#204636':'var(--seal)'};font-weight:700;cursor:pointer;">${isWeakNow? '✔ 취약문제 지정 해제' : '🚨 취약문제로 지정하기'}</button>` : ''}
-            ${showsMasteryUi? `<button id="excludeBtn" style="margin-top:8px;width:100%;background:var(--paper-deep);border:1px solid var(--line-strong);border-radius:9px;padding:9px;font-size:12.5px;color:var(--ink-soft);cursor:pointer;">✕ 이 문제는 취약문제에서 그만 보기</button>` : ''}
+            ${isWeakLikeSession? `<button id="excludeBtn" style="margin-top:8px;width:100%;background:var(--paper-deep);border:1px solid var(--line-strong);border-radius:9px;padding:9px;font-size:12.5px;color:var(--ink-soft);cursor:pointer;">✕ 이 문제는 취약문제에서 그만 보기</button>` : ''}
             <button id="reportErrorBtn" style="margin-top:8px;width:100%;background:transparent;border:1px dashed var(--line-strong);border-radius:9px;padding:8px;font-size:12px;color:var(--ink-soft);cursor:pointer;">🚩 문제 오류 신고</button>
             <div class="sheet-stats-row" style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--line-strong);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
               <span style="font-size:11.5px;color:var(--ink-soft);">총 ${storedReviewCount}회 풀이 · 정답률 ${questionAccuracy(key, idx) ?? 0}%</span>
@@ -3467,7 +2972,7 @@
           <div class="crumb">${statusBadgeHtml}<b>${escapeHtml(tocLabels.group)}</b><br>${escapeHtml(tocLabels.sub)}</div>
           <div class="qno">${globalPos+1} / ${globalTotal}</div>
         </div>
-        ${showsMasteryUi? `
+        ${isWeakLikeSession? `
         <div class="mastery-row">
           <span class="mastery-label">🔥 숙달도 ${streak}/${MASTERY_TARGET}${streak>=MASTERY_TARGET? ' · 완료!' : ''}</span>
           <span class="mastery-dots">${Array.from({length:MASTERY_TARGET},(_,di)=>`<span class="mastery-dot${di<streak?' filled':''}"></span>`).join('')}</span>
@@ -3536,7 +3041,7 @@
           render();
           return;
         }
-        if((isWrongSession && state.globalWeakReview) || (isWrongSession && state.globalReviewOnlyReview) || (isWeakNumSession && state.globalWeakNumReview) || (state.filterKind==='updated' && state.globalUpdatedReview) || (state.filterKind==='search' && state.globalSearchReview)){
+        if((isWrongSession && state.globalWeakReview) || (isWrongSession && state.globalReviewOnlyReview) || (isWeakNumSession && state.globalWeakNumReview)){
           // "전체 취약 문제 N개 복습하기" / "숫자 뽀개기.zip · 취약만"은 NUM 모아풀기(⚡ 숫자
           // 뽀개기.zip · 전체)와 마찬가지로 전체를 한 번에 이어서 푸는 게 목적이므로, 챕터
           // 경계마다 "단원 완료" 화면을 보여주고 사용자가 직접 다음으로 넘겨야 하게 만들면
@@ -3612,7 +3117,7 @@
     // 7:3 레이아웃(quiz-split, 820px+)에서 매번 "해설 다시 보기"를 눌러야 하는 게 불편하다는 신고가
     // 있어 해설을 자동으로 펼쳐서 보여준다. 모바일(820px 미만)은 7:3 분할이 아니라 해설이 하단
     // 시트로 문제/보기를 가리며 올라오는 구조라, 자동으로 열리면 오히려 방해가 되므로 제외한다.
-    const isWeakLikeSession = state.filterKind === 'wrong' || state.filterKind === 'weaknum' || state.filterKind === 'search';
+    const isWeakLikeSession = state.filterKind === 'wrong' || state.filterKind === 'weaknum';
     const isDesktopSplit = window.innerWidth >= 820;
     const alreadyAnswered = isDesktopSplit && !isWeakLikeSession && !!(state.progress[key] && state.progress[key][targetIdx]);
     state.sheetOpen = alreadyAnswered;
@@ -3696,42 +3201,6 @@
         }
       }
       return; // 전체 숫자 취약만 목록의 첫 문제 - 더 갈 곳 없음
-    }
-    if(state.filterKind === 'updated' && state.globalUpdatedReview && pos <= 0){
-      if(state.globalUpdatedQueueIndex > 0){
-        const prevKey = state.globalUpdatedQueue[state.globalUpdatedQueueIndex - 1];
-        const prevIdxs = updatedUnansweredIndicesOf(prevKey);
-        if(prevIdxs.length){
-          state.globalUpdatedQueueIndex--;
-          state.chapter = prevKey;
-          state.filterIndices = prevIdxs;
-          state.filterKind = 'updated';
-          const lastIdx = prevIdxs[prevIdxs.length - 1];
-          state.index = lastIdx;
-          state.sheetOpen = window.innerWidth >= 820 && !!(state.progress[prevKey] && state.progress[prevKey][lastIdx]); // 개정 업데이트는 취약형이 아니라 일반 문제 취급이므로 NUM과 동일하게 처리
-          saveProgress();
-          render();
-          return;
-        }
-      }
-      return; // 전체 개정 업데이트 목록의 첫 문제 - 더 갈 곳 없음
-    }
-    if(state.filterKind === 'search' && state.globalSearchReview && pos <= 0){
-      if(state.globalSearchQueueIndex > 0){
-        const prevEntry = state.globalSearchQueue[state.globalSearchQueueIndex - 1];
-        if(prevEntry && prevEntry.idxs.length){
-          state.globalSearchQueueIndex--;
-          state.chapter = prevEntry.key;
-          state.filterIndices = prevEntry.idxs;
-          state.filterKind = 'search';
-          state.index = prevEntry.idxs[prevEntry.idxs.length - 1];
-          state.sheetOpen = false;
-          saveProgress();
-          render();
-          return;
-        }
-      }
-      return; // 검색 결과 목록의 첫 문제 - 더 갈 곳 없음
     }
     goto(pos - 1);
   }
@@ -3960,52 +3429,6 @@
       state.globalReviewOnlyQueue = [];
       alert('🎉 복습 문제를 모두 마쳤습니다!');
     }
-    if(state.globalUpdatedReview){
-      // globalWeakReview 분기와 동일한 패턴: 큐를 한 칸씩 전진하며, 그 사이 이미 다 풀어버린
-      // (chapterUpdateInfo가 null인) 챕터는 건너뛰고 다음 챕터를 찾는다.
-      let nextKey = null;
-      while(state.globalUpdatedQueueIndex + 1 < state.globalUpdatedQueue.length){
-        state.globalUpdatedQueueIndex++;
-        const cand = state.globalUpdatedQueue[state.globalUpdatedQueueIndex];
-        if(chapterUpdateInfo(cand)){ nextKey = cand; break; }
-      }
-      // 큐를 끝까지 다 돌았는데도 다음 챕터를 못 찾았다면, 바로 "완료"로 끝내지 않고 과목 전체를
-      // 한 번 더 처음부터 새로 훑는다. 큐는 세션 시작 시점에 한 번 고정한 목록이라, 그 사이(다른
-      // 챕터를 푸는 도중) 놓친 챕터가 있어도 여기서 다시 정확하게 잡아낸다(신고된 버그: "모든
-      // 문제를 보여주지 않고 바로가기를 반복해서 눌러야 함").
-      if(!nextKey && state.globalUpdatedSubj){
-        const freshQueue = (state.globalUpdatedSubj.chapters || []).filter(k => chapterUpdateInfo(k));
-        if(freshQueue.length){
-          nextKey = freshQueue[0];
-          state.globalUpdatedQueue = freshQueue;
-          state.globalUpdatedQueueIndex = 0;
-          state.globalUpdatedCounts = freshQueue.map(k => chapterUpdateInfo(k).count);
-        }
-      }
-      if(nextKey){
-        startUpdatedReview(nextKey); // 기존 startUpdatedReview 로직 그대로 재사용
-        return;
-      }
-      state.globalUpdatedReview = false; state.globalUpdatedSubj = null;
-      state.globalUpdatedQueue = [];
-      alert('🎉 이번 개정 업데이트 문제를 모두 확인했습니다!');
-    }
-    if(state.globalSearchReview){
-      // 검색 결과는 그 순간의 스냅샷이라(weakCount처럼 "아직 남아있는지" 다시 계산할 게 없음),
-      // 건너뛰기 없이 큐를 그냥 한 칸씩 전진한다.
-      if(state.globalSearchQueueIndex + 1 < state.globalSearchQueue.length){
-        state.globalSearchQueueIndex++;
-        const next = state.globalSearchQueue[state.globalSearchQueueIndex];
-        startSearchReview(next.key, next.idxs);
-        return;
-      }
-      state.globalSearchReview = false;
-      state.globalSearchQueue = [];
-      alert('🎉 검색 결과 문제를 모두 풀었습니다!');
-      state.view = 'search';
-      render();
-      return;
-    }
     state.view = 'home';
     render();
   }
@@ -4036,15 +3459,13 @@
     const total = indices.length;
     const isWrongSession = state.filterKind === 'wrong';
     const isWeakNumSession = state.filterKind === 'weaknum';
-    const isWeakLikeSession = isWrongSession || isWeakNumSession || state.filterKind === 'search';
+    const isWeakLikeSession = isWrongSession || isWeakNumSession;
     // 🔴 취약 집중공략 / 🟡 복습 다시풀기 / 🔴 숫자 취약만 화면은 renderQuiz()와 동일하게, 예전 정답
     // 기록이 아니라 "오늘 이 문제에 다시 답을 골랐는지"(isReviewAnsweredToday)를 기준으로
     // saved를 판단해야 한다. 이 처리가 없으면 옛날 정답 기록 때문에 숫자키(1~4)로 답을 다시 고를
     // 수 없게 굳어버린다.
     const rawAnswered = state.progress[key] && state.progress[key][idx];
-    const saved = isWeakLikeSession
-      ? (isReviewAnsweredToday(key, idx) ? rawAnswered : null)
-      : (state.filterKind === 'updated' ? (isUpdatedRevResolved(key, idx) ? rawAnswered : null) : rawAnswered);
+    const saved = isWeakLikeSession ? (isReviewAnsweredToday(key, idx) ? rawAnswered : null) : rawAnswered;
     if(['1','2','3','4'].includes(e.key) && !saved){
       selectAnswer(Number(e.key)-1);
     } else if(e.key==='Escape' && state.sheetOpen){
@@ -4065,7 +3486,7 @@
           render();
           return;
         }
-        if((isWrongSession && state.globalWeakReview) || (isWrongSession && state.globalReviewOnlyReview) || (isWeakNumSession && state.globalWeakNumReview) || (state.filterKind==='updated' && state.globalUpdatedReview) || (state.filterKind==='search' && state.globalSearchReview)){
+        if((isWrongSession && state.globalWeakReview) || (isWrongSession && state.globalReviewOnlyReview) || (isWeakNumSession && state.globalWeakNumReview)){
           goHomeOrContinueGlobalReview();
           return;
         }
@@ -4107,7 +3528,7 @@
           render();
           return;
         }
-        if((isWrongSession && state.globalWeakReview) || (isWrongSession && state.globalReviewOnlyReview) || (isWeakNumSession && state.globalWeakNumReview) || (state.filterKind==='updated' && state.globalUpdatedReview) || (state.filterKind==='search' && state.globalSearchReview)){
+        if((isWrongSession && state.globalWeakReview) || (isWrongSession && state.globalReviewOnlyReview) || (isWeakNumSession && state.globalWeakNumReview)){
           // goToNextUnanswered()와 동일하게, "전체 취약 문제 복습" / "숫자 취약만"은 완료 화면 없이
           // 바로 다음 챕터로 이어간다(마우스 클릭 경로와 동작을 통일).
           goHomeOrContinueGlobalReview();
