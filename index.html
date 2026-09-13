@@ -517,11 +517,11 @@
     /* 진행률 바를 더 굵게 */
     .progress-bar-top{ height:6px; }
 
-    /* 태블릿/PC 듀얼 패널 — 좌(문제+선택지) 65% : 우(해설 전용) 35%
-       nav-row(이전/다음)는 quiz-split의 3번째 그리드 아이템으로 두고, 우측(35%) 컬럼 하단에
+    /* 태블릿/PC 듀얼 패널 — 좌(문제+선택지) 68% : 우(해설 전용) 32%
+       nav-row(이전/다음)는 quiz-split의 3번째 그리드 아이템으로 두고, 우측(32%) 컬럼 하단에
        배치해 화면을 스크롤해도 늘 보이는 고정 버튼처럼 만든다. */
     .quiz-split{
-      display:grid; grid-template-columns:6.5fr 3.5fr; grid-template-rows:auto auto;
+      display:grid; grid-template-columns:6.8fr 3.2fr; grid-template-rows:auto auto;
       column-gap:24px; align-items:start;
     }
     .qmain{ display:flex; flex-direction:column; grid-column:1; grid-row:1 / span 2; }
