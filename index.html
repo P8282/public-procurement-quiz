@@ -550,11 +550,21 @@
       position:sticky; top:calc(76px + 74px + 12px);
       max-height:calc(100vh - 96px - 74px - 12px);
     }
+    /* PC 모드에서는 위의 "← 이전 / 다음 →" 버튼 자체가 사라지므로, 그 버튼이 차지하던
+       공간(74px+12px)만큼 예약해뒀던 여백도 같이 없앤다 - 안 그러면 해설 패널 위에
+       빈 공간이 그대로 남는다. */
+    html.kbd-mode .qside{
+      top:76px;
+      max-height:calc(100vh - 96px);
+    }
     .sheet-dim{ display:none !important; } /* 뒷배경 딤처리 없음 */
     .sheet-inline-slot .sheet{
       position:static; max-width:none; width:100%; margin:0; border-radius:14px;
       box-shadow:var(--shadow); max-height:calc(100vh - 96px - 74px - 12px); animation:none; transform:none;
       cursor:pointer; /* 패널 클릭 시 다음 문제로 넘어감을 시각적으로 알림 */
+    }
+    html.kbd-mode .sheet-inline-slot .sheet{
+      max-height:calc(100vh - 96px); /* PC 모드: 이전/다음 버튼 공간이 빠진 만큼 해설 패널도 다시 계산 */
     }
     .sheet-inline-slot .grip{ display:none; }
     /* 태블릿/PC는 해설 패널이 늘 열려있는 고정 영역이라 "닫기" 자체가 불필요 — ✕ 버튼 제거 */
@@ -620,6 +630,10 @@
   html.kbd-mode .sheet-tip{ display:none !important; }
   html.kbd-mode .sheet-inline-slot .sheet{ cursor:default; }
   html.kbd-mode .qside-placeholder .tip-line{ display:none !important; }
+  /* PC 모드에서는 ←/→(이전/다음) 키보드 단축키가 이미 있으므로 화면의 "← 이전 / 다음 →" 버튼
+     자체를 없앤다(요구사항: "pc모드에서 이전/다음 버튼을 삭제"). 문제풀이 화면의 nav-row만
+     정확히 골라내기 위해 .quiz-split > .nav-row로 한정한다(다른 화면의 동명 버튼엔 영향 없음). */
+  html.kbd-mode .quiz-split > .nav-row{ display:none !important; }
 
   /* ---------- 마우스/트랙패드 hover 피드백 (요구6, 화면 폭이나 키보드 여부와는 무관) ---------- */
   @media (hover:hover) and (pointer:fine){
