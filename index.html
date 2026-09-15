@@ -1320,6 +1320,19 @@
   // 답한 기록(state.progress에는 남아있음)은 여기선 "아직 안 풀림"으로 본다 - 그래야 "Update
   // 바로가기"로 열었을 때, 예전 기록 때문에 옵션이 잠긴 상태로 보이지 않고 실제로 다시 고를 수
   // 있다(updatedUnansweredIndicesOf와 동일한 rev 비교 기준을 그대로 재사용).
+  // "이전"으로 앞 챕터로 되돌아갈 때 쓰는 목록 - updatedUnansweredIndicesOf와 달리 이미 이번
+  // 세션에서 다시 답한 문제도 빼지 않고 그대로 포함한다. (신고된 버그: 앞으로 가며 어떤 챕터의
+  // 개정 문제를 다 풀어버리면, 뒤로 갈 때 그 챕터의 목록이 통째로 비어서 "이전"이 조용히
+  // 멈춰버림 - 예: "14문제 중 5번까지만 뒤로 감")
+  function updatedIndicesOf(key){
+    const out = [];
+    if(cfEnabled() && CF_META[key]){
+      (CF_META[key].revs || []).forEach((rev, i)=>{ if(rev) out.push(i); });
+    } else {
+      (QUIZ[key] || []).forEach((q, i)=>{ if(q && q.rev) out.push(i); });
+    }
+    return out;
+  }
   function isUpdatedRevResolved(key, idx){
     const rec = state.progress[key] && state.progress[key][idx];
     if(!rec) return false;
@@ -3889,7 +3902,7 @@
     if(state.filterKind === 'updated' && state.globalUpdatedReview && pos <= 0){
       if(state.globalUpdatedQueueIndex > 0){
         const prevKey = state.globalUpdatedQueue[state.globalUpdatedQueueIndex - 1];
-        const prevIdxs = updatedUnansweredIndicesOf(prevKey);
+        const prevIdxs = updatedIndicesOf(prevKey); // 뒤로 갈 땐 이미 답한 문제도 포함해서 그대로 전부 보여준다
         if(prevIdxs.length){
           state.globalUpdatedQueueIndex--;
           state.chapter = prevKey;
