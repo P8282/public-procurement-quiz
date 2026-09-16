@@ -2056,6 +2056,41 @@
     return state.myReports ? Object.keys(state.myReports).length : 0;
   }
 
+  // ====== 오류신고 "반영됨" 자동 감지 ======
+  // admin은 신고를 수동으로 "처리완료" 처리하지 않는다(엑셀로 문제를 고쳐 올릴 뿐). 그래서
+  // "이 신고가 반영됐다"는 신호를 admin의 상태값이 아니라, 그 문제의 개정일자(rev, "YYMMDD" 문자열)가
+  // 신고 접수일(createdAt)보다 나중인지로 자동 판정한다 - 엑셀 업로드로 개정일자만 찍히면 저절로 감지된다.
+  function parseRevToDate(rev){
+    if(!rev || rev.length !== 6) return null;
+    const yy = parseInt(rev.slice(0,2), 10);
+    const mm = parseInt(rev.slice(2,4), 10);
+    const dd = parseInt(rev.slice(4,6), 10);
+    if(isNaN(yy) || isNaN(mm) || isNaN(dd)) return null;
+    return new Date(2000+yy, mm-1, dd);
+  }
+  // 신고된 문제의 지금 개정일자를 구한다 - 그 챕터를 아직 한 번도 안 열어봤어도(QUIZ에 본문이
+  // 없어도) CF_META의 가벼운 revs 메타데이터만으로 판정 가능하게 한다(getChapterToc 등과 동일 패턴).
+  function reportedQuestionRev(r){
+    if(!r || !r.chapterKey) return null;
+    if(cfEnabled() && CF_META[r.chapterKey]){
+      return (CF_META[r.chapterKey].revs || [])[r.questionIndex] || null;
+    }
+    const q = QUIZ[r.chapterKey] && QUIZ[r.chapterKey][r.questionIndex];
+    return (q && q.rev) || null;
+  }
+  function reportReflected(r){
+    const rev = reportedQuestionRev(r);
+    const revDate = parseRevToDate(rev);
+    if(!revDate) return false;
+    return revDate.getTime() > (r.createdAt || 0);
+  }
+  // 홈 화면 배너용 - "반영됐는데 아직 안 본" 신고 개수. seenReflected 필드가 없는 기존 신고는
+  // 자동으로 "미확인"으로 간주되어, 배포 이전에 이미 반영된 과거 신고도 자연스럽게 집계에 포함된다.
+  function unseenReflectedReportCount(){
+    if(!state.myReports) return 0;
+    return Object.values(state.myReports).filter(r => reportReflected(r) && !r.seenReflected).length;
+  }
+
   // 신고했던 그 문제로 바로 이동해서 다시 풀어볼 수 있게 한다.
   function goToReportedQuestion(chapterKey, questionIndex){
     if(!QUIZ[chapterKey] || !QUIZ[chapterKey][questionIndex]){
@@ -2074,6 +2109,13 @@
   function openMyReportsModal(){
     myReportsList = Object.entries(state.myReports || {}).sort((a,b)=> (b[1].createdAt||0) - (a[1].createdAt||0));
     if(!myReportsList.length){ alert('신고 내역이 없습니다.'); return; }
+    // 목록에 들어가는 시점에, 지금 "반영됨"으로 판정되는 항목들을 전부 확인함으로 표시한다.
+    // 그래야 다음번에 홈 화면 배너가 이 항목들로 또 뜨지 않는다(목록 자체에서는 계속 보임).
+    let markedAny = false;
+    myReportsList.forEach(([,r])=>{
+      if(reportReflected(r) && !r.seenReflected){ r.seenReflected = true; markedAny = true; }
+    });
+    if(markedAny) syncPush(); // best-effort로 클라우드에 반영(실패해도 이 세션 동안은 배너가 안 뜸)
     myReportsIndex = 0;
     document.addEventListener('keydown', myReportsKeyHandler);
     renderMyReportsView();
@@ -2124,7 +2166,9 @@
       if(found) q = found;
     }
     const dateStr = r.createdAt? new Date(r.createdAt).toLocaleString('ko-KR', {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
-    const statusLabel = r.status === 'resolved' ? '✅ 처리완료' : '🕓 접수됨';
+    // 개정일자가 신고일보다 나중이면(엑셀 업로드로 문제가 고쳐졌으면) "반영됨"으로 표시한다.
+    // 기존의 admin 수동 처리 상태(r.status)도 혹시 남아있으면 그대로 같이 보여준다.
+    const statusLabel = reportReflected(r) ? '🔧 반영됨' : (r.status === 'resolved' ? '✅ 처리완료' : '🕓 접수됨');
 
     let questionBlockHtml;
     if(q){
@@ -2975,7 +3019,10 @@
 
         <div class="home-subjects">${subjectsHtml}</div>
 
-        ${syncEnabled() && state.syncCode? `<div style="text-align:center;margin-top:14px;"><button id="myReportsBtn" style="background:none;border:none;color:var(--ink-soft);font-size:12px;text-decoration:underline;cursor:pointer;padding:6px;">🚩 내가 신고한 오류${myReportCount()>0? ` ${myReportCount()}개` : ''} 모아보기</button></div>` : ''}
+        ${syncEnabled() && state.syncCode? `<div style="text-align:center;margin-top:14px;">
+          ${unseenReflectedReportCount()>0? `<button id="reportsReflectedBanner" style="display:block;width:100%;max-width:420px;margin:0 auto 10px;background:var(--correct-tint);border:1px solid #BFDBCB;border-radius:12px;padding:11px 14px;font-size:12.5px;font-weight:700;color:#204636;cursor:pointer;">🔔 신고하신 오류 ${unseenReflectedReportCount()}건이 반영되었습니다</button>` : ''}
+          <button id="myReportsBtn" style="background:none;border:none;color:var(--ink-soft);font-size:12px;text-decoration:underline;cursor:pointer;padding:6px;">🚩 내가 신고한 오류${myReportCount()>0? ` ${myReportCount()}개` : ''} 모아보기</button>
+        </div>` : ''}
       </div>
     `;
 
@@ -3004,6 +3051,8 @@
     if(globalWeakNumBtn) globalWeakNumBtn.onclick = ()=> startGlobalWeakNumReview();
     const myReportsBtn = document.getElementById('myReportsBtn');
     if(myReportsBtn) myReportsBtn.onclick = ()=> openMyReportsModal();
+    const reportsReflectedBanner = document.getElementById('reportsReflectedBanner');
+    if(reportsReflectedBanner) reportsReflectedBanner.onclick = ()=> openMyReportsModal();
     const searchEntryBtn = document.getElementById('searchEntryBtn');
     if(searchEntryBtn) searchEntryBtn.onclick = ()=>{ state.view='search'; render(); };
 
