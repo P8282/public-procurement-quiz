@@ -2098,11 +2098,10 @@
     if(!revDate) return false;
     return revDate.getTime() > (r.createdAt || 0);
   }
-  // 홈 화면 배너용 - "반영됐는데 아직 안 본" 신고 개수. seenReflected 필드가 없는 기존 신고는
-  // 자동으로 "미확인"으로 간주되어, 배포 이전에 이미 반영된 과거 신고도 자연스럽게 집계에 포함된다.
-  function unseenReflectedReportCount(){
+  // 홈 화면 배너용 - "반영된" 신고 개수(확인했는지와 무관하게, 반영된 게 하나라도 있으면 계속 보여준다).
+  function reflectedReportCount(){
     if(!state.myReports) return 0;
-    return Object.values(state.myReports).filter(r => reportReflected(r) && !r.seenReflected).length;
+    return Object.values(state.myReports).filter(r => reportReflected(r)).length;
   }
 
   // 신고했던 그 문제로 바로 이동해서 다시 풀어볼 수 있게 한다.
@@ -2131,13 +2130,6 @@
     if(!myReportsList.length){
       alert(myReportsMode === 'reflected' ? '반영된 신고 내역이 없습니다.' : '아직 반영 안 된 신고 내역이 없습니다.');
       return;
-    }
-    // 반영된 신고 목록에 들어가는 시점에, 그 안의 항목들을 전부 확인함으로 표시한다.
-    // 그래야 다음번에 홈 화면 배너가 이 항목들로 또 뜨지 않는다(반영 목록 자체에서는 계속 보임).
-    if(myReportsMode === 'reflected'){
-      let markedAny = false;
-      myReportsList.forEach(([,r])=>{ if(!r.seenReflected){ r.seenReflected = true; markedAny = true; } });
-      if(markedAny) syncPush(); // best-effort로 클라우드에 반영(실패해도 이 세션 동안은 배너가 안 뜸)
     }
     myReportsIndex = 0;
     document.addEventListener('keydown', myReportsKeyHandler);
@@ -3055,7 +3047,7 @@
         <div class="home-subjects">${subjectsHtml}</div>
 
         ${syncEnabled() && state.syncCode? `<div style="text-align:center;margin-top:14px;">
-          ${unseenReflectedReportCount()>0? `<button id="reportsReflectedBanner" style="display:block;width:100%;max-width:420px;margin:0 auto 10px;background:var(--correct-tint);border:1px solid #BFDBCB;border-radius:12px;padding:11px 14px;font-size:12.5px;font-weight:700;color:#204636;cursor:pointer;">🔔 신고하신 오류 ${unseenReflectedReportCount()}건이 반영되었습니다</button>` : ''}
+          ${reflectedReportCount()>0? `<button id="reportsReflectedBanner" style="display:block;width:100%;max-width:420px;margin:0 auto 10px;background:var(--correct-tint);border:1px solid #BFDBCB;border-radius:12px;padding:11px 14px;font-size:12.5px;font-weight:700;color:#204636;cursor:pointer;">🔔 신고하신 오류 ${reflectedReportCount()}건이 반영되었습니다</button>` : ''}
           <button id="myReportsBtn" style="background:none;border:none;color:var(--ink-soft);font-size:12px;text-decoration:underline;cursor:pointer;padding:6px;">🚩 내가 신고한 오류(미반영)${unreflectedReportCount()>0? ` ${unreflectedReportCount()}개` : ''} 모아보기</button>
         </div>` : ''}
       </div>
