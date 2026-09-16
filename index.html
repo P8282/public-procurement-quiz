@@ -2185,34 +2185,39 @@
     // 기존의 admin 수동 처리 상태(r.status)도 혹시 남아있으면 그대로 같이 보여준다.
     const statusLabel = reportReflected(r) ? '🔧 반영됨' : (r.status === 'resolved' ? '✅ 처리완료' : '🕓 접수됨');
 
-    let questionBlockHtml;
+    // 퀴즈 화면(quiz-split: 좌 qmain=문제/보기, 우 qside=해설)과 동일한 레이아웃을 그대로 재사용한다
+    // (admin의 "미처리 모아보기"도 index.html의 이 구성을 그대로 본떠 만든 것이라 서로 맞춘다).
+    let crumbHtml, qcardHtml, optionsHtml, sheetHtml;
     if(q){
       const letters = ['①','②','③','④'];
-      const optionsHtml = q.options.map((opt,i)=>`
+      optionsHtml = `<div class="options">${q.options.map((opt,i)=>`
         <div class="option${i===q.answer-1? ' correct':' dim'}"><div class="num">${letters[i]}</div><div>${escapeHtml(opt)}</div></div>
-      `).join('');
+      `).join('')}</div>`;
       const tocLabels = questionTocLabels(r.chapterKey, q);
-      questionBlockHtml = `
-        <div class="quiz-head"><div class="crumb"><b>${escapeHtml(tocLabels.group)}</b><br>${escapeHtml(tocLabels.sub)}</div></div>
-        <div class="qcard"><div class="qtext">${escapeHtml(q.question)}</div></div>
-        <div class="options">${optionsHtml}</div>
+      crumbHtml = `<b>${escapeHtml(tocLabels.group)}</b><br>${escapeHtml(tocLabels.sub)}`;
+      qcardHtml = `<div class="qcard"><div class="qtext">${escapeHtml(q.question)}</div></div>`;
+      sheetHtml = `
         <div class="sheet-inline-slot">
-          <div class="sheet" style="position:static;max-width:none;width:100%;margin:14px 0 0;animation:none;box-shadow:var(--shadow);">
+          <div class="sheet" style="position:static;max-width:none;width:100%;margin:0;animation:none;box-shadow:var(--shadow);">
             <div class="sheet-head ok"><span>💡 해설</span></div>
             <div class="sheet-body">${escapeHtml((q.explanation || '해설이 제공되지 않았습니다.').trim())}${q.source? `<div class="sheet-src">§ 출처: ${escapeHtml(q.source)}</div>` : ''}</div>
           </div>
-        </div>
-      `;
+        </div>`;
     } else {
       // admin의 "오류 신고 모아보기"도 questionText(신고 당시 문제 텍스트) 하나만 저장/표시하고
       // 보기·정답·해설은 애초에 신고 데이터에 없어서 안 보여준다. 여기서도 그와 똑같이 문제
       // 텍스트만 담담히 보여준다 - 예전엔 "⚠️ 찾을 수 없습니다" 경고를 추가로 보여줘서 admin과
       // 다르게 놀라 보였는데(신고된 불일치), 이제 admin과 동일한 표시 방식으로 맞춘다.
-      questionBlockHtml = `
-        <div class="quiz-head"><div class="crumb"><b>${escapeHtml(META.names[r.chapterKey] || r.chapterKey)}</b></div></div>
-        <div class="qcard"><div class="qtext">${escapeHtml(r.questionText || '(문제 내용 없음)')}</div></div>
-      `;
+      crumbHtml = `<b>${escapeHtml(META.names[r.chapterKey] || r.chapterKey)}</b>`;
+      qcardHtml = `<div class="qcard"><div class="qtext">${escapeHtml(r.questionText || '(문제 내용 없음)')}</div></div>`;
+      optionsHtml = '';
+      sheetHtml = '';
     }
+    const reportBoxHtml = `
+      <div class="qcard" style="background:var(--seal-tint);border-color:transparent;${q? 'margin-top:14px;':''}">
+        <div style="font-size:11.5px;color:var(--ink-soft);margin-bottom:8px;">${statusLabel} · ${escapeHtml(dateStr)}</div>
+        <div style="font-size:14px;color:var(--seal);line-height:1.75;white-space:pre-wrap;word-break:keep-all;">${escapeHtml(r.content)}</div>
+      </div>`;
 
     const overlay = document.getElementById('myReportsOverlay') || document.createElement('div');
     overlay.id = 'myReportsOverlay';
@@ -2222,17 +2227,26 @@
         <div class="brand">${myReportsMode === 'reflected' ? '🔔 반영된 오류' : '🚩 내가 신고한 오류(미반영)'}</div>
         <div class="stats-chip">${myReportsIndex+1} / ${total}</div>
       </div>
+      <div class="progress-bar-top"><div style="width:${(myReportsIndex)/total*100}%"></div></div>
       <div class="quiz-wrap">
-        ${questionBlockHtml}
-        <div class="qcard" style="background:var(--seal-tint);border-color:transparent;margin-top:16px;">
-          <div style="font-size:11.5px;color:var(--ink-soft);margin-bottom:8px;">${statusLabel} · ${escapeHtml(dateStr)}</div>
-          <div style="font-size:14px;color:var(--seal);line-height:1.75;white-space:pre-wrap;word-break:keep-all;">${escapeHtml(r.content)}</div>
+        <div class="quiz-head">
+          <div class="crumb">${crumbHtml}</div>
         </div>
-        <div class="nav-row">
-          <button class="nav-btn" id="myReportsPrevBtn" ${myReportsIndex===0?'disabled':''}>← 이전</button>
-          <button class="nav-btn" id="myReportsNextBtn" ${myReportsIndex===total-1?'disabled':''}>다음 →</button>
+        <div class="quiz-split">
+          <div class="qmain">
+            ${qcardHtml}
+            ${optionsHtml}
+          </div>
+          <div class="qside">
+            ${sheetHtml}
+            ${reportBoxHtml}
+          </div>
+          <div class="nav-row">
+            <button class="nav-btn" id="myReportsPrevBtn" ${myReportsIndex===0?'disabled':''}>← 이전</button>
+            <button class="nav-btn" id="myReportsNextBtn" ${myReportsIndex===total-1?'disabled':''}>다음 →</button>
+          </div>
         </div>
-        <div class="nav-row">
+        <div class="nav-row" style="margin-top:14px;">
           ${q? `<button class="nav-btn" id="myReportsGotoBtn">문제로 이동</button>` : ''}
           <button class="nav-btn" id="myReportsDeleteBtn" style="color:var(--seal);">삭제</button>
           <button class="nav-btn primary" id="myReportsCloseBtn">닫기</button>
