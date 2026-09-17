@@ -1943,15 +1943,32 @@
 
   // 현재 기록을 클라우드에 올린다(문제 풀 때마다, 1회독 완료 시 호출됨). 코드가 연결 안 돼 있으면 아무것도 안 한다.
   // Cloudflare Worker의 /sync/push가 서버 쪽에서 devices 맵 안 이 기기 항목만 정확히 병합해준다(다른 기기 기록 유지).
-  async function syncPush(){
+  async function syncPush(eventType){
     if(!syncEnabled() || !state.syncCode) return;
     try{
       const devId = await getDeviceId();
       const payload = collectLocalData();
-      await cfPostJson(`${CF_API_BASE}/sync/push?code=${encodeURIComponent(state.syncCode)}`, {
-        deviceId: devId, deviceType: deviceTypeLabel(), payload
+      const res = await cfPostJson(`${CF_API_BASE}/sync/push?code=${encodeURIComponent(state.syncCode)}`, {
+        deviceId: devId, deviceType: deviceTypeLabel(), payload,
+        answered: eventType === 'answer', // 서버의 동시접속(계정 공유 의심) 감지용 - 답 제출 push만 표시
       });
+      if(res && res.forceLogout) await forceLogoutNow();
     }catch(e){ /* 오프라인 등으로 실패해도 기기 저장은 이미 됐으므로 조용히 넘어간다 */ }
+  }
+
+  // 서버가 "동시접속(계정 공유 의심)"으로 이 기기를 로그아웃 대상으로 찍었을 때 호출된다.
+  // stopSync()(사용자가 직접 누르는 로그아웃)와 달리 확인창 없이 즉시 처리하고, 서버에 다시
+  // /sync/logout을 보낼 필요는 없다(서버가 이미 그 판단을 했고, devices 맵 정리는 다음 기기가
+  // 등록될 때 자연스럽게 자리를 대체하므로 큰 문제 없음).
+  async function forceLogoutNow(){
+    state.syncCode = null;
+    await window.storage.set('sync-code', '');
+    alert(
+      '짧은 시간 동안 여러 기기에서 동시에 접속한 것이 확인되어 자동으로 로그아웃되었습니다.\n' +
+      '본인만 사용 중이라면 다시 로그인 후 이용해주세요.\n' +
+      '함께 쓰고 계셨다면, 추가 코드 발급을 요청하실 수 있습니다 (계정당 소량 제한).'
+    );
+    render();
   }
 
   // 동기화 연결을 끊는다("로그아웃"에 해당). 클라우드의 기록은 그대로 남아있고, 이 기기에서만 연결이 해제된다.
@@ -1973,7 +1990,9 @@
   async function syncPullOnOpen(){
     if(!syncEnabled() || !state.syncCode) return;
     try{
-      const res = await cfFetchWithRetry(`${CF_API_BASE}/sync/pull?code=${encodeURIComponent(state.syncCode)}`);
+      const devId = await getDeviceId();
+      const res = await cfFetchWithRetry(`${CF_API_BASE}/sync/pull?code=${encodeURIComponent(state.syncCode)}&deviceId=${encodeURIComponent(devId)}`);
+      if(res && res.forceLogout){ await forceLogoutNow(); return; }
       const cloudData = res && res.data;
       if(cloudData && Object.keys(cloudData).length){
         const merged = mergeProgressData(collectLocalData(), cloudData);
@@ -4121,7 +4140,7 @@
 
     state.sheetOpen = true; // 정답/오답 상관없이 해설 시트를 띄운다
     saveProgress();
-    syncPush(); // 동기화 연결돼 있으면 클라우드에도 즉시 반영(연결 안 돼 있으면 아무 동작 안 함)
+    syncPush('answer'); // 동기화 연결돼 있으면 클라우드에도 즉시 반영(연결 안 돼 있으면 아무 동작 안 함) - 동시접속 감지용 태깅
     render(true);
   }
 
