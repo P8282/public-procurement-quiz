@@ -1957,7 +1957,7 @@
   // 동기화 연결을 끊는다("로그아웃"에 해당). 클라우드의 기록은 그대로 남아있고, 이 기기에서만 연결이 해제된다.
   async function stopSync(){
     if(!confirm('동기화를 해제할까요?\n이 기기의 학습기록은 그대로 남아있고, 코드를 다시 입력하면 언제든 재연결할 수 있습니다.')) return;
-    // 이 기기 항목을 devices 맵에서 삭제해서, 기기 수 제한(5대)에 자리를 비워준다.
+    // 이 기기 항목을 devices 맵에서 삭제해서, 기기 수 제한(최대 10대)에 자리를 비워준다.
     if(syncEnabled() && state.syncCode){
       try{
         const devId = await getDeviceId();
@@ -2042,13 +2042,14 @@
 
   // 개인 기록에서만 삭제(관리자 쪽 reports 컬렉션은 그대로 남음)
   async function deleteMyReport(reportId){
-    if(!confirm('이 신고 내역을 내 목록에서 삭제할까요?\n(관리자에게 전달된 신고 자체는 계속 유지됩니다)')) return;
     try{
       await cfPostJson(`${CF_API_BASE}/sync/report/delete?code=${encodeURIComponent(state.syncCode)}`, { reportId });
       if(state.myReports) delete state.myReports[reportId];
       render(true);
+      return true;
     }catch(e){
       alert('삭제에 실패했습니다.');
+      return false;
     }
   }
 
@@ -2138,13 +2139,29 @@
 
   function closeMyReportsView(){
     document.getElementById('myReportsOverlay')?.remove();
+    closeMyReportsDeleteConfirm(); // 혹시 삭제 확인 오버레이가 떠 있었다면 같이 정리(고아 상태 방지)
     document.removeEventListener('keydown', myReportsKeyHandler);
   }
 
+  let myReportsConfirmOpen = false; // 삭제 확인 오버레이가 떠 있는 동안, 아래 키 핸들러가 Y/Esc를 확인 전용으로 가로채게 하는 플래그
+
   function myReportsKeyHandler(e){
     if(!document.getElementById('myReportsOverlay')) return;
+    if(myReportsConfirmOpen){
+      // e.key 대신 e.code를 쓴다 - 한글 입력 상태에서 물리적 Y 키를 누르면 e.key가 'y'가 아니라
+      // 'ㅛ'가 되어 단축키가 안 먹는 문제가 있어서(admin_full.html의 오류 신고 모아보기와 동일한
+      // 이유로 겪었던 신고된 버그), e.code(물리적 키 위치)로 판단해 입력 상태와 무관하게 동작시킨다.
+      if(e.code === 'KeyY'){ e.preventDefault(); handleMyReportsConfirmYes(); }
+      else if(e.key === 'Escape'){ e.preventDefault(); closeMyReportsDeleteConfirm(); }
+      return;
+    }
     if(e.key === 'ArrowRight') myReportsNav(1);
     else if(e.key === 'ArrowLeft') myReportsNav(-1);
+    else if(e.key === 'Delete' || e.key === 'Backspace'){
+      // 'Del'과 'Backspace' 둘 다 받아준다 - 맥 키보드의 delete 키가 실제로는 Backspace 키코드를 보낸다.
+      e.preventDefault();
+      openMyReportsDeleteConfirm();
+    }
     else if(e.key === 'Escape') closeMyReportsView();
   }
 
@@ -2155,12 +2172,41 @@
     renderMyReportsView();
   }
 
-  // 삭제 실제 처리는 기존 deleteMyReport(confirm+API 호출)를 그대로 재사용하고,
-  // 이 화면(overlay)의 목록/인덱스만 갱신해 계속 이어서 볼 수 있게 한다.
-  async function myReportsHandleDelete(id){
-    const before = myReportCount();
-    await deleteMyReport(id);
-    if(myReportCount() === before) return; // 취소했거나 삭제 실패
+  // Del 키 또는 "삭제" 버튼으로 진입하는 확인 단계. admin_full.html의 오류 신고 모아보기와 동일한
+  // Del→Y 패턴(터치는 버튼으로, 키보드는 Del 다음 Y로 확정).
+  function openMyReportsDeleteConfirm(){
+    if(!myReportsList[myReportsIndex]) return;
+    myReportsConfirmOpen = true;
+    const overlay = document.createElement('div');
+    overlay.id = 'myReportsConfirmOverlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(20,18,12,.55);z-index:90;display:flex;align-items:center;justify-content:center;padding:20px;';
+    overlay.innerHTML = `
+      <div style="background:var(--card);border-radius:16px;padding:24px;max-width:320px;width:100%;text-align:center;">
+        <div style="font-weight:800;font-size:16px;color:var(--navy);margin-bottom:10px;">이 신고 내역을 삭제할까요?</div>
+        <div style="font-size:12.5px;color:var(--ink-soft);margin-bottom:18px;">관리자에게 전달된 신고 자체는 계속 유지됩니다.<br>키보드 Y = 삭제 · Esc = 취소</div>
+        <div style="display:flex;gap:8px;">
+          <button id="myReportsConfirmCancelBtn" class="nav-btn" style="flex:1;">취소</button>
+          <button id="myReportsConfirmYesBtn" class="nav-btn" style="flex:1;color:var(--seal);">삭제</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    document.getElementById('myReportsConfirmCancelBtn').onclick = closeMyReportsDeleteConfirm;
+    document.getElementById('myReportsConfirmYesBtn').onclick = handleMyReportsConfirmYes;
+  }
+
+  function closeMyReportsDeleteConfirm(){
+    myReportsConfirmOpen = false;
+    document.getElementById('myReportsConfirmOverlay')?.remove();
+  }
+
+  async function handleMyReportsConfirmYes(){
+    const entry = myReportsList[myReportsIndex];
+    if(!entry) return;
+    const [id] = entry;
+    const ok = await deleteMyReport(id);
+    closeMyReportsDeleteConfirm();
+    if(!ok) return;
     myReportsList = myReportsList.filter(([rid]) => rid !== id);
     if(!myReportsList.length){ closeMyReportsView(); return; }
     if(myReportsIndex >= myReportsList.length) myReportsIndex = myReportsList.length - 1;
@@ -2251,7 +2297,7 @@
           <button class="nav-btn" id="myReportsDeleteBtn" style="color:var(--seal);">삭제</button>
           <button class="nav-btn primary" id="myReportsCloseBtn">닫기</button>
         </div>
-        <div class="kbd-hint">←/→ 이전·다음 &nbsp; Esc 닫기</div>
+        <div class="kbd-hint">←/→ 이전·다음 &nbsp; Del 삭제 확인 · Y 삭제 확정 &nbsp; Esc 닫기</div>
       </div>
     `;
     if(!overlay.parentNode) document.body.appendChild(overlay);
@@ -2260,7 +2306,7 @@
     document.getElementById('myReportsPrevBtn').onclick = (e)=>{ e.stopPropagation(); myReportsNav(-1); };
     document.getElementById('myReportsNextBtn').onclick = (e)=>{ e.stopPropagation(); myReportsNav(1); };
     document.getElementById('myReportsCloseBtn').onclick = (e)=>{ e.stopPropagation(); closeMyReportsView(); };
-    document.getElementById('myReportsDeleteBtn').onclick = (e)=>{ e.stopPropagation(); myReportsHandleDelete(id); };
+    document.getElementById('myReportsDeleteBtn').onclick = (e)=>{ e.stopPropagation(); openMyReportsDeleteConfirm(); };
     if(q) document.getElementById('myReportsGotoBtn').onclick = (e)=>{ e.stopPropagation(); goToReportedQuestion(r.chapterKey, r.questionIndex); };
 
     // 신고된 문제가 속한 챕터를 한 번도 안 열어봤으면(위에서 q를 못 찾았거나, 신고 당시 텍스트로만
@@ -4527,20 +4573,24 @@
           renderSyncGate('존재하지 않는 코드입니다. 코드를 다시 확인해주세요.');
           return;
         }
-        // 기기 수 제한(최대 5대): 이 기기가 이미 연결된 적 있는 기기면 몇 대든 통과, 완전히 새 기기인데
-        // 이미 5대가 연결돼 있으면 막는다. (관리자는 이 코드 게이트 자체를 안 거치므로 자동으로 제외됨)
-        const devices = cloudData.devices || {};
-        const deviceIds = Object.keys(devices);
-        const thisDeviceId = await getDeviceId();
-        const isKnownDevice = deviceIds.includes(thisDeviceId);
-        if(!isKnownDevice && deviceIds.length >= 5){
-          const typeCounts = {};
-          deviceIds.forEach(id=>{ const t = devices[id].type || '기타'; typeCounts[t] = (typeCounts[t]||0)+1; });
-          const summary = Object.entries(typeCounts).map(([t,c])=>`${t} ${c}대`).join(' · ');
-          renderSyncGate(
-            `이 코드는 이미 최대 5대까지 기기가 연결되어 있습니다 (${summary}).\n` +
-            `기존 기기에서 "로그아웃"을 먼저 해주세요. 계속 문제가 있으면 관리자에게 문의해주세요.`
-          );
+        // 기기 수 제한(최대 10대, 같은 IP를 쓰는 기존 기기가 있으면 예외)은 이제 클라이언트에서
+        // 대충 세어 짐작하지 않고, 실제로 서버에 등록을 시도해서 그 응답으로 판단한다 - 서버만
+        // 접속 IP를 정확히 알 수 있어서(CF-Connecting-IP), "다른 브라우저+같은 IP" 예외까지
+        // 정확히 반영하려면 이 방법뿐이다. (관리자는 이 코드 게이트 자체를 안 거치므로 자동으로 제외됨)
+        try{
+          const devId = await getDeviceId();
+          await cfPostJson(`${CF_API_BASE}/sync/push?code=${encodeURIComponent(val)}`, {
+            deviceId: devId, deviceType: deviceTypeLabel(), payload: collectLocalData()
+          });
+        }catch(pushErr){
+          if(pushErr.status === 403){
+            renderSyncGate(
+              (pushErr.message || '이 코드는 이미 최대 기기 수만큼 연결되어 있습니다.') +
+              '\n기존 기기에서 "로그아웃"을 먼저 해주세요. 계속 문제가 있으면 관리자에게 문의해주세요.'
+            );
+          } else {
+            renderSyncGate('확인 중 오류가 발생했습니다. 인터넷 연결을 확인해주세요.');
+          }
           return;
         }
         // 이 기기에 혹시 남아있던 기록(예: 예전에 자유롭게 쓰던 시절 기록)이 있다면 손실 없이 합친다.
