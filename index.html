@@ -1344,6 +1344,43 @@
     const rev = q && q.rev;
     return !rev || rec.rev === rev;
   }
+  // 개정된 문제의 예전 답변 기록을 학습이력에서 통째로 지운다. progress record는 답할 당시의
+  // 개정일자(rec.rev)를 같이 저장해두는데, 지금 문제의 개정일자(currentRevOf)가 그것과 다르면
+  // (즉 그 뒤에 또 개정됐으면) 예전 답은 더는 유효하지 않다고 보고 삭제한다 - isUpdatedRevResolved와
+  // 정확히 반대되는 조건(그쪽은 "업데이트 리뷰 큐"에서만 빼고, 정답률/진행률 등 다른 통계에는
+  // 여전히 예전 답이 그대로 카운트되는 문제가 있었음 - 신고된 요구사항: "학습이력에서 삭제").
+  // 삭제(deleted:true, e-발주시스템처럼 출제기준에서 빠진 문제)는 개정과는 다른 개념이라 건드리지 않는다.
+  function pruneOutdatedProgress(){
+    let changed = false;
+    const prunedByKey = {}; // 챕터별로 몇 개나 지웠는지 - bestAnswered(진행률 최고기록)도 그만큼 낮추기 위함
+    allChapterKeys().forEach(key=>{
+      const progress = state.progress[key];
+      if(!progress) return;
+      Object.keys(progress).forEach(idxStr=>{
+        const idx = Number(idxStr);
+        const rec = progress[idx];
+        if(!rec || rec.deleted) return;
+        const rev = currentRevOf(key, idx);
+        if(rev && rec.rev !== rev){
+          delete progress[idx];
+          changed = true;
+          prunedByKey[key] = (prunedByKey[key] || 0) + 1;
+        }
+      });
+    });
+    // 🚩 "다시 풀기"로 progress가 비워져도 진행률이 뒤로 안 가게 해주는 bestAnswered(최고기록)
+    // 장치가 있는데, 이번처럼 "개정으로 인한 삭제"는 그 장치와는 성격이 달라서(다시 풀기는
+    // 사용자가 스스로 초기화한 것이라 최고기록을 지켜줘야 하지만, 개정 삭제는 실제로 안 푼
+    // 상태로 되돌아간 것이므로 진행률도 정직하게 같이 줄어들어야 한다) 지운 개수만큼
+    // bestAnswered도 같이 낮춰준다.
+    if(Object.keys(prunedByKey).length){
+      Object.entries(prunedByKey).forEach(([key, count])=>{
+        state.bestAnswered[key] = Math.max(0, (state.bestAnswered[key] || 0) - count);
+      });
+      saveBestAnswered();
+    }
+    return changed;
+  }
   // 챕터 단위 집계: { count, latestRev } 또는 없으면 null. rev는 "260830" 같은 YYMMDD 문자열이라
   // 자리수가 같으면 문자열 비교만으로도 날짜 순서가 정확히 맞는다. 개정일자 자체도 문제 본문 없이
   // CF_META[key].revs에서 바로 읽는다(updatedUnansweredIndicesOf와 동일한 이유).
@@ -1594,6 +1631,9 @@
         }
       });
     });
+    // 개정된 문제의 예전 답변 기록 정리(신고된 요구사항: "update된 문제는 학습이력에서 삭제") -
+    // 로컬 저장소에서 막 불러온 시점에 한 번 훑어서, 그 사이 문제가 개정된 게 있으면 지운다.
+    if(pruneOutdatedProgress()) saveProgress();
     render();
     syncPullOnOpen(); // 앱을 열 때마다(코드가 연결돼 있으면) 조용히 클라우드와 병합
   }
@@ -1997,6 +2037,8 @@
       if(cloudData && Object.keys(cloudData).length){
         const merged = mergeProgressData(collectLocalData(), cloudData);
         applyCloudData(merged);
+        // 다른 기기에서 병합돼 들어온 기록 중에도 개정된 문제의 예전 답이 섞여있을 수 있으니 한 번 더 정리한다.
+        if(pruneOutdatedProgress()) saveProgress();
         await syncPush(); // 합친 결과를 다시 클라우드에도 반영
         if(state.view==='home') render(true);
       }
@@ -2102,15 +2144,20 @@
     if(isNaN(yy) || isNaN(mm) || isNaN(dd)) return null;
     return new Date(2000+yy, mm-1, dd);
   }
-  // 신고된 문제의 지금 개정일자를 구한다 - 그 챕터를 아직 한 번도 안 열어봤어도(QUIZ에 본문이
-  // 없어도) CF_META의 가벼운 revs 메타데이터만으로 판정 가능하게 한다(getChapterToc 등과 동일 패턴).
+  // 지금 이 문제(챕터+인덱스)의 개정일자를 구한다 - 그 챕터를 아직 한 번도 안 열어봤어도(QUIZ에
+  // 본문이 없어도) CF_META의 가벼운 revs 메타데이터만으로 판정 가능하게 한다(getChapterToc 등과
+  // 동일 패턴).
+  function currentRevOf(key, idx){
+    if(!key) return null;
+    if(cfEnabled() && CF_META[key]){
+      return (CF_META[key].revs || [])[idx] || null;
+    }
+    const q = QUIZ[key] && QUIZ[key][idx];
+    return (q && q.rev) || null;
+  }
   function reportedQuestionRev(r){
     if(!r || !r.chapterKey) return null;
-    if(cfEnabled() && CF_META[r.chapterKey]){
-      return (CF_META[r.chapterKey].revs || [])[r.questionIndex] || null;
-    }
-    const q = QUIZ[r.chapterKey] && QUIZ[r.chapterKey][r.questionIndex];
-    return (q && q.rev) || null;
+    return currentRevOf(r.chapterKey, r.questionIndex);
   }
   function reportReflected(r){
     const rev = reportedQuestionRev(r);
