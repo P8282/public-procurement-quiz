@@ -1275,15 +1275,19 @@
       const q = list[idx];
       const rec = state.progress[key][idx];
       if(!q || !rec) return;
+      // 🚩 rec.rev가 아예 없는(undefined) 기록은 "이 rev 추적 기능이 생기기 전에 답한" 레거시
+      // 기록이다 - 그 문제가 그때 실제로 개정 전이었는지 우리가 알 방법이 없으므로, 지금 rev가
+      // 있다고 무조건 "개정됐다"고 단정해서 지우면 안 된다(신고된 버그: 이 구분이 없어서 rev
+      // 추적 기능 도입 이전의 정상 기록까지 대량으로 삭제됨). null(명시적으로 "그때는 rev
+      // 없었음"으로 기록된 것)과는 다르게 취급한다 - null은 비교 가능한 확실한 정보다.
+      if(rec.rev === undefined) return;
       const currentRev = q.rev || null;
-      const answeredRev = rec.rev || null;
-      if(currentRev && currentRev !== answeredRev){
+      if(currentRev && currentRev !== rec.rev){
         delete state.progress[key][idx];
-        // 🚩 예전엔 오답노트(wrongMastery pool/streak)도 같이 지웠는데, 이제는 그대로 둔다 -
-        // 문제 내용이 살짝 고쳐졌다고 해서 "이 문제가 취약하다"는 학습 이력 자체가 사라질
-        // 이유는 없다(신고된 요구사항: "업데이트가 되더라도 취약, 복습 데이터는 사라지지 않도록").
-        // 정답/오답 기록(progress)만 초기화해서 개정된 내용으로 다시 풀게 하고, 취약/복습
-        // 분류는 그대로 유지한다.
+        // 오답노트(wrongMastery pool/streak)는 지우지 않는다 - 문제 내용이 살짝 고쳐졌다고 해서
+        // "이 문제가 취약하다"는 학습 이력 자체가 사라질 이유는 없다(신고된 요구사항: "업데이트가
+        // 되더라도 취약, 복습 데이터는 사라지지 않도록"). 정답/오답 기록(progress)만 초기화해서
+        // 개정된 내용으로 다시 풀게 하고, 취약/복습 분류는 그대로 유지한다.
         changed = true;
         prunedCount++;
       }
@@ -1370,6 +1374,10 @@
         const idx = Number(idxStr);
         const rec = progress[idx];
         if(!rec || rec.deleted) return;
+        // invalidateChangedAnswers와 동일한 이유로, rev 이력 자체가 없는(undefined) 레거시
+        // 기록은 건드리지 않는다 - "그때 rev가 없었다"는 걸 아는 것(null)과 "모른다"(undefined)는
+        // 다르다.
+        if(rec.rev === undefined) return;
         const rev = currentRevOf(key, idx);
         if(rev && rec.rev !== rev){
           delete progress[idx];
@@ -1587,6 +1595,13 @@
       if(tc && tc.value){ state.todayCount = JSON.parse(tc.value) || { date: null, total: 0, num: 0, weak: 0, review: 0 }; }
     }catch(e){ /* no saved today count yet */ }
     try{
+      // 🚩 이 기기만의 "오늘 직접 푼 개수" - 다른 기기와 동기화로 절대 안 섞인다(다른 기기 값과
+      // 병합/최댓값 처리 없이 이 기기 로컬에서만 증가). admin이 코드 하나의 "오늘 학습량"을
+      // 기기별로 정확히 합산해서 보여주기 위한 용도(신고된 요구사항: "금일 학습데이터를 합산").
+      const mtc = await window.storage.get('my-today-count');
+      if(mtc && mtc.value){ state.myTodayCount = JSON.parse(mtc.value) || { date: null, total: 0 }; }
+    }catch(e){ /* no saved my-today count yet */ }
+    try{
       const rat = await window.storage.get('review-answered-today');
       if(rat && rat.value){
         const parsed = JSON.parse(rat.value);
@@ -1667,6 +1682,11 @@
       await window.storage.set('today-count', JSON.stringify(state.todayCount));
     }catch(e){ /* best effort */ }
   }
+  async function saveMyTodayCount(){
+    try{
+      await window.storage.set('my-today-count', JSON.stringify(state.myTodayCount));
+    }catch(e){ /* best effort */ }
+  }
   // 로컬(기기) 날짜 기준 "오늘" 문자열(YYYY-MM-DD). UTC 변환 없이 로컬 자정을 기준으로 삼는다.
   function todayDateStr(){
     const d = new Date();
@@ -1714,9 +1734,28 @@
     if(opts && opts.statusBefore === 'weak') tc.weak = (tc.weak || 0) + 1;
     if(opts && opts.statusBefore === 'review') tc.review = (tc.review || 0) + 1;
     saveTodayCount();
+
+    // 이 기기만의 카운터(다른 기기와 안 섞임) - admin의 코드별 "오늘 학습량" 합산용.
+    if(!state.myTodayCount || state.myTodayCount.date !== today){
+      state.myTodayCount = { date: today, total: 0 };
+    }
+    state.myTodayCount.total = (state.myTodayCount.total || 0) + 1;
+    saveMyTodayCount();
+
+    // 다음 동기화(pull) 전까지도, 마지막으로 계산해둔 "여러 기기 합산치"에 이 기기 몫만큼 실시간으로
+    // 얹어준다 - 안 그러면 pull이 다시 돌 때까지 홈 화면 숫자가 안 늘어나서 방금 푼 게 안 보임.
+    if(state.todayCountAllDevices && state.todayCountAllDevices.date === today){
+      state.todayCountAllDevices.total = (state.todayCountAllDevices.total || 0) + 1;
+    }
   }
-  // 홈 화면 "오늘 학습" 표시용. 날짜가 바뀌었으면(예: 자정 넘기고 다시 켬) 전부 0을 보여준다.
+  // 홈 화면 "오늘 학습" 표시용. 여러 기기를 번갈아 쓴 경우, 클라우드에서 기기별 합산값을 이미
+  // 계산해뒀으면(todayCountAllDevices, syncPullOnOpen 참고) 그걸 우선 쓰고(더 정확함), 아직 한 번도
+  // 동기화 안 됐거나(오프라인 등) 계산 전이면 기존의 기기 간 공유·최댓값 방식으로 대체 표시한다.
+  // 날짜가 바뀌었으면(예: 자정 넘기고 다시 켬) 전부 0을 보여준다.
   function todayStudiedCount(){
+    if(state.todayCountAllDevices && state.todayCountAllDevices.date === todayDateStr()){
+      return state.todayCountAllDevices.total || 0;
+    }
     if(!state.todayCount || state.todayCount.date !== todayDateStr()) return 0;
     return state.todayCount.total || 0;
   }
@@ -1859,6 +1898,7 @@
       questionReviewCounts: state.questionReviewCounts,
       questionCorrectCounts: state.questionCorrectCounts,
       manualWeak: state.manualWeak,
+      myTodayCount: state.myTodayCount, // 이 기기만의 값 - applyCloudData에서는 절대 안 읽어들인다(다른 기기 값과 안 섞이게)
       updatedAt: Date.now()
     };
   }
@@ -2049,6 +2089,15 @@
         applyCloudData(merged);
         // 다른 기기에서 병합돼 들어온 기록 중에도 개정된 문제의 예전 답이 섞여있을 수 있으니 한 번 더 정리한다.
         if(pruneOutdatedProgress()) saveProgress();
+        // 기기별 "오늘 직접 푼 개수"(devices.{기기}.todayCount, 서로 안 섞이게 따로 저장된 값)를
+        // 오늘 날짜인 것만 골라 합산 - 홈 화면에 여러 기기 합산치를 보여주기 위함(admin과 동일한 계산).
+        const today = todayDateStr();
+        const devices = cloudData.devices || {};
+        const sum = Object.values(devices).reduce((s, d)=>{
+          const tc = d && d.todayCount;
+          return s + ((tc && tc.date === today) ? (tc.total || 0) : 0);
+        }, 0);
+        state.todayCountAllDevices = { date: today, total: sum };
         await syncPush(); // 합친 결과를 다시 클라우드에도 반영
         if(state.view==='home') render(true);
       }
