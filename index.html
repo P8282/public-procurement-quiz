@@ -1269,6 +1269,7 @@
     const list = QUIZ[key];
     if(!list || !state.progress[key]) return;
     let changed = false;
+    let prunedCount = 0;
     Object.keys(state.progress[key]).forEach(idxStr=>{
       const idx = Number(idxStr);
       const q = list[idx];
@@ -1278,13 +1279,22 @@
       const answeredRev = rec.rev || null;
       if(currentRev && currentRev !== answeredRev){
         delete state.progress[key][idx];
-        // 오답노트 대상에 들어가 있었다면 그것도 같이 정리(더 이상 유효한 기록이 아니므로)
-        if(state.wrongMastery.pool[key]) delete state.wrongMastery.pool[key][idx];
-        if(state.wrongMastery.streak[key]) delete state.wrongMastery.streak[key][idx];
+        // 🚩 예전엔 오답노트(wrongMastery pool/streak)도 같이 지웠는데, 이제는 그대로 둔다 -
+        // 문제 내용이 살짝 고쳐졌다고 해서 "이 문제가 취약하다"는 학습 이력 자체가 사라질
+        // 이유는 없다(신고된 요구사항: "업데이트가 되더라도 취약, 복습 데이터는 사라지지 않도록").
+        // 정답/오답 기록(progress)만 초기화해서 개정된 내용으로 다시 풀게 하고, 취약/복습
+        // 분류는 그대로 유지한다.
         changed = true;
+        prunedCount++;
       }
     });
-    if(changed){ saveProgress(); saveWrongMastery(); }
+    if(prunedCount){
+      // pruneOutdatedProgress()와 동일한 이유로, 지운 개수만큼 진행률 최고기록도 같이 낮춘다
+      // (안 그러면 "다시 풀기 방지용 최고기록" 장치 때문에 진행률이 정직하게 안 줄어듦).
+      state.bestAnswered[key] = Math.max(0, (state.bestAnswered[key] || 0) - prunedCount);
+      saveBestAnswered();
+    }
+    if(changed) saveProgress();
   }
 
   // 이 챕터 안에서 "개정일자(rev)가 찍혀있고 + 지금 개정판을 아직 안 푼" 문제들의 인덱스.
