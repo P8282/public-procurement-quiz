@@ -4067,13 +4067,22 @@
     // 🤖 AI에 물어보기 - 누르면 Gemini/ChatGPT 선택 버튼이 나타나고, 고르면 문제+보기+정답+해설을
     // 담은 질문과 함께 새 탭이 열린다. letters는 위쪽 보기 렌더링에서 이미 선언된 걸 그대로 재사용.
     function buildAiQueryText(){
-      // 법령/규정 관련 문제는 ChatGPT가 최신 법령을 국가법령정보센터에서 직접 확인하고 답하도록
-      // 맨 앞에 지시문을 붙인다(법령 문제가 아니면 이 문구는 자연히 무시됨).
-      return '법령·규정 관련 문제는 답변 전 국가법령정보센터(law.go.kr)에서 현행 법령·시행령·시행규칙 및 관련 행정규칙을 확인하고, 확인된 조문을 근거로 해설한다.\n\n' +
-        '다음 문제에 대해 설명해줘.\n\n문제: ' + q.question +
-        '\n보기: ' + q.options.map((o,i)=>(letters[i]||(i+1)+'.') + ' ' + o).join('  ') +
-        '\n정답: ' + (letters[q.answer-1] || q.answer) +
-        '\n해설: ' + (q.explanation || '해설 없음');
+      // 최종 확정 포맷: 문제/보기/정답/해설을 채운 뒤, 법령·규정 문제는 국가법령정보센터 확인을
+      // 지시하고, 답변을 "상세 설명"과 "핵심 재요약" 두 섹션으로 나눠 간결하게 받도록 요청한다.
+      const optionsText = q.options.map((o,i)=>(letters[i]||(i+1)+'.') + ' ' + o).join('  ');
+      const answerText = letters[q.answer-1] || q.answer;
+      const explanationText = q.explanation || '해설 없음';
+      return '다음 문제를 학습용으로 설명해줘.\n\n' +
+        '문제: ' + q.question + '\n' +
+        '보기: ' + optionsText + '\n' +
+        '정답: ' + answerText + '\n' +
+        '해설: ' + explanationText + '\n\n' +
+        '법령·규정 문제는 답변 전에 국가법령정보센터(law.go.kr)의 현행 규정을 확인하고, 확인된 조문을 근거로 설명해줘.\n\n' +
+        '답변은 다음 형식으로 간결하게 작성해줘.\n\n' +
+        '상세 설명\n\n' +
+        '정답인 이유와 핵심 개념을 이해하기 쉽게 설명하고, 헷갈리는 보기의 오류도 짧게 설명.\n\n' +
+        '핵심 재요약\n\n' +
+        '시험 직전에 기억해야 할 핵심 기준·숫자·요건만 3~5개 이내로 정리.';
     }
     const askChatGptBtn = document.getElementById('askChatGptBtn');
     if(askChatGptBtn) askChatGptBtn.onclick = ()=>{
