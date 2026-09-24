@@ -3996,7 +3996,15 @@
       if(!isWeakLikeSession){
         while(p < total){
           const realIdx = indices[p];
-          const answered = state.progress[key] && state.progress[key][realIdx];
+          // '개정 업데이트' 세션은 옛 개정판 때 답한 기록(state.progress에 남아있음)이 있어도,
+          // 그 기록의 rev가 지금 rev와 다르면 "아직 이 개정판으로는 안 푼 문제"다. 여기서 그냥
+          // state.progress만 보고 "있으니 이미 풀었다"고 판단해 건너뛰면, 정작 다시 풀어야 할
+          // 문제를 지나쳐버린다(신고된 버그: "1번으로 시작했으나 2번이 아니라 건너뜀" - 2번 문제가
+          // 옛 개정판 때 답한 기록이 남아있어서 생긴 오판정). isUpdatedRevResolved로 "지금 개정판
+          // 기준으로" 진짜 풀렸는지 판단한다.
+          const answered = isUpdatedSession
+            ? isUpdatedRevResolved(key, realIdx)
+            : (state.progress[key] && state.progress[key][realIdx]);
           if(!answered) break;
           p++;
         }
@@ -4673,7 +4681,11 @@
       if(!isWeakLikeSession){
         while(p < total){
           const realIdx = indices[p];
-          const answered = state.progress[key] && state.progress[key][realIdx];
+          // goToNextUnanswered()와 동일한 이유로, '개정 업데이트' 세션은 rev 불일치 기록을
+          // "이미 풀었다"고 오판정하지 않도록 isUpdatedRevResolved로 판단한다.
+          const answered = isUpdatedSession
+            ? isUpdatedRevResolved(key, realIdx)
+            : (state.progress[key] && state.progress[key][realIdx]);
           if(!answered) break;
           p++;
         }
