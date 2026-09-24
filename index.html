@@ -1354,11 +1354,20 @@
   function isUpdatedRevResolved(key, idx){
     const rec = state.progress[key] && state.progress[key][idx];
     if(!rec) return false;
+    // 문제 본문이 이미 로드돼 있으면(지금 화면에 보여주고 있는 그 문제라면 항상 로드돼 있음)
+    // QUIZ[key][idx].rev를 최우선으로 쓴다 - CF_META[key].revs는 가벼운 메타데이터라 동기화
+    // 도중 갱신되면서 일시적으로 비거나 어긋날 수 있는데, 그러면 "아직 안 푼 문제"가 !rev
+    // 조건에 걸려 "이미 풀림"으로 오판정돼 순번이 튀며 건너뛰는 문제가 있었다(신고된 버그:
+    // "2/36 다음이 4/36으로 튐" - 3번째 문제가 메타 쪽 rev가 잠깐 비어서 건너뛰어짐).
+    // 문제 본문 자체의 rev는 이미 화면에 보여주고 있는 값이라 흔들리지 않는다.
+    const q = QUIZ[key] && QUIZ[key][idx];
+    if(q && q.rev !== undefined){
+      return !q.rev || rec.rev === q.rev;
+    }
     if(cfEnabled() && CF_META[key]){
       const rev = (CF_META[key].revs || [])[idx];
       return !rev || rec.rev === rev;
     }
-    const q = QUIZ[key] && QUIZ[key][idx];
     const rev = q && q.rev;
     return !rev || rec.rev === rev;
   }
@@ -3300,19 +3309,25 @@
       el.onclick = (e)=>{ e.stopPropagation(); state.globalWeakReview = false; state.globalReviewOnlyReview = false; startReviewOnlyReview(el.dataset.key); };
     });
     document.querySelectorAll('.updated-btn').forEach(el=>{
-      // 다른 4개 버튼(취약/복습 등)과 달리, 개정 업데이트는 챕터 배지로 들어와도 이 챕터만 풀고
-      // 끝나지 않는다 - 전체 큐를 그대로 쓰되 이 챕터부터 시작하도록(startGlobalUpdatedReview의
-      // startKey 인자) 해서, 다 풀면 이어서 자동으로 다음 챕터(다른 날짜에 개정된 것 포함)로
-      // 넘어간다(신고된 버그: "23일 풀이가 완료되면 종료되고, 22일을 다시 눌러야 함").
+      // 챕터별 단독 바로가기 - 이 챕터 안의 개정 문제만 모아 풀고 끝난다(날짜는 이미
+      // updatedUnansweredIndicesOf가 구분 없이 합쳐서 준다). 과목/전체로 넘어가지 않도록
+      // 남아있을 수 있는 전체세션 플래그를 모두 꺼서 이 챕터만 정상적으로 풀고 완료 화면을
+      // 보게 한다(다른 4개 버튼과 동일한 방어 패턴).
       el.onclick = (e)=>{
         e.stopPropagation();
-        startGlobalUpdatedReview(el.dataset.key);
+        state.globalWeakReview = false;
+        state.globalReviewOnlyReview = false;
+        state.globalWeakNumReview = false;
+        state.globalNumReview = false;
+        state.globalUpdatedReview = false; state.globalUpdatedSubj = null;
+        startUpdatedReview(el.dataset.key);
       };
     });
     document.querySelectorAll('.subject-updated-btn').forEach(el=>{
       el.onclick = (e)=>{
         e.stopPropagation();
-        startGlobalUpdatedReview();
+        const subj = META.subjects[Number(el.dataset.subjIdx)];
+        if(subj) startGlobalUpdatedReview(subj);
       };
     });
     document.querySelectorAll('.expand-btn').forEach(el=>{
@@ -3661,30 +3676,20 @@
     if(!idxs.length) return;
     openChapter(key, true, idxs, 'updated');
   }
-  // 🆕 "개정 업데이트" 이어풀기 - 과목 화면 배지와 챕터 배지 둘 다 여기로 들어온다(둘 다 같은
-  // 전체 큐를 쓰되, startKey를 주면 그 챕터부터 시작). 예전에는 챕터 배지가 "이 챕터만 풀고 끝"
-  // 이었는데, 그러면 22일 rev 문제가 있는 챕터를 다 풀어도 23일 rev 문제가 있는 다른 챕터로 이어
-  // 지지 않고 그 배지를 따로 또 눌러야 하는 문제가 있었다(신고된 버그: "23일 풀이가 완료되면
-  // 종료되고, 22일을 다시 눌러야 함" - 원인은 과목 배지뿐 아니라 챕터 배지도 똑같이 "그 챕터만"
-  // 으로 한정돼 있었던 것). 이제는 어느 배지로 들어오든 전체 문제은행 기준 큐로 이어간다.
-  function startGlobalUpdatedReview(startKey){
-    let queue = allChapterKeys().filter(k => chapterUpdateInfo(k));
+  // 🆕 과목별 "개정 업데이트" 이어풀기(과목 화면 배지 전용) - 그 과목에 속한 챕터들만 큐에 담아
+  // 이어간다(다른 과목으로는 넘어가지 않는다 - 챕터 단위 학습/과목 단위 학습은 서로 구분된 별도
+  // 범위이고, 날짜(rev)만 구분 없이 합치는 게 원래 요구사항이었다). 챕터 안에서는
+  // updatedUnansweredIndicesOf가 이미 날짜 구분 없이 다 합쳐서 준다.
+  function startGlobalUpdatedReview(subj){
+    const queue = (subj.chapters || []).filter(k => chapterUpdateInfo(k));
     if(!queue.length) return;
-    // startKey(챕터 배지로 들어온 경우)가 큐 중간에 있으면, 그 앞쪽 챕터들의 개수가 "이미 지나온
-    // 순번"으로 잡혀서 진행률이 1번이 아니라 중간 숫자부터 시작하는 문제가 있었다(신고된 버그:
-    // "update가 45개일 때 순번이 1번부터 차례대로 진행하지 않음"). 그래서 시작 챕터가 항상 큐의
-    // 맨 앞(1번)에 오도록 배열 자체를 회전시킨다 - 앞쪽에 있던 챕터들은 뒤로 밀려날 뿐 빠지지
-    // 않으므로, 끝까지 다 돌면 그 챕터들도 그대로 이어서 나온다.
-    if(startKey){
-      const idx = queue.indexOf(startKey);
-      if(idx > 0) queue = queue.slice(idx).concat(queue.slice(0, idx));
-    }
     // 다른 전체 세션과 동시에 진행 중이면 완료 시점에 엉뚱한 세션으로 이어질 수 있으므로 정리한다.
     state.globalWeakReview = false;
     state.globalReviewOnlyReview = false;
     state.globalNumReview = false;
     state.globalWeakNumReview = false;
     state.globalUpdatedReview = true;
+    state.globalUpdatedSubj = subj; // 큐를 다 돌았을 때 이 과목 안에서만 다시 훑기 위해 보관(아래 goHomeOrContinueGlobalReview 참고)
     state.globalUpdatedQueue = queue;
     state.globalUpdatedQueueIndex = 0;
     state.globalUpdatedCounts = queue.map(k => chapterUpdateInfo(k).count);
@@ -4534,14 +4539,13 @@
         const cand = state.globalUpdatedQueue[state.globalUpdatedQueueIndex];
         if(chapterUpdateInfo(cand)){ nextKey = cand; break; }
       }
-      // 큐를 끝까지 다 돌았는데도 다음 챕터를 못 찾았다면, 바로 "완료"로 끝내지 않고 전체를
+      // 큐를 끝까지 다 돌았는데도 다음 챕터를 못 찾았다면, 바로 "완료"로 끝내지 않고 이 과목을
       // 한 번 더 처음부터 새로 훑는다. 큐는 세션 시작 시점에 한 번 고정한 목록이라, 그 사이(다른
       // 챕터를 푸는 도중) 놓친 챕터가 있어도 여기서 다시 정확하게 잡아낸다(신고된 버그: "모든
-      // 문제를 보여주지 않고 바로가기를 반복해서 눌러야 함"). 과목 구분 없이 전체 챕터를 다시
-      // 훑으므로, 22일/23일처럼 개정일자가 다르거나 서로 다른 과목에 걸쳐 있어도 한 세션으로
-      // 계속 이어진다.
-      if(!nextKey){
-        const freshQueue = allChapterKeys().filter(k => chapterUpdateInfo(k));
+      // 문제를 보여주지 않고 바로가기를 반복해서 눌러야 함"). 과목 단위 학습이므로 다른 과목으로는
+      // 넘어가지 않고, 이 과목 안에서만 다시 훑는다.
+      if(!nextKey && state.globalUpdatedSubj){
+        const freshQueue = (state.globalUpdatedSubj.chapters || []).filter(k => chapterUpdateInfo(k));
         if(freshQueue.length){
           nextKey = freshQueue[0];
           state.globalUpdatedQueue = freshQueue;
@@ -4553,7 +4557,7 @@
         startUpdatedReview(nextKey); // 기존 startUpdatedReview 로직 그대로 재사용
         return;
       }
-      state.globalUpdatedReview = false;
+      state.globalUpdatedReview = false; state.globalUpdatedSubj = null;
       state.globalUpdatedQueue = [];
       alert('🎉 이번 개정 업데이트 문제를 모두 확인했습니다!');
     }
