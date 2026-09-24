@@ -3138,7 +3138,7 @@
       <div class="topbar">
         <div class="brand"><span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="#F5F1E7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v4h4"/><path d="M9 13l2 2 4-4"/></svg></span>공공조달관리사</div>
         <div style="display:flex; align-items:center; gap:8px;">
-          ${syncEnabled() && state.syncCode? `<span class="home-sync-indicator">● 동기화됨</span>` : ''}
+          ${syncEnabled() && state.syncCode? `<span class="home-sync-indicator" id="syncedIndicatorBtn" title="눌러서 학습이력 동기화 + 최신 버전 새로고침" style="cursor:pointer;">● 동기화됨</span>` : ''}
           <button id="manualRefreshBtn" title="문제/앱 새로고침" style="background:var(--card); border:1px solid var(--line-strong); border-radius:999px; width:28px; height:28px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:13px; color:var(--ink-soft); flex-shrink:0;">🔄</button>
           <div class="stats-chip">전체 ${os.answered}/${os.total}</div>
         </div>
@@ -4907,8 +4907,12 @@
   // 홈 화면 상단 🔄 버튼: 새 버전이 있는지 확인하지 않고, 누르면 무조건 지금 배포된 index.html을
   // 다시 받아온다. location.reload()만 쓰면 브라우저가 캐시된 옛 버전을 그대로 보여줄 수 있어서,
   // 매번 다른 쿼리스트링을 붙여 확실히 새로 받아오게 한다.
+  // "● 동기화됨" 표시도 같은 동작을 한다(신고된 버그: "동기화됨을 누르면 학습이력 + index.html
+  // 강제 다운로드가 이루어져야 하는데 강제 다운로드가 안 됨" - 원인은 이 span에 클릭 핸들러 자체가
+  // 아예 없었던 것). 페이지를 통째로 새로 받으면 앱이 부팅되면서 학습이력도 자연히 다시 불러오므로,
+  // 🔄 버튼과 똑같이 강제 새로고침 한 번으로 두 가지 다 해결된다.
   document.addEventListener('click', (e)=>{
-    if(e.target && e.target.id === 'manualRefreshBtn'){
+    if(e.target && (e.target.id === 'manualRefreshBtn' || e.target.id === 'syncedIndicatorBtn')){
       location.href = location.pathname + '?_=' + Date.now();
     }
     if(e.target && e.target.id === 'reloadAppBtn'){
