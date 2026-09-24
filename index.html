@@ -4074,7 +4074,15 @@
     }
     const askChatGptBtn = document.getElementById('askChatGptBtn');
     if(askChatGptBtn) askChatGptBtn.onclick = ()=>{
-      window.open('https://chatgpt.com/?q=' + encodeURIComponent(buildAiQueryText()), '_blank');
+      const url = 'https://chatgpt.com/?q=' + encodeURIComponent(buildAiQueryText());
+      // 🚩 아이폰 홈화면에 추가한 "웹 앱"(standalone 모드)에서 window.open()으로 새 창을 열면,
+      // iOS가 빈 미니 브라우저 화면을 잠깐 끼워넣고서야 앱으로 넘어간다(신고된 불편함). 같은
+      // 창에서 바로 이동(location.href)시키면 이 화면 없이 곧장 ChatGPT 앱으로 전환된다.
+      // 단, PC/일반 브라우저 탭에서는 이렇게 하면 퀴즈 풀던 화면 자체가 사라지므로, 홈화면
+      // 웹앱(standalone)일 때만 이 방식을 쓰고 그 외에는 기존처럼 새 탭으로 연다.
+      const isStandalone = window.navigator.standalone || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+      if(isStandalone) window.location.href = url;
+      else window.open(url, '_blank');
     };
   }
 
