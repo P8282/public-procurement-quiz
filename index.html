@@ -634,6 +634,10 @@
   /* PC 모드(키보드 사용 중)에서는 해설 패널을 클릭해도 다음 문제로 넘어가지 않는다(아래 JS의
      sheetPanel.onclick 참고) - 그래서 클릭 유도 커서와 "누르면 다음으로" 안내 문구도 함께 끈다. */
   html.kbd-mode .sheet-tip{ display:none !important; }
+  /* Gemini 버튼은 PC 전용(요구사항 확정) - 화면 폭이 아니라 실제 키보드/마우스가 감지된
+     "진짜 PC"에서만 보이게 한다(kbd-mode 기준이 태블릿/PC 폭 공용 구간보다 더 정확함). */
+  .pc-only-flex{ display:none; }
+  html.kbd-mode .pc-only-flex{ display:block; flex:1; }
   html.kbd-mode .sheet-inline-slot .sheet{ cursor:default; }
   html.kbd-mode .qside-placeholder .tip-line{ display:none !important; }
   /* PC 모드에서는 ←/→(이전/다음) 키보드 단축키가 이미 있으므로 화면의 "← 이전 / 다음 →" 버튼
@@ -3892,7 +3896,10 @@
       // 🤖 AI에 물어보기: 해설 바로 아래에 버튼 하나, 누르면 Gemini/ChatGPT 중 고르는 작은 버튼
       // 2개가 나타난다(요구사항 확정: "제미나이와 Chatgpt선택"). 고르면 문제+보기+정답+해설을
       // 전부 담은 질문을 채운 채로 새 탭이 열린다(전송은 사용자가 한 번 더 눌러야 함).
-      const askAiBtnHtml = '<button id="askChatGptBtn" style="margin-top:10px;width:100%;background:var(--paper-deep);border:1px solid var(--line-strong);border-radius:9px;padding:9px;font-size:12.5px;color:var(--ink-soft);cursor:pointer;">🤖 ChatGPT에 물어보기</button>';
+      const askAiBtnHtml = '<div style="margin-top:10px;display:flex;gap:8px;">' +
+        '<button id="askGeminiBtn" class="pc-only-flex" style="background:#E8F0FE;border:1px solid #AECBFA;border-radius:9px;padding:9px;font-size:12.5px;color:#1A73E8;font-weight:700;cursor:pointer;">🔷 Gemini</button>' +
+        '<button id="askChatGptBtn" style="flex:1;background:#E8F8F0;border:1px solid #A8E6C1;border-radius:9px;padding:9px;font-size:12.5px;color:#10A37F;font-weight:700;cursor:pointer;">🟢 ChatGPT</button>' +
+      '</div>';
       const weakBtnHtml = (!isDeletedSaved && (isWeakNow || !alreadyWeakStatus))? ('<button id="manualWeakBtn" style="margin-top:10px;width:100%;background:' + (isWeakNow? 'var(--correct-tint)':'var(--seal-tint)') + ';border:1px solid ' + (isWeakNow? '#BFDBCB':'#E9C2BC') + ';border-radius:9px;padding:9px;font-size:12.5px;color:' + (isWeakNow? '#204636':'var(--seal)') + ';font-weight:700;cursor:pointer;">' + (isWeakNow? '✔ 취약문제 지정 해제' : '🚨 취약문제로 지정하기') + '</button>') : '';
       const excludeBtnHtml = (!isDeletedSaved && showsMasteryUi)? '<button id="excludeBtn" style="margin-top:8px;width:100%;background:var(--paper-deep);border:1px solid var(--line-strong);border-radius:9px;padding:9px;font-size:12.5px;color:var(--ink-soft);cursor:pointer;">✕ 이 문제는 취약문제에서 그만 보기</button>' : '';
       const reportBtnHtml = '<button id="reportErrorBtn" style="margin-top:8px;width:100%;background:transparent;border:1px dashed var(--line-strong);border-radius:9px;padding:8px;font-size:12px;color:var(--ink-soft);cursor:pointer;">🚩 문제 오류 신고</button>';
@@ -4095,6 +4102,16 @@
       const isStandalone = window.navigator.standalone || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
       if(isStandalone) window.location.href = url;
       else window.open(url, '_blank');
+    };
+    // Gemini 버튼은 PC 전용(요구사항 확정 - CSS에서 kbd-mode 아니면 안 보이게 처리돼 있음).
+    // PC에는 앱 전환 같은 게 없으니 기기 분기 없이 단순하게: 질문을 클립보드에 복사하고 새 탭으로 연다.
+    // (Gemini는 URL로 질문을 미리 채워주는 기능이 없어서 ChatGPT처럼 자동 입력은 안 됨)
+    const askGeminiBtn = document.getElementById('askGeminiBtn');
+    if(askGeminiBtn) askGeminiBtn.onclick = async ()=>{
+      const text = buildAiQueryText();
+      try{ await navigator.clipboard.writeText(text); }catch(e){ /* 복사 실패해도 사이트는 열어준다 */ }
+      alert('질문이 클립보드에 복사되었습니다.\nGemini가 열리면 붙여넣기해주세요.');
+      window.open('https://gemini.google.com/app', '_blank');
     };
   }
 
