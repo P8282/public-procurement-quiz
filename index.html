@@ -4086,8 +4086,15 @@
         '\n해설: ' + (q.explanation || '해설 없음');
     }
     const askGeminiBtn = document.getElementById('askGeminiBtn');
-    if(askGeminiBtn) askGeminiBtn.onclick = ()=>{
-      window.open('https://gemini.google.com/app?q=' + encodeURIComponent(buildAiQueryText()), '_blank');
+    if(askGeminiBtn) askGeminiBtn.onclick = async ()=>{
+      // 🚩 Gemini 앱은 ChatGPT 앱과 달리 URL의 ?q= 파라미터로 질문을 미리 채워주는 기능을 지원하지
+      // 않는 것으로 확인됐다(신고된 버그: 앱 대신 웹으로 열리고, 웹에서도 안 채워짐). 그래서
+      // Gemini만 "클립보드에 복사 + 사이트 열기" 방식으로 대체한다 - 앱이든 웹이든 붙여넣기만
+      // 하면 되므로 확실하게 작동한다.
+      const text = buildAiQueryText();
+      try{ await navigator.clipboard.writeText(text); }catch(e){ /* 복사 실패해도 사이트는 열어준다 */ }
+      alert('질문이 클립보드에 복사되었습니다.\nGemini가 열리면 붙여넣기(길게 눌러 붙여넣기)해주세요.');
+      window.open('https://gemini.google.com/app', '_blank');
     };
     const askChatGptBtn = document.getElementById('askChatGptBtn');
     if(askChatGptBtn) askChatGptBtn.onclick = ()=>{
