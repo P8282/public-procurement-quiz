@@ -3896,12 +3896,12 @@
       // 🤖 AI에 물어보기: 해설 바로 아래에 버튼 하나, 누르면 Gemini/ChatGPT 중 고르는 작은 버튼
       // 2개가 나타난다(요구사항 확정: "제미나이와 Chatgpt선택"). 고르면 문제+보기+정답+해설을
       // 전부 담은 질문을 채운 채로 새 탭이 열린다(전송은 사용자가 한 번 더 눌러야 함).
-      // Gemini 버튼은 안드로이드+PC에서만 보인다. 아이폰은 Gemini 앱이 따로 없어(구글 앱에
-      // 통합된 구조) 앱 강제 호출이 안 되고 항상 웹으로만 열려서, 사용자 요청으로 아예 제외함.
-      const isIOSDevice = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+      // Gemini 버튼: 모든 기기(PC/안드로이드/iOS)에서 동일하게 "복사만" 한다 - 앱/사이트를
+      // 자동으로 열어주지 않는다(요구사항 확정). 이름도 "Gemini용 복사"로 명시해 ChatGPT
+      // 버튼(자동 실행)과 동작이 다르다는 걸 버튼명만 보고도 알 수 있게 한다.
       const askAiBtnHtml = '<div style="margin-top:10px;display:flex;gap:8px;">' +
-        (isIOSDevice? '' : '<button id="askGeminiBtn" style="flex:1;background:#E8F0FE;border:1px solid #AECBFA;border-radius:9px;padding:9px;font-size:12.5px;color:#1A73E8;font-weight:700;cursor:pointer;">🔷 Gemini</button>') +
-        '<button id="askChatGptBtn" style="flex:1;background:#E8F8F0;border:1px solid #A8E6C1;border-radius:9px;padding:9px;font-size:12.5px;color:#10A37F;font-weight:700;cursor:pointer;">🟢 ChatGPT</button>' +
+        '<button id="askGeminiBtn" style="flex:1;background:#E8F0FE;border:1px solid #AECBFA;border-radius:9px;padding:9px;font-size:12.5px;color:#1A73E8;font-weight:700;cursor:pointer;">🔷 Gemini용 복사</button>' +
+        '<button id="askChatGptBtn" style="flex:1;background:#E8F8F0;border:1px solid #A8E6C1;border-radius:9px;padding:9px;font-size:12.5px;color:#10A37F;font-weight:700;cursor:pointer;">🟢 ChatGPT 실행</button>' +
       '</div>';
       const weakBtnHtml = (!isDeletedSaved && (isWeakNow || !alreadyWeakStatus))? ('<button id="manualWeakBtn" style="margin-top:10px;width:100%;background:' + (isWeakNow? 'var(--correct-tint)':'var(--seal-tint)') + ';border:1px solid ' + (isWeakNow? '#BFDBCB':'#E9C2BC') + ';border-radius:9px;padding:9px;font-size:12.5px;color:' + (isWeakNow? '#204636':'var(--seal)') + ';font-weight:700;cursor:pointer;">' + (isWeakNow? '✔ 취약문제 지정 해제' : '🚨 취약문제로 지정하기') + '</button>') : '';
       const excludeBtnHtml = (!isDeletedSaved && showsMasteryUi)? '<button id="excludeBtn" style="margin-top:8px;width:100%;background:var(--paper-deep);border:1px solid var(--line-strong);border-radius:9px;padding:9px;font-size:12.5px;color:var(--ink-soft);cursor:pointer;">✕ 이 문제는 취약문제에서 그만 보기</button>' : '';
@@ -3950,7 +3950,7 @@
             </div>
             <div class="options">${optionsHtml}</div>
             ${saved? `<button class="nav-btn" id="showSheetBtn" style="width:100%;margin-top:18px;font-size:14px;padding:12px;">📖 해설 다시 보기</button>` : ''}
-            <div class="kbd-hint"><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd> 답 선택 &nbsp; <kbd>Enter</kbd>/<kbd>Space</kbd> 다음 &nbsp; <kbd>←</kbd>/<kbd>→</kbd> 이동 &nbsp; <kbd>↑</kbd> 해설</div>
+            <div class="kbd-hint"><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd> 답 선택 &nbsp; <kbd>Enter</kbd>/<kbd>Space</kbd> 다음 &nbsp; <kbd>←</kbd>/<kbd>→</kbd> 이동 &nbsp; <kbd>↑</kbd> 해설${(saved && state.sheetOpen)? ` &nbsp; <kbd>G</kbd> Gemini복사 &nbsp; <kbd>C</kbd> ChatGPT` : ''}</div>
           </div>
           <div class="qside">
             <div class="sheet-inline-slot">${sheetHtml}</div>
@@ -4121,16 +4121,15 @@
       if(isStandalone) window.location.href = url;
       else window.open(url, '_blank');
     };
-    // Gemini 버튼: 안드로이드 + PC에서만 노출(아이폰은 위쪽 HTML 조립 단계에서 버튼 자체를 안 만듦 -
-    // Gemini 앱이 따로 없어 항상 웹으로만 열리는 게 확인되어 사용자 요청으로 제외함).
-    // 안드로이드는 Gemini 앱(패키지: com.google.android.apps.bard)이 실제로 존재하므로,
-    // Chrome Intent URL로 앱을 직접 호출한다(앱이 없으면 S.browser_fallback_url로 자동 웹 전환).
-    // PC는 Gemini에 URL 질문-자동입력 기능이 없어(ChatGPT와 달리) 클립보드 복사 + 새 탭 열기로 처리.
+    // Gemini 버튼: 모든 기기(PC/안드로이드/iOS) 공통 - 클립보드 복사만 하고, 사이트/앱을
+    // 자동으로 열어주지 않는다(요구사항 확정: "제미나이 열지도 않는다는 걸 팝업으로 안내").
+    // 안내는 alert()를 쓴다 - 브라우저 기본 alert는 Enter 키로 자동 닫히므로 별도 구현 없이도
+    // "PC에서 Enter로 팝업 닫기" 요구사항이 그대로 충족된다.
     const askGeminiBtn = document.getElementById('askGeminiBtn');
     if(askGeminiBtn) askGeminiBtn.onclick = ()=>{
       const text = buildAiQueryText();
-      // 동기식(구방식) 클립보드 복사 - 비동기 clipboard API의 권한 타이밍 문제로 앱 전환이
-      // 꼬이는 걸 피하기 위함(안드로이드 인텐트 전환 직전에 특히 중요).
+      // 동기식(구방식) 클립보드 복사 - 구형 iOS 등 비동기 clipboard API 미지원 환경 대비.
+      let copyOk = true;
       try{
         const tempTextArea = document.createElement('textarea');
         tempTextArea.value = text;
@@ -4140,25 +4139,8 @@
         tempTextArea.select();
         document.execCommand('copy');
         document.body.removeChild(tempTextArea);
-      }catch(e){ /* 복사 실패해도 사이트/앱은 열어준다 */ }
-      // alert 대신 버튼 텍스트로 안내(alert의 화면 정지가 앱 전환 타이밍을 방해할 수 있어서 제외).
-      const originalText = askGeminiBtn.textContent;
-      askGeminiBtn.textContent = '복사 완료! 이동중...';
-      setTimeout(()=>{ askGeminiBtn.textContent = originalText; }, 2000);
-      const isAndroid = /Android/i.test(navigator.userAgent);
-      if(isAndroid){
-        // 안드로이드: Intent URL로 Gemini 앱을 강제 호출. 앱이 없으면 S.browser_fallback_url로
-        // 자동으로 웹(gemini.google.com/app)으로 넘어간다.
-        const targetUrl = 'intent://gemini.google.com/app#Intent;scheme=https;package=com.google.android.apps.bard;S.browser_fallback_url=' + encodeURIComponent('https://gemini.google.com/app') + ';end';
-        const link = document.createElement('a');
-        link.href = targetUrl;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      } else {
-        // iOS/PC: 별도 앱 연동 없이 새 탭으로 웹 Gemini를 연다(퀴즈 화면 유지).
-        window.open('https://gemini.google.com/app', '_blank');
-      }
+      }catch(e){ copyOk = false; }
+      alert((copyOk? '질문이 클립보드에 복사되었습니다.\n' : '복사에 실패했습니다.\n') + 'Gemini는 자동으로 열리지 않으니, 직접 Gemini 앱/사이트를 열어서 붙여넣어 주세요.\n(Enter 또는 확인을 누르면 이 창이 닫힙니다)');
     };
   }
 
@@ -4718,6 +4700,17 @@
       e.preventDefault();
       state.sheetOpen = !state.sheetOpen;
       render(true);
+    } else if(state.sheetOpen && (e.key==='g' || e.key==='G')){
+      // PC 단축키: G = Gemini용 복사. 해설 패널(sheetOpen)이 열려 있을 때만 버튼이 DOM에 있으므로
+      // 그 조건에서만 동작 - 버튼의 onclick을 그대로 재사용해 클릭과 완전히 동일하게 처리한다.
+      e.preventDefault();
+      const btn = document.getElementById('askGeminiBtn');
+      if(btn) btn.click();
+    } else if(state.sheetOpen && (e.key==='c' || e.key==='C')){
+      // PC 단축키: C = ChatGPT 실행. 위 G와 동일한 방식.
+      e.preventDefault();
+      const btn = document.getElementById('askChatGptBtn');
+      if(btn) btn.click();
     }
   });
 
