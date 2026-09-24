@@ -4067,7 +4067,10 @@
     // 🤖 AI에 물어보기 - 누르면 Gemini/ChatGPT 선택 버튼이 나타나고, 고르면 문제+보기+정답+해설을
     // 담은 질문과 함께 새 탭이 열린다. letters는 위쪽 보기 렌더링에서 이미 선언된 걸 그대로 재사용.
     function buildAiQueryText(){
-      return '다음 문제에 대해 설명해줘.\n\n문제: ' + q.question +
+      // 법령/규정 관련 문제는 ChatGPT가 최신 법령을 국가법령정보센터에서 직접 확인하고 답하도록
+      // 맨 앞에 지시문을 붙인다(법령 문제가 아니면 이 문구는 자연히 무시됨).
+      return '법령·규정 관련 문제는 답변 전 국가법령정보센터(law.go.kr)에서 현행 법령·시행령·시행규칙 및 관련 행정규칙을 확인하고, 확인된 조문을 근거로 해설한다.\n\n' +
+        '다음 문제에 대해 설명해줘.\n\n문제: ' + q.question +
         '\n보기: ' + q.options.map((o,i)=>(letters[i]||(i+1)+'.') + ' ' + o).join('  ') +
         '\n정답: ' + (letters[q.answer-1] || q.answer) +
         '\n해설: ' + (q.explanation || '해설 없음');
