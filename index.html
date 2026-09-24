@@ -3892,13 +3892,7 @@
       // 🤖 AI에 물어보기: 해설 바로 아래에 버튼 하나, 누르면 Gemini/ChatGPT 중 고르는 작은 버튼
       // 2개가 나타난다(요구사항 확정: "제미나이와 Chatgpt선택"). 고르면 문제+보기+정답+해설을
       // 전부 담은 질문을 채운 채로 새 탭이 열린다(전송은 사용자가 한 번 더 눌러야 함).
-      const askAiBtnHtml = '<div style="margin-top:10px;">' +
-        '<button id="askAiBtn" style="width:100%;background:var(--paper-deep);border:1px solid var(--line-strong);border-radius:9px;padding:9px;font-size:12.5px;color:var(--ink-soft);cursor:pointer;">🤖 AI에 물어보기</button>' +
-        '<div id="askAiChoices" style="display:none;gap:8px;margin-top:8px;">' +
-          '<button id="askGeminiBtn" style="flex:1;background:#E8F0FE;border:1px solid #AECBFA;border-radius:9px;padding:9px;font-size:12.5px;color:#1A73E8;font-weight:700;cursor:pointer;">🔷 Gemini</button>' +
-          '<button id="askChatGptBtn" style="flex:1;background:#E8F8F0;border:1px solid #A8E6C1;border-radius:9px;padding:9px;font-size:12.5px;color:#10A37F;font-weight:700;cursor:pointer;">🟢 ChatGPT</button>' +
-        '</div>' +
-      '</div>';
+      const askAiBtnHtml = '<button id="askChatGptBtn" style="margin-top:10px;width:100%;background:var(--paper-deep);border:1px solid var(--line-strong);border-radius:9px;padding:9px;font-size:12.5px;color:var(--ink-soft);cursor:pointer;">🤖 ChatGPT에 물어보기</button>';
       const weakBtnHtml = (!isDeletedSaved && (isWeakNow || !alreadyWeakStatus))? ('<button id="manualWeakBtn" style="margin-top:10px;width:100%;background:' + (isWeakNow? 'var(--correct-tint)':'var(--seal-tint)') + ';border:1px solid ' + (isWeakNow? '#BFDBCB':'#E9C2BC') + ';border-radius:9px;padding:9px;font-size:12.5px;color:' + (isWeakNow? '#204636':'var(--seal)') + ';font-weight:700;cursor:pointer;">' + (isWeakNow? '✔ 취약문제 지정 해제' : '🚨 취약문제로 지정하기') + '</button>') : '';
       const excludeBtnHtml = (!isDeletedSaved && showsMasteryUi)? '<button id="excludeBtn" style="margin-top:8px;width:100%;background:var(--paper-deep);border:1px solid var(--line-strong);border-radius:9px;padding:9px;font-size:12.5px;color:var(--ink-soft);cursor:pointer;">✕ 이 문제는 취약문제에서 그만 보기</button>' : '';
       const reportBtnHtml = '<button id="reportErrorBtn" style="margin-top:8px;width:100%;background:transparent;border:1px dashed var(--line-strong);border-radius:9px;padding:8px;font-size:12px;color:var(--ink-soft);cursor:pointer;">🚩 문제 오류 신고</button>';
@@ -4072,39 +4066,12 @@
     };
     // 🤖 AI에 물어보기 - 누르면 Gemini/ChatGPT 선택 버튼이 나타나고, 고르면 문제+보기+정답+해설을
     // 담은 질문과 함께 새 탭이 열린다. letters는 위쪽 보기 렌더링에서 이미 선언된 걸 그대로 재사용.
-    const askAiBtn = document.getElementById('askAiBtn');
-    const askAiChoices = document.getElementById('askAiChoices');
-    if(askAiBtn && askAiChoices){
-      askAiBtn.onclick = ()=>{
-        askAiChoices.style.display = (askAiChoices.style.display === 'flex') ? 'none' : 'flex';
-      };
-    }
     function buildAiQueryText(){
       return '다음 문제에 대해 설명해줘.\n\n문제: ' + q.question +
         '\n보기: ' + q.options.map((o,i)=>(letters[i]||(i+1)+'.') + ' ' + o).join('  ') +
         '\n정답: ' + (letters[q.answer-1] || q.answer) +
         '\n해설: ' + (q.explanation || '해설 없음');
     }
-    const askGeminiBtn = document.getElementById('askGeminiBtn');
-    if(askGeminiBtn) askGeminiBtn.onclick = async ()=>{
-      // 🚩 Gemini는 iOS엔 별도 앱이 없고, "Google 앱" 안의 Gemini 탭으로 들어가는 구조다.
-      // googleapp://robin은 그 Gemini 탭을 바로 여는 것으로 알려진 딥링크(비공식 - 구글이 언제든
-      // 바꿀 수 있음)라 이걸 먼저 시도한다. 이 딥링크도 URL로 질문을 미리 채워주는 기능은 없어서
-      // (ChatGPT 앱과 다른 점 - 신고된 문제) 클립보드 복사는 그대로 유지한다.
-      // 앱 전환에 성공하면 보통 곧바로 blur 이벤트가 발생하므로, 그 전에는 폴백을 걸어뒀다가
-      // blur가 오면 취소하고, 안 오면(앱이 없거나 딥링크가 막혔으면) 웹으로 대신 연다.
-      const text = buildAiQueryText();
-      try{ await navigator.clipboard.writeText(text); }catch(e){ /* 복사 실패해도 진행 */ }
-      alert('질문이 클립보드에 복사되었습니다.\nGemini(Google 앱)가 열리면 붙여넣기해주세요.');
-      let switchedAway = false;
-      const onBlur = ()=>{ switchedAway = true; };
-      window.addEventListener('blur', onBlur, { once: true });
-      setTimeout(()=>{
-        window.removeEventListener('blur', onBlur);
-        if(!switchedAway) window.open('https://gemini.google.com/app', '_blank'); // 앱 전환 실패 - 웹으로 대체
-      }, 1200);
-      window.location.href = 'googleapp://robin';
-    };
     const askChatGptBtn = document.getElementById('askChatGptBtn');
     if(askChatGptBtn) askChatGptBtn.onclick = ()=>{
       window.open('https://chatgpt.com/?q=' + encodeURIComponent(buildAiQueryText()), '_blank');
