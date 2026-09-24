@@ -4087,14 +4087,23 @@
     }
     const askGeminiBtn = document.getElementById('askGeminiBtn');
     if(askGeminiBtn) askGeminiBtn.onclick = async ()=>{
-      // 🚩 Gemini 앱은 ChatGPT 앱과 달리 URL의 ?q= 파라미터로 질문을 미리 채워주는 기능을 지원하지
-      // 않는 것으로 확인됐다(신고된 버그: 앱 대신 웹으로 열리고, 웹에서도 안 채워짐). 그래서
-      // Gemini만 "클립보드에 복사 + 사이트 열기" 방식으로 대체한다 - 앱이든 웹이든 붙여넣기만
-      // 하면 되므로 확실하게 작동한다.
+      // 🚩 Gemini는 iOS엔 별도 앱이 없고, "Google 앱" 안의 Gemini 탭으로 들어가는 구조다.
+      // googleapp://robin은 그 Gemini 탭을 바로 여는 것으로 알려진 딥링크(비공식 - 구글이 언제든
+      // 바꿀 수 있음)라 이걸 먼저 시도한다. 이 딥링크도 URL로 질문을 미리 채워주는 기능은 없어서
+      // (ChatGPT 앱과 다른 점 - 신고된 문제) 클립보드 복사는 그대로 유지한다.
+      // 앱 전환에 성공하면 보통 곧바로 blur 이벤트가 발생하므로, 그 전에는 폴백을 걸어뒀다가
+      // blur가 오면 취소하고, 안 오면(앱이 없거나 딥링크가 막혔으면) 웹으로 대신 연다.
       const text = buildAiQueryText();
-      try{ await navigator.clipboard.writeText(text); }catch(e){ /* 복사 실패해도 사이트는 열어준다 */ }
-      alert('질문이 클립보드에 복사되었습니다.\nGemini가 열리면 붙여넣기(길게 눌러 붙여넣기)해주세요.');
-      window.open('https://gemini.google.com/app', '_blank');
+      try{ await navigator.clipboard.writeText(text); }catch(e){ /* 복사 실패해도 진행 */ }
+      alert('질문이 클립보드에 복사되었습니다.\nGemini(Google 앱)가 열리면 붙여넣기해주세요.');
+      let switchedAway = false;
+      const onBlur = ()=>{ switchedAway = true; };
+      window.addEventListener('blur', onBlur, { once: true });
+      setTimeout(()=>{
+        window.removeEventListener('blur', onBlur);
+        if(!switchedAway) window.open('https://gemini.google.com/app', '_blank'); // 앱 전환 실패 - 웹으로 대체
+      }, 1200);
+      window.location.href = 'googleapp://robin';
     };
     const askChatGptBtn = document.getElementById('askChatGptBtn');
     if(askChatGptBtn) askChatGptBtn.onclick = ()=>{
