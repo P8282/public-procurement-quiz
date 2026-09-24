@@ -3300,16 +3300,13 @@
       el.onclick = (e)=>{ e.stopPropagation(); state.globalWeakReview = false; state.globalReviewOnlyReview = false; startReviewOnlyReview(el.dataset.key); };
     });
     document.querySelectorAll('.updated-btn').forEach(el=>{
-      // 챕터별 단독 바로가기이므로, 남아있을 수 있는 전체세션 플래그(과목별 개정 업데이트 포함)를
-      // 모두 꺼서 이 챕터만 정상적으로 풀고 완료 화면을 보게 한다(다른 4개 버튼과 동일한 방어 패턴).
+      // 다른 4개 버튼(취약/복습 등)과 달리, 개정 업데이트는 챕터 배지로 들어와도 이 챕터만 풀고
+      // 끝나지 않는다 - 전체 큐를 그대로 쓰되 이 챕터부터 시작하도록(startGlobalUpdatedReview의
+      // startKey 인자) 해서, 다 풀면 이어서 자동으로 다음 챕터(다른 날짜에 개정된 것 포함)로
+      // 넘어간다(신고된 버그: "23일 풀이가 완료되면 종료되고, 22일을 다시 눌러야 함").
       el.onclick = (e)=>{
         e.stopPropagation();
-        state.globalWeakReview = false;
-        state.globalReviewOnlyReview = false;
-        state.globalWeakNumReview = false;
-        state.globalNumReview = false;
-        state.globalUpdatedReview = false; state.globalUpdatedSubj = null;
-        startUpdatedReview(el.dataset.key);
+        startGlobalUpdatedReview(el.dataset.key);
       };
     });
     document.querySelectorAll('.subject-updated-btn').forEach(el=>{
@@ -3664,13 +3661,13 @@
     if(!idxs.length) return;
     openChapter(key, true, idxs, 'updated');
   }
-  // 🆕 "개정 업데이트" 바로가기(과목 화면의 ✏️ Update 배지에서 진입). 예전에는 클릭한 과목의
-  // 챕터로만 큐를 한정했었는데, 그러면 개정일자(rev)가 22일/23일처럼 여러 날짜에 걸쳐 서로 다른
-  // 과목에 나뉘어 있을 때 한 과목을 다 풀면 세션이 끝나버리고 나머지 과목은 다시 눌러야 하는
-  // 문제가 있었다(신고된 버그: "23일 풀이가 완료되면 종료되고, 22일을 다시 눌러야 함"). 이제는
-  // 과목 경계를 없애고 전체 문제은행 기준으로 큐를 만든다 - 어느 과목의 Update 배지를 눌러도
-  // 결과적으로 개정된 문제를 전부 한 세션으로 이어서 풀게 된다.
-  function startGlobalUpdatedReview(){
+  // 🆕 "개정 업데이트" 이어풀기 - 과목 화면 배지와 챕터 배지 둘 다 여기로 들어온다(둘 다 같은
+  // 전체 큐를 쓰되, startKey를 주면 그 챕터부터 시작). 예전에는 챕터 배지가 "이 챕터만 풀고 끝"
+  // 이었는데, 그러면 22일 rev 문제가 있는 챕터를 다 풀어도 23일 rev 문제가 있는 다른 챕터로 이어
+  // 지지 않고 그 배지를 따로 또 눌러야 하는 문제가 있었다(신고된 버그: "23일 풀이가 완료되면
+  // 종료되고, 22일을 다시 눌러야 함" - 원인은 과목 배지뿐 아니라 챕터 배지도 똑같이 "그 챕터만"
+  // 으로 한정돼 있었던 것). 이제는 어느 배지로 들어오든 전체 문제은행 기준 큐로 이어간다.
+  function startGlobalUpdatedReview(startKey){
     const queue = allChapterKeys().filter(k => chapterUpdateInfo(k));
     if(!queue.length) return;
     // 다른 전체 세션과 동시에 진행 중이면 완료 시점에 엉뚱한 세션으로 이어질 수 있으므로 정리한다.
@@ -3680,9 +3677,12 @@
     state.globalWeakNumReview = false;
     state.globalUpdatedReview = true;
     state.globalUpdatedQueue = queue;
-    state.globalUpdatedQueueIndex = 0;
+    // startKey가 큐 안에 있으면 그 위치부터 시작(챕터 배지로 들어온 경우) - 큐 자체는 항상
+    // 전체이므로, 그 챕터를 다 풀면 이어서 원래대로 다음 챕터로 자연스럽게 넘어간다.
+    const startIdx = startKey ? Math.max(0, queue.indexOf(startKey)) : 0;
+    state.globalUpdatedQueueIndex = startIdx;
     state.globalUpdatedCounts = queue.map(k => chapterUpdateInfo(k).count);
-    startUpdatedReview(queue[0]);
+    startUpdatedReview(queue[startIdx]);
   }
   function globalUpdatedPrecedingCount(){
     let sum = 0;
