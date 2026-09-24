@@ -3950,7 +3950,7 @@
             </div>
             <div class="options">${optionsHtml}</div>
             ${saved? `<button class="nav-btn" id="showSheetBtn" style="width:100%;margin-top:18px;font-size:14px;padding:12px;">📖 해설 다시 보기</button>` : ''}
-            <div class="kbd-hint"><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd> 답 선택 &nbsp; <kbd>Enter</kbd>/<kbd>Space</kbd> 다음 &nbsp; <kbd>←</kbd>/<kbd>→</kbd> 이동 &nbsp; <kbd>↑</kbd> 해설${(saved && state.sheetOpen)? ` &nbsp; <kbd>G</kbd> Gemini복사 &nbsp; <kbd>C</kbd> ChatGPT` : ''}</div>
+            <div class="kbd-hint"><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd> 답 선택 &nbsp; <kbd>Enter</kbd>/<kbd>Space</kbd> 다음 &nbsp; <kbd>←</kbd>/<kbd>→</kbd> 이동 &nbsp; <kbd>↑</kbd> 해설${(saved && state.sheetOpen)? ` &nbsp; <kbd>G</kbd> Gemini복사 &nbsp; <kbd>H</kbd> ChatGPT` : ''}</div>
           </div>
           <div class="qside">
             <div class="sheet-inline-slot">${sheetHtml}</div>
@@ -4706,8 +4706,8 @@
       e.preventDefault();
       const btn = document.getElementById('askGeminiBtn');
       if(btn) btn.click();
-    } else if(state.sheetOpen && (e.key==='c' || e.key==='C')){
-      // PC 단축키: C = ChatGPT 실행. 위 G와 동일한 방식.
+    } else if(state.sheetOpen && (e.key==='h' || e.key==='H')){
+      // PC 단축키: H = ChatGPT 실행. 위 G와 동일한 방식.
       e.preventDefault();
       const btn = document.getElementById('askChatGptBtn');
       if(btn) btn.click();
